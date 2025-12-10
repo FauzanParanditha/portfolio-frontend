@@ -3,16 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { useProjects } from "@/hooks/use-projects";
 import { motion, useInView } from "framer-motion";
-import { Github } from "lucide-react";
+import { ExternalLink, Eye, Github } from "lucide-react";
 import { useRef, useState } from "react";
+
+import taskManagerImg from "@/assets/project-taskmanager.jpg";
+import Link from "next/link";
 
 export const ProjectsSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true });
-  const [hoveredProject, setHoveredProject] = useState<number | string | null>(
-    null,
-  );
+  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
 
+  // ambil hanya featured
   const { projects, isLoading, isError } = useProjects({ featured: true });
 
   const containerVariants = {
@@ -63,7 +65,7 @@ export const ProjectsSection = () => {
           </motion.p>
         </motion.div>
 
-        {/* State loading / error / empty */}
+        {/* Loading / Error / Empty */}
         {isLoading && (
           <p className="text-center text-sm text-muted-foreground">
             Loading projects...
@@ -102,18 +104,63 @@ export const ProjectsSection = () => {
                   onHoverEnd={() => setHoveredProject(null)}
                   className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-500 hover:shadow-glow"
                 >
-                  {/* Image */}
+                  {/* Project Image */}
                   <div className="relative h-48 overflow-hidden">
                     <motion.img
-                      src={project.coverImageUrl}
+                      src={project.coverImageUrl || taskManagerImg.src}
                       alt={project.title}
                       className="h-full w-full object-cover"
                       whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
                     />
+
+                    {/* Overlay */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{
+                        opacity: hoveredProject === project.id ? 1 : 0,
+                      }}
+                      transition={{ duration: 0.3 }}
+                      className="inset-0 hidden items-center justify-center gap-4 bg-background/80 backdrop-blur-sm md:absolute md:flex"
+                    >
+                      {project.liveUrl && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-background/80"
+                          asChild
+                        >
+                          <Link
+                            href={project.liveUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Preview
+                          </Link>
+                        </Button>
+                      )}
+
+                      {project.sourceUrl && (
+                        <Button
+                          size="sm"
+                          className="bg-gradient-primary"
+                          asChild
+                        >
+                          <Link
+                            href={project.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Github className="mr-2 h-4 w-4" />
+                            Code
+                          </Link>
+                        </Button>
+                      )}
+                    </motion.div>
                   </div>
 
-                  {/* Content */}
+                  {/* Project Content */}
                   <div className="p-6">
                     <h3 className="mb-3 text-xl font-bold transition-colors group-hover:text-primary">
                       {project.title}
@@ -156,6 +203,45 @@ export const ProjectsSection = () => {
                         ))}
                       </div>
                     )}
+
+                    {/* Project Links */}
+                    <div className="flex flex-col gap-3 md:flex-row">
+                      {project.liveUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          asChild
+                        >
+                          <Link
+                            href={project.liveUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Live Demo
+                          </Link>
+                        </Button>
+                      )}
+
+                      {project.sourceUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          asChild
+                        >
+                          <Link
+                            href={project.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Github className="mr-2 h-4 w-4" />
+                            Source
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Animated border gradient */}
@@ -186,10 +272,10 @@ export const ProjectsSection = () => {
             className="border-primary"
             asChild
           >
-            <a href="/projects">
+            <Link href="/projects">
               <Github className="mr-2 h-5 w-5" />
               View All Projects
-            </a>
+            </Link>
           </Button>
         </motion.div>
       </div>

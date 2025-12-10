@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Github, Heart, Linkedin, Mail, Twitter } from "lucide-react";
+import Link from "next/link";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -19,7 +20,7 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="bg-card border-border border-t">
+    <footer className="border-t border-border bg-card">
       <div className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {/* Brand Section */}
@@ -31,12 +32,12 @@ export const Footer = () => {
             className="space-y-4"
           >
             <div className="flex items-center gap-2">
-              <div className="bg-gradient-primary flex h-10 w-10 items-center justify-center rounded-lg font-bold text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary font-bold text-white">
                 JD
               </div>
               <span className="text-xl font-bold">Fauzan Paranditha</span>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="leading-relaxed text-muted-foreground">
               Passionate fullstack developer creating exceptional digital
               experiences with modern technologies and clean, scalable code.
             </p>
@@ -48,9 +49,9 @@ export const Footer = () => {
                   aria-label={social.label}
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   whileTap={{ scale: 0.95 }}
-                  className="bg-primary/10 hover:bg-primary/20 group rounded-lg p-2 transition-colors"
+                  className="group rounded-lg bg-primary/10 p-2 transition-colors hover:bg-primary/20"
                 >
-                  <social.icon className="text-primary group-hover:text-primary-glow h-5 w-5 transition-colors" />
+                  <social.icon className="h-5 w-5 text-primary transition-colors group-hover:text-primary-glow" />
                 </motion.a>
               ))}
             </div>
@@ -71,7 +72,7 @@ export const Footer = () => {
                   key={link.name}
                   href={link.href}
                   whileHover={{ x: 5 }}
-                  className="text-muted-foreground hover:text-primary block transition-colors"
+                  className="block text-muted-foreground transition-colors hover:text-primary"
                 >
                   {link.name}
                 </motion.a>
@@ -92,14 +93,14 @@ export const Footer = () => {
               <p className="text-muted-foreground">
                 Ready to work together? Let&apos;s create something amazing!
               </p>
-              <a
+              <Link
                 href="mailto:paranditha@gmail.com"
-                className="text-primary hover:text-primary-glow inline-flex items-center gap-2 transition-colors"
+                className="inline-flex items-center gap-2 text-primary transition-colors hover:text-primary-glow"
               >
                 <Mail className="h-4 w-4" />
                 paranditha@gmail.com
-              </a>
-              <p className="text-muted-foreground text-sm">San Francisco, CA</p>
+              </Link>
+              <p className="text-sm text-muted-foreground">San Francisco, CA</p>
             </div>
           </motion.div>
         </div>
@@ -110,10 +111,10 @@ export const Footer = () => {
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.6 }}
           viewport={{ once: true }}
-          className="border-border mt-12 border-t pt-8"
+          className="mt-12 border-t border-border pt-8"
         >
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               © {currentYear} Fauzan Paranditha. All rights reserved.
             </p>
             <motion.p
@@ -121,7 +122,7 @@ export const Footer = () => {
               whileInView={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.8 }}
               viewport={{ once: true }}
-              className="text-muted-foreground flex items-center gap-1 text-sm"
+              className="flex items-center gap-1 text-sm text-muted-foreground"
             >
               Made with{" "}
               <motion.span

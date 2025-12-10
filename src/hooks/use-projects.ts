@@ -1,21 +1,28 @@
 "use client";
 
 import publicClient from "@/lib/axios/public";
-import { ApiListResponse, Project } from "@/types/portfolio";
+import type { ApiListResponse, Project } from "@/types/portfolio";
 import useSWR from "swr";
 
-const fetcher = (url: string) =>
-  publicClient.get<ApiListResponse<Project>>(url).then((res) => res.data);
+export function useProjects(params?: {
+  page?: number;
+  limit?: number;
+  q?: string;
+  featured?: boolean;
+}) {
+  const query = new URLSearchParams();
 
-export function useProjects(opts?: { featured?: boolean }) {
-  const params = new URLSearchParams();
-  if (opts?.featured) params.set("featured", "true");
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.q) query.set("q", params.q);
+  if (params?.featured !== undefined)
+    query.set("featured", String(params.featured));
 
-  const url = `/projects${params.toString() ? `?${params}` : ""}`;
+  const url = `/projects${query.size > 0 ? `?${query.toString()}` : ""}`;
 
   const { data, error, isLoading } = useSWR<ApiListResponse<Project>>(
     url,
-    fetcher,
+    (url: string) => publicClient.get(url).then((res) => res.data),
   );
 
   return {

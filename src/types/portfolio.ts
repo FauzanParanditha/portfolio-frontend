@@ -3,7 +3,9 @@ export interface Project {
   title: string;
   slug: string;
   shortDesc: string;
-  coverImageUrl: string;
+  coverImageUrl?: string;
+  liveUrl?: string | null;
+  sourceUrl?: string | null;
   isFeatured: boolean;
   tags: ProjectTag[];
   features: ProjectFeature[];
@@ -29,15 +31,15 @@ export interface Experience {
   description?: string;
   highlights?: string[];
 }
-
+export interface ApiListMeta {
+  featured?: boolean;
+  hasMore: boolean;
+  limit: number;
+  page: number;
+  q: string;
+  total: number;
+}
 export interface ApiListResponse<T> {
   data: T[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    hasMore: boolean;
-    featured?: boolean;
-    q?: string;
-  };
+  meta: ApiListMeta;
 }
