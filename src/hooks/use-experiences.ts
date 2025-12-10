@@ -1,15 +1,21 @@
 "use client";
 
-import { ApiListResponse, Experience } from "@/types/portfolio";
+import publicClient from "@/lib/axios/public";
+import type { ApiListResponse, Experience } from "@/types/experience";
 import useSWR from "swr";
 
 export function useExperiences() {
-  const { data, error, isLoading } =
-    useSWR<ApiListResponse<Experience>>("/experiences");
+  const { data, error, isLoading } = useSWR<ApiListResponse<Experience>>(
+    "/experiences",
+    (url: string) => publicClient.get(url).then((res) => res.data),
+  );
+
+  const sorted =
+    data?.data?.slice().sort((a, b) => a.sortOrder - b.sortOrder) ?? [];
 
   return {
-    experiences: data?.data ?? [],
+    experiences: sorted,
     isLoading,
-    isError: error,
+    isError: !!error,
   };
 }
