@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import publicClient from "@/lib/axios/public";
 import { motion, useInView } from "framer-motion";
 import { Mail, MapPin, Phone, Send } from "lucide-react";
 import { useRef, useState } from "react";
@@ -36,20 +37,54 @@ export const ContactSection = () => {
     },
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     setIsSubmitting(true);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const payload = {
+      name: (formData.get("name") || "").toString().trim(),
+      email: (formData.get("email") || "").toString().trim(),
+      subject: (formData.get("subject") || "").toString().trim(),
+      message: (formData.get("message") || "").toString().trim(),
+    };
 
-    toast({
-      title: "Message sent!",
-      description: "Thank you for your message. I'll get back to you soon!",
-    });
+    if (
+      !payload.name ||
+      !payload.email ||
+      !payload.subject ||
+      !payload.message
+    ) {
+      toast({
+        title: "Form belum lengkap",
+        description: "Mohon isi semua field yang bertanda *.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
 
-    setIsSubmitting(false);
-    (e.target as HTMLFormElement).reset();
+    try {
+      await publicClient.post("/contact-messages", payload);
+
+      toast({
+        title: "Message sent!",
+        description: "Thank you for your message. I'll get back to you soon!",
+      });
+
+      form.reset();
+    } catch (error) {
+      // error umum sudah di-handle interceptor, tapi kita tambahin pesan ekstra
+      toast({
+        title: "Gagal mengirim pesan",
+        description:
+          "Terjadi kesalahan saat mengirim pesan. Silakan coba lagi beberapa saat.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const contactInfo = [
@@ -84,13 +119,13 @@ export const ContactSection = () => {
         >
           <motion.h2
             variants={itemVariants}
-            className="bg-gradient-primary mb-6 bg-clip-text text-4xl font-bold text-transparent md:text-5xl"
+            className="mb-6 bg-gradient-primary bg-clip-text text-4xl font-bold text-transparent md:text-5xl"
           >
             Get In Touch
           </motion.h2>
           <motion.p
             variants={itemVariants}
-            className="text-muted-foreground mx-auto max-w-2xl text-lg"
+            className="mx-auto max-w-2xl text-lg text-muted-foreground"
           >
             Ready to start your next project? Let&apos;s discuss how we can work
             together to bring your ideas to life.
@@ -107,23 +142,23 @@ export const ContactSection = () => {
           >
             <motion.div variants={itemVariants}>
               <h3 className="mb-6 text-2xl font-bold">Let&apos;s Connect</h3>
-              <p className="text-muted-foreground mb-8 leading-relaxed">
+              <p className="mb-8 leading-relaxed text-muted-foreground">
                 I&apos;m always open to discussing new opportunities,
                 interesting projects, or just having a chat about web
                 development. Don&apos;t hesitate to reach out!
               </p>
             </motion.div>
 
-            {contactInfo.map((item, index) => (
+            {contactInfo.map((item) => (
               <motion.a
                 key={item.title}
                 variants={itemVariants}
                 href={item.href}
                 whileHover={{ scale: 1.02, x: 10 }}
-                className="bg-card border-border hover:shadow-card group flex items-center gap-4 rounded-lg border p-4 transition-all duration-300"
+                className="group flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-all duration-300 hover:shadow-card"
               >
-                <div className="bg-primary/10 group-hover:bg-primary/20 rounded-lg p-3 transition-colors">
-                  <item.icon className="text-primary h-6 w-6" />
+                <div className="rounded-lg bg-primary/10 p-3 transition-colors group-hover:bg-primary/20">
+                  <item.icon className="h-6 w-6 text-primary" />
                 </div>
                 <div>
                   <h4 className="font-semibold">{item.title}</h4>
@@ -134,10 +169,10 @@ export const ContactSection = () => {
 
             <motion.div
               variants={itemVariants}
-              className="bg-card border-border shadow-card rounded-xl border p-6"
+              className="rounded-xl border border-border bg-card p-6 shadow-card"
             >
               <h4 className="mb-3 font-bold">Quick Response Time</h4>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 I typically respond to messages within 24 hours. For urgent
                 inquiries, please feel free to call directly.
               </p>
@@ -149,8 +184,9 @@ export const ContactSection = () => {
             variants={itemVariants}
             initial="hidden"
             animate={isInView ? "visible" : "hidden"}
+            className="flex items-stretch"
           >
-            <div className="bg-card border-border shadow-card rounded-xl border p-8">
+            <div className="max-h-fit rounded-xl border border-border bg-card p-8 shadow-card">
               <h3 className="mb-6 text-2xl font-bold">Send a Message</h3>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -164,10 +200,11 @@ export const ContactSection = () => {
                     </label>
                     <Input
                       id="name"
+                      name="name"
                       type="text"
                       required
                       placeholder="Your name"
-                      className="bg-background border-border"
+                      className="border-border bg-background"
                     />
                   </div>
                   <div>
@@ -179,10 +216,11 @@ export const ContactSection = () => {
                     </label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       required
                       placeholder="your.email@example.com"
-                      className="bg-background border-border"
+                      className="border-border bg-background"
                     />
                   </div>
                 </div>
@@ -196,10 +234,11 @@ export const ContactSection = () => {
                   </label>
                   <Input
                     id="subject"
+                    name="subject"
                     type="text"
                     required
                     placeholder="Project inquiry, collaboration, etc."
-                    className="bg-background border-border"
+                    className="border-border bg-background"
                   />
                 </div>
 
@@ -212,10 +251,11 @@ export const ContactSection = () => {
                   </label>
                   <Textarea
                     id="message"
+                    name="message"
                     required
                     rows={6}
                     placeholder="Tell me about your project, ideas, or how I can help..."
-                    className="bg-background border-border resize-none"
+                    className="resize-none border-border bg-background"
                   />
                 </div>
 
@@ -227,7 +267,7 @@ export const ContactSection = () => {
                     type="submit"
                     size="lg"
                     disabled={isSubmitting}
-                    className="bg-gradient-primary hover:shadow-glow w-full transition-all duration-300"
+                    className="w-full bg-gradient-primary transition-all duration-300 hover:shadow-glow"
                   >
                     {isSubmitting ? (
                       <motion.div
@@ -237,7 +277,7 @@ export const ContactSection = () => {
                           repeat: Infinity,
                           ease: "linear",
                         }}
-                        className="border-primary-foreground h-5 w-5 rounded-full border-2 border-t-transparent"
+                        className="h-5 w-5 rounded-full border-2 border-primary-foreground border-t-transparent"
                       />
                     ) : (
                       <>
