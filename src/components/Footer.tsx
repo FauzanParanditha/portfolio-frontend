@@ -33,7 +33,7 @@ export const Footer = () => {
           >
             <div className="flex items-center gap-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary font-bold text-white">
-                JD
+                FP
               </div>
               <span className="text-xl font-bold">Fauzan Paranditha</span>
             </div>

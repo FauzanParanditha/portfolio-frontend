@@ -97,14 +97,14 @@ export const ContactSection = () => {
     {
       icon: Phone,
       title: "Phone",
-      value: "+1 (555) 123-4567",
-      href: "tel:+15551234567",
+      value: "+62",
+      href: "https://wa.me/62",
     },
     {
       icon: MapPin,
       title: "Location",
-      value: "San Francisco, CA",
-      href: "#",
+      value: "Tangerang Selatan, Indonesia",
+      href: "https://pandi.id",
     },
   ];
 

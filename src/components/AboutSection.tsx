@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { Code, Database, Palette, Zap } from "lucide-react";
+import { Binary, Code, Database, Zap } from "lucide-react";
 import { useRef } from "react";
 
 export const AboutSection = () => {
@@ -39,21 +39,21 @@ export const AboutSection = () => {
       color: "accent-blue",
     },
     {
-      icon: Database,
+      icon: Binary,
       title: "Backend Development",
-      description: "Node.js, Express, PostgreSQL, MongoDB",
+      description: "Node.js, Express, TypeScript, Golang, RESTful APIs,",
       color: "accent-purple",
     },
     {
-      icon: Palette,
-      title: "UI/UX Design",
-      description: "Figma, Adobe Creative Suite, Design Systems",
+      icon: Database,
+      title: "Database",
+      description: "PostgreSQL, MongoDB, MySQL",
       color: "accent-pink",
     },
     {
       icon: Zap,
       title: "DevOps & Tools",
-      description: "Docker, AWS, Git, CI/CD, Monitoring",
+      description: "Docker, Git,",
       color: "accent-orange",
     },
   ];
@@ -69,13 +69,13 @@ export const AboutSection = () => {
         >
           <motion.h2
             variants={itemVariants}
-            className="bg-gradient-primary mb-6 bg-clip-text text-4xl font-bold text-transparent md:text-5xl"
+            className="mb-6 bg-gradient-primary bg-clip-text text-4xl font-bold text-transparent md:text-5xl"
           >
             About Me
           </motion.h2>
           <motion.p
             variants={itemVariants}
-            className="text-muted-foreground mx-auto max-w-3xl text-lg leading-relaxed"
+            className="mx-auto max-w-3xl text-lg leading-relaxed text-muted-foreground"
           >
             With over 5 years of experience in fullstack development, I
             specialize in creating scalable web applications that deliver
@@ -100,7 +100,7 @@ export const AboutSection = () => {
               }}
               className="group relative"
             >
-              <div className="bg-card border-border shadow-card hover:shadow-glow h-full rounded-xl border p-6 transition-all duration-300">
+              <div className="h-full rounded-xl border border-border bg-card p-6 shadow-card transition-all duration-300 hover:shadow-glow">
                 <div
                   className={`inline-flex rounded-lg p-3 bg-${skill.color}/10 mb-4 group-hover:bg-${skill.color}/20 transition-colors`}
                 >
@@ -112,7 +112,7 @@ export const AboutSection = () => {
 
               {/* Animated border gradient */}
               <div
-                className={`absolute inset-0 rounded-xl bg-gradient-to-r from-${skill.color}/20 to-primary/20 -z-10 opacity-0 blur-sm transition-opacity duration-300 group-hover:opacity-100`}
+                className={`absolute inset-0 rounded-xl bg-gradient-to-r from-${skill.color}/20 -z-10 to-primary/20 opacity-0 blur-sm transition-opacity duration-300 group-hover:opacity-100`}
               />
             </motion.div>
           ))}
@@ -124,27 +124,27 @@ export const AboutSection = () => {
           animate={isInView ? "visible" : "hidden"}
           className="mt-16 text-center"
         >
-          <div className="bg-card border-border shadow-card rounded-xl border p-8">
+          <div className="rounded-xl border border-border bg-card p-8 shadow-card">
             <h3 className="mb-4 text-2xl font-bold">Tech Stack</h3>
             <div className="flex flex-wrap justify-center gap-3">
               {[
                 "React",
+                "Next.js",
+                "Tailwind CSS",
                 "TypeScript",
                 "Node.js",
-                "Next.js",
                 "Express",
+                "Golang",
                 "PostgreSQL",
                 "MongoDB",
-                "Tailwind CSS",
+                "MySQL",
                 "Docker",
-                "AWS",
                 "Git",
-                "Figma",
               ].map((tech) => (
                 <motion.span
                   key={tech}
                   whileHover={{ scale: 1.1 }}
-                  className="bg-primary/10 text-primary hover:bg-primary/20 cursor-default rounded-full px-4 py-2 text-sm font-medium transition-colors"
+                  className="cursor-default rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
                 >
                   {tech}
                 </motion.span>

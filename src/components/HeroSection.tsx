@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowDown, Github, Linkedin, Mail } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export const HeroSection = () => {
   const containerVariants = {
@@ -37,7 +38,7 @@ export const HeroSection = () => {
   };
 
   return (
-    <section className="bg-gradient-hero relative flex min-h-screen items-center justify-center overflow-hidden">
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-hero">
       {/* Video Background */}
       <div className="absolute inset-0 z-0">
         <video
@@ -56,12 +57,12 @@ export const HeroSection = () => {
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
-        className="border-primary/20 absolute right-20 top-20 h-32 w-32 rounded-full border"
+        className="absolute right-20 top-20 h-32 w-32 rounded-full border border-primary/20"
       />
       <motion.div
         animate={{ rotate: -360 }}
         transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-        className="border-accent-pink/20 absolute bottom-20 left-20 h-24 w-24 rounded-full border"
+        className="absolute bottom-20 left-20 h-24 w-24 rounded-full border border-accent-pink/20"
       />
 
       <motion.div
@@ -73,12 +74,12 @@ export const HeroSection = () => {
         <motion.div variants={itemVariants}>
           <motion.div
             animate={floatingAnimation}
-            className="bg-gradient-primary mx-auto mb-8 h-40 w-40 rounded-full p-1"
+            className="mx-auto mb-8 h-40 w-40 rounded-full bg-gradient-primary p-1"
           >
-            <div className="bg-background bg-gradient-primary flex h-full w-full items-center justify-center rounded-full bg-clip-text text-6xl font-bold">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-background bg-gradient-primary bg-clip-text text-6xl font-bold">
               <Image
                 alt="People"
-                src={"/images/people.jpg"}
+                src={"/images/zns.webp"}
                 width={150}
                 height={150}
                 className="rounded-full"
@@ -89,21 +90,21 @@ export const HeroSection = () => {
 
         <motion.h1
           variants={itemVariants}
-          className="bg-gradient-primary mb-6 bg-clip-text text-5xl font-bold text-transparent md:text-7xl"
+          className="mb-6 bg-gradient-primary bg-clip-text text-5xl font-bold text-transparent md:text-7xl"
         >
           Fauzan Paranditha
         </motion.h1>
 
         <motion.h2
           variants={itemVariants}
-          className="text-muted-foreground mb-8 text-2xl md:text-3xl"
+          className="mb-8 text-2xl text-muted-foreground md:text-3xl"
         >
           Fullstack Web Developer
         </motion.h2>
 
         <motion.p
           variants={itemVariants}
-          className="text-muted-foreground mx-auto mb-12 max-w-2xl text-lg leading-relaxed md:text-xl"
+          className="mx-auto mb-12 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl"
         >
           I craft exceptional digital experiences with modern technologies.
           Passionate about creating scalable solutions that make a difference.
@@ -113,17 +114,22 @@ export const HeroSection = () => {
           variants={itemVariants}
           className="mb-16 flex flex-wrap justify-center gap-4"
         >
-          <Button
-            size="lg"
-            className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
-          >
-            <Mail className="mr-2 h-5 w-5" />
-            Get In Touch
-          </Button>
-          <Button variant="outline" size="lg" className="border-primary">
-            <Github className="mr-2 h-5 w-5" />
-            View Work
-          </Button>
+          <Link href={"#contact"}>
+            <Button
+              size="lg"
+              className="bg-gradient-primary transition-all duration-300 hover:shadow-glow"
+            >
+              <Mail className="mr-2 h-5 w-5" />
+              Get In Touch
+            </Button>
+          </Link>
+
+          <Link href={"#projects"}>
+            <Button variant="outline" size="lg" className="border-primary">
+              <Github className="mr-2 h-5 w-5" />
+              View Work
+            </Button>
+          </Link>
         </motion.div>
 
         <motion.div
@@ -132,22 +138,22 @@ export const HeroSection = () => {
         >
           <motion.a
             whileHover={{ scale: 1.1, rotate: 5 }}
-            href="#"
-            className="border-primary/20 hover:border-primary hover:shadow-glow rounded-full border p-3 transition-all duration-300"
+            href="https://github.com/FauzanParanditha"
+            className="rounded-full border border-primary/20 p-3 transition-all duration-300 hover:border-primary hover:shadow-glow"
           >
             <Github className="h-6 w-6" />
           </motion.a>
           <motion.a
             whileHover={{ scale: 1.1, rotate: -5 }}
-            href="#"
-            className="border-primary/20 hover:border-primary hover:shadow-glow rounded-full border p-3 transition-all duration-300"
+            href="https://www.linkedin.com/in/paranditha/"
+            className="rounded-full border border-primary/20 p-3 transition-all duration-300 hover:border-primary hover:shadow-glow"
           >
             <Linkedin className="h-6 w-6" />
           </motion.a>
           <motion.a
             whileHover={{ scale: 1.1, rotate: 5 }}
-            href="#"
-            className="border-primary/20 hover:border-primary hover:shadow-glow rounded-full border p-3 transition-all duration-300"
+            href="mailto:paranditha@gmail.com"
+            className="rounded-full border border-primary/20 p-3 transition-all duration-300 hover:border-primary hover:shadow-glow"
           >
             <Mail className="h-6 w-6" />
           </motion.a>
@@ -159,7 +165,7 @@ export const HeroSection = () => {
         transition={{ duration: 2, repeat: Infinity }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 transform"
       >
-        <ArrowDown className="text-muted-foreground h-6 w-6" />
+        <ArrowDown className="h-6 w-6 text-muted-foreground" />
       </motion.div>
     </section>
   );
