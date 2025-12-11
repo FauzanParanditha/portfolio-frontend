@@ -115,49 +115,19 @@ export const ProjectsSection = () => {
                     />
 
                     {/* Overlay */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{
-                        opacity: hoveredProject === project.id ? 1 : 0,
-                      }}
-                      transition={{ duration: 0.3 }}
-                      className="inset-0 hidden items-center justify-center gap-4 bg-background/80 backdrop-blur-sm md:absolute md:flex"
+                    <Link
+                      href={`/project/${project.slug}`}
+                      className="absolute inset-0 flex items-center justify-center gap-4 bg-gradient-to-t from-background via-background/50 to-transparent opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100"
                     >
-                      {project.liveUrl && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-background/80"
-                          asChild
-                        >
-                          <Link
-                            href={project.liveUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Preview
-                          </Link>
-                        </Button>
-                      )}
-
-                      {project.sourceUrl && (
-                        <Button
-                          size="sm"
-                          className="bg-gradient-primary"
-                          asChild
-                        >
-                          <Link
-                            href={project.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <Github className="mr-2 h-4 w-4" />
-                            Code
-                          </Link>
-                        </Button>
-                      )}
-                    </motion.div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="bg-background/90 backdrop-blur-sm"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                      </Button>
+                    </Link>
                   </div>
 
                   {/* Project Content */}
@@ -206,7 +176,7 @@ export const ProjectsSection = () => {
 
                     {/* Project Links */}
                     <div className="flex flex-col gap-3 md:flex-row">
-                      {project.liveUrl && (
+                      {project.repoUrl && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -214,7 +184,7 @@ export const ProjectsSection = () => {
                           asChild
                         >
                           <Link
-                            href={project.liveUrl}
+                            href={project.repoUrl}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -224,7 +194,7 @@ export const ProjectsSection = () => {
                         </Button>
                       )}
 
-                      {project.sourceUrl && (
+                      {project.demoUrl && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -232,7 +202,7 @@ export const ProjectsSection = () => {
                           asChild
                         >
                           <Link
-                            href={project.sourceUrl}
+                            href={project.demoUrl}
                             target="_blank"
                             rel="noreferrer"
                           >

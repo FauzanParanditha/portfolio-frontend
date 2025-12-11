@@ -1,16 +1,3 @@
-export interface Project {
-  id: string;
-  title: string;
-  slug: string;
-  shortDesc: string;
-  coverImageUrl?: string;
-  liveUrl?: string | null;
-  sourceUrl?: string | null;
-  isFeatured: boolean;
-  tags: ProjectTag[];
-  features: ProjectFeature[];
-}
-
 export interface ProjectTag {
   id: string;
   name: string;
@@ -21,16 +8,37 @@ export interface ProjectFeature {
   text: string;
 }
 
-export interface Experience {
-  id: string;
-  company: string;
-  role: string;
-  location?: string;
-  startDate: string;
-  endDate?: string | null;
-  description?: string;
-  highlights?: string[];
+export interface ProjectTechnicalDetails {
+  backend: string;
+  database: string;
+  frontend: string;
+  deployment: string;
+  architecture: string;
 }
+
+export interface Project {
+  id: string;
+  title: string;
+  slug: string;
+  shortDesc: string;
+  longDescription: string;
+  coverImageUrl?: string;
+  category?: string;
+  timeline?: string;
+  role?: string;
+  challenge?: string;
+  solution?: string;
+  results: string[];
+  technicalDetails: ProjectTechnicalDetails;
+  demoUrl?: string | null;
+  repoUrl?: string | null;
+  isFeatured: boolean;
+  sortOrder: number;
+  tags: ProjectTag[];
+  features: ProjectFeature[];
+  screenshots: string[]; // kalau nanti di-isi URL
+}
+
 export interface ApiListMeta {
   featured?: boolean;
   hasMore: boolean;
@@ -39,6 +47,7 @@ export interface ApiListMeta {
   q: string;
   total: number;
 }
+
 export interface ApiListResponse<T> {
   data: T[];
   meta: ApiListMeta;

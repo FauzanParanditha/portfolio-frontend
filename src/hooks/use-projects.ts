@@ -10,11 +10,16 @@ export function useProjects(params?: {
   q?: string;
   featured?: boolean;
 }) {
+  const page = params?.page ?? 1;
+  const limit = params?.limit ?? 12;
+
   const query = new URLSearchParams();
 
-  if (params?.page) query.set("page", String(params.page));
-  if (params?.limit) query.set("limit", String(params.limit));
-  if (params?.q) query.set("q", params.q);
+  // kalau memang mau support pagination backend:
+  query.set("page", String(page));
+  query.set("limit", String(limit));
+
+  if (params?.q && params.q.trim()) query.set("q", params.q.trim());
   if (params?.featured !== undefined)
     query.set("featured", String(params.featured));
 

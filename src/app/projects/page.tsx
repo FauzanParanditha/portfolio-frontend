@@ -259,29 +259,19 @@ const Projects = () => {
                         transition={{ duration: 0.6, ease: "easeOut" }}
                       />
 
-                      <div className="absolute inset-0 flex items-center justify-center gap-4 bg-gradient-to-t from-background via-background/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                        {project.liveUrl && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-background/90 backdrop-blur-sm"
-                            asChild
-                          >
-                            <a href={project.liveUrl} target="_blank">
-                              <Eye className="mr-2 h-4 w-4" />
-                              Preview
-                            </a>
-                          </Button>
-                        )}
-                        {project.sourceUrl && (
-                          <Button size="sm" className="bg-primary" asChild>
-                            <a href={project.sourceUrl} target="_blank">
-                              <Github className="mr-2 h-4 w-4" />
-                              Code
-                            </a>
-                          </Button>
-                        )}
-                      </div>
+                      <Link
+                        href={`/projects/${project.slug}`}
+                        className="absolute inset-0 flex items-center justify-center gap-4 bg-gradient-to-t from-background via-background/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      >
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-background/90 backdrop-blur-sm"
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </Button>
+                      </Link>
                     </div>
 
                     <div className="p-6">
@@ -320,27 +310,27 @@ const Projects = () => {
                       )}
 
                       <div className="flex gap-3">
-                        {project.liveUrl && (
+                        {project.repoUrl && (
                           <Button
                             variant="outline"
                             size="sm"
                             asChild
                             className="flex-1"
                           >
-                            <a href={project.liveUrl} target="_blank">
+                            <a href={project.repoUrl} target="_blank">
                               <ExternalLink className="mr-2 h-4 w-4" />
                               Live Demo
                             </a>
                           </Button>
                         )}
-                        {project.sourceUrl && (
+                        {project.demoUrl && (
                           <Button
                             variant="outline"
                             size="sm"
                             asChild
                             className="flex-1"
                           >
-                            <a href={project.sourceUrl} target="_blank">
+                            <a href={project.demoUrl} target="_blank">
                               <Github className="mr-2 h-4 w-4" />
                               Source
                             </a>
