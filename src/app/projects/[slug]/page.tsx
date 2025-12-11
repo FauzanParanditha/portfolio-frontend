@@ -14,6 +14,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -177,10 +178,12 @@ const ProjectDetailPage = () => {
             className="container mx-auto max-w-5xl"
           >
             <div className="relative overflow-hidden rounded-2xl border border-border shadow-2xl shadow-primary/10">
-              <img
+              <Image
                 src={project.coverImageUrl}
                 alt={project.title}
                 className="h-auto w-full object-cover"
+                width={1200}
+                height={600}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent" />
             </div>
@@ -318,10 +321,12 @@ const ProjectDetailPage = () => {
                   onClick={() => setSelectedImage(index)}
                   className="cursor-pointer overflow-hidden rounded-xl border border-border shadow-lg transition-all hover:shadow-xl hover:shadow-primary/10"
                 >
-                  <img
+                  <Image
                     src={screenshot}
                     alt={`${project.title} screenshot ${index + 1}`}
                     className="h-48 w-full object-cover"
+                    width={400}
+                    height={300}
                   />
                 </motion.div>
               ))}

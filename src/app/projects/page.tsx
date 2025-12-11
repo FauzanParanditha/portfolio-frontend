@@ -400,7 +400,7 @@ const Projects = () => {
             Interested in working together?
           </h3>
           <p className="mb-6 text-muted-foreground">
-            I'm always open to discussing new projects and opportunities.
+            I&apos;m always open to discussing new projects and opportunities.
           </p>
           <Link href="/#contact">
             <Button size="lg" className="bg-primary hover:bg-primary/90">

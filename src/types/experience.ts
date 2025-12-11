@@ -23,5 +23,14 @@ export interface Experience {
 
 export interface ApiListResponse<T> {
   data: T[];
-  meta?: any;
+  meta?: ApiListMeta;
+}
+
+export interface ApiListMeta {
+  featured?: boolean;
+  hasMore: boolean;
+  limit: number;
+  page: number;
+  q: string;
+  total: number;
 }
