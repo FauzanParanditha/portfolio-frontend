@@ -61,6 +61,7 @@ export const ContactSection = () => {
       toast({
         title: "Form belum lengkap",
         description: "Mohon isi semua field yang bertanda *.",
+        variant: "warning",
       });
       setIsSubmitting(false);
       return;
@@ -72,6 +73,7 @@ export const ContactSection = () => {
       toast({
         title: "Message sent!",
         description: "Thank you for your message. I'll get back to you soon!",
+        variant: "success",
       });
 
       form.reset();
@@ -81,6 +83,7 @@ export const ContactSection = () => {
         title: "Gagal mengirim pesan",
         description:
           "Terjadi kesalahan saat mengirim pesan. Silakan coba lagi beberapa saat.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);

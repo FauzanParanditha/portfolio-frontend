@@ -13,7 +13,6 @@ publicClient.interceptors.request.use((config) => {
   return config;
 });
 
-
 publicClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError<ApiErrorResponse>) => {
@@ -27,10 +26,14 @@ publicClient.interceptors.response.use(
       (status === 404
         ? "Data tidak ditemukan"
         : status === 500
-        ? "Terjadi kesalahan pada server"
-        : "Terjadi kesalahan saat menghubungi server");
+          ? "Terjadi kesalahan pada server"
+          : "Terjadi kesalahan saat menghubungi server");
 
-    toast({ title: msg });
+    toast({
+      title: `Error ${status || ""}`,
+      description: msg,
+      variant: "warning",
+    });
 
     return Promise.reject(error);
   },

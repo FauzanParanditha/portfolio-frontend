@@ -1,11 +1,12 @@
 import { toast } from "@/hooks/use-toast";
+import { jwtConfig } from "@/utils/var";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import { deleteCookie, getCookie, setCookie } from "cookies-next";
 
 type RefreshResponse = { data?: { token?: string }; message?: string };
 type ApiErrorResponse = { message?: string };
 
-const ACCESS_TOKEN_NAME = "portfolio_admin_at";
+const ACCESS_TOKEN_NAME = jwtConfig.admin.accessTokenName;
 
 const adminClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -79,14 +80,18 @@ adminClient.interceptors.response.use(
       }
 
       deleteCookie(ACCESS_TOKEN_NAME);
-      toast({ title: "Sesi admin berakhir. Silakan login ulang." });
-      window.location.href = "/admin/login";
+      toast({
+        title: "Sesi admin berakhir.",
+        description: "Silakan login ulang.",
+        variant: "warning",
+      });
+      window.location.href = "/auth/login";
       return Promise.reject(error);
     }
 
     const msg = error.response?.data?.message ?? "Server Error";
     if (status && status !== 401) {
-      toast({ title: msg });
+      toast({ title: `Error ${status}`, description: msg, variant: "warning" });
     }
 
     return Promise.reject(error);

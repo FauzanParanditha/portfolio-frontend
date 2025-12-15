@@ -1,19 +1,22 @@
 "use client";
 
 import adminClient from "@/lib/axios/admin";
+import publicClient from "@/lib/axios/public";
+import { jwtConfig } from "@/utils/var";
 import { deleteCookie, getCookie, setCookie } from "cookies-next";
 import {
-    createContext,
-    ReactNode,
-    useContext,
-    useEffect,
-    useState,
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
 } from "react";
 
 interface AdminUser {
   id: string;
   name: string;
   email: string;
+  role: string;
   // tambah field lain kalau backend kirim, misal role, avatar, dll
 }
 
@@ -29,7 +32,7 @@ const AdminAuthContext = createContext<AdminAuthContextValue | undefined>(
   undefined,
 );
 
-const ACCESS_TOKEN_NAME = "portfolio_admin_at";
+const ACCESS_TOKEN_NAME = jwtConfig.admin.accessTokenName;
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
@@ -44,10 +47,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
 
     adminClient
-      .get("/v1/auth/me")
+      .get("/me")
       .then((res) => {
         // asumsi backend balikin { data: { id, name, email, ... } }
-        setUser(res.data.data);
+        setUser(res.data);
       })
       .catch(() => {
         deleteCookie(ACCESS_TOKEN_NAME);
@@ -59,9 +62,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     setLoading(true);
     try {
-      const res = await adminClient.post("/v1/auth/login", { email, password });
+      const res = await publicClient.post("/auth/login", {
+        email,
+        password,
+      });
       // asumsi backend: { data: { token, user } }
-      const { token, user } = res.data.data;
+      const token = res.data?.token;
+      if (!token) throw new Error("Token not found in response");
 
       setCookie(ACCESS_TOKEN_NAME, token, {
         sameSite: "lax",
@@ -69,7 +76,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         path: "/",
       });
 
-      setUser(user);
+      const me = await adminClient.get("/me");
+      setUser(me.data);
     } finally {
       setLoading(false);
     }
