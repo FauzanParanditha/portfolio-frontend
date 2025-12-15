@@ -12,11 +12,12 @@ import {
   useState,
 } from "react";
 
+export type Role = "admin";
 interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: string;
+  role: Role;
   // tambah field lain kalau backend kirim, misal role, avatar, dll
 }
 
