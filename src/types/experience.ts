@@ -14,11 +14,12 @@ export interface Experience {
   company: string;
   location: string;
   startDate: string;
+  endDate?: string;
   isCurrent: boolean;
   description: string;
   sortOrder: number;
-  tags: ExperienceTag[];
-  highlights: ExperienceHighlight[];
+  tags?: ExperienceTag[];
+  highlights?: ExperienceHighlight[];
 }
 
 export interface ApiListResponse<T> {
@@ -33,4 +34,17 @@ export interface ApiListMeta {
   page: number;
   q: string;
   total: number;
+}
+
+export interface ExperienceUpsertPayload {
+  title: string;
+  company: string;
+  location: string;
+  startDate: string;
+  endDate?: string | null;
+  isCurrent: boolean;
+  description: string;
+  sortOrder: number;
+  tagIds: string[];
+  highlights: string[];
 }

@@ -33,25 +33,26 @@ const toastVariants = cva(
     variants: {
       variant: {
         // ✅ default jangan bg-background (karena itu hitam pekat)
-        default: "bg-card text-card-foreground border-border/60",
+        default: "bg-white text-black border-border/60",
 
         neutral: "bg-popover text-popover-foreground border-border/60",
 
         // ✅ status variants: pakai “tinted surface” + border lebih terang
         info:
-          "bg-[hsl(var(--toast-info)/0.12)] text-foreground border-[hsl(var(--toast-info)/0.35)] " +
+          "bg-[hsl(var(--toast-info)/0.12)] text-[hsl(var(--toast-info)/0.95)] border-[hsl(var(--toast-info)/0.35)] " +
           "shadow-[0_0_0_1px_hsl(var(--toast-info)/0.12),0_10px_30px_-10px_hsl(var(--toast-info)/0.25)]",
 
         success:
-          "bg-[hsl(var(--toast-success)/0.12)] text-foreground border-[hsl(var(--toast-success)/0.35)] " +
+          "bg-[hsl(var(--toast-success)/0.12)] text-[hsl(var(--toast-success)/0.95)] border-[hsl(var(--toast-success)/0.35)] " +
           "shadow-[0_0_0_1px_hsl(var(--toast-success)/0.12),0_10px_30px_-10px_hsl(var(--toast-success)/0.22)]",
 
         warning:
-          "bg-[hsl(var(--toast-warning)/0.12)] text-foreground border-[hsl(var(--toast-warning)/0.35)] " +
+          "bg-[hsl(var(--toast-warning)/0.12)] text-[hsl(var(--toast-warning)/0.95)] border-[hsl(var(--toast-warning)/0.35)] " +
           "shadow-[0_0_0_1px_hsl(var(--toast-warning)/0.12),0_10px_30px_-10px_hsl(var(--toast-warning)/0.25)]",
 
         destructive:
-          "destructive group bg-[hsl(var(--destructive)/0.14)] text-foreground border-[hsl(var(--destructive)/0.4)] " +
+          "destructive group bg-[hsl(var(--destructive)/0.14)] " +
+          "text-[hsl(var(--destructive)/0.95)] border-[hsl(var(--destructive)/0.4)] " +
           "shadow-[0_0_0_1px_hsl(var(--destructive)/0.12),0_10px_30px_-10px_hsl(var(--destructive)/0.25)]",
       },
     },
@@ -127,7 +128,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-sm text-foreground/90", className)}
+    className={cn("text-sm opacity-90", className)}
     {...props}
   />
 ));

@@ -88,7 +88,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     deleteCookie(ACCESS_TOKEN_NAME);
     setUser(null);
     if (typeof window !== "undefined") {
-      window.location.href = "/"; // redirect ke halaman public
+      window.location.href = "/auth/login"; // redirect ke halaman public
     }
   }
 

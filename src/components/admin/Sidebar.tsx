@@ -17,9 +17,17 @@ export function Sidebar({ role }: { role?: Role }) {
     !roles || roles.length === 0 || (role ? roles.includes(role) : true);
 
   const isItemActive = (item: NavItem): boolean => {
+    const href = item.href;
+
     const activeSelf =
-      !!item.href &&
-      (pathname === item.href || pathname.startsWith(item.href + "/"));
+      !!href &&
+      (() => {
+        // Root admin harus exact match saja
+        if (href === "/admin") return pathname === "/admin";
+
+        return pathname === href || pathname.startsWith(href + "/");
+      })();
+
     const activeChild = (item.items ?? []).some(isItemActive);
     return activeSelf || activeChild;
   };
