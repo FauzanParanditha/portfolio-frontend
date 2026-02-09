@@ -1,6 +1,6 @@
 // Satu-satunya tempat menambah/mengubah menu
 import { Role } from "@/context/AdminAuthContext";
-import { Briefcase, Home } from "lucide-react";
+import { Briefcase, FolderOpen, Home } from "lucide-react";
 
 export type NavItem = {
   href?: string;
@@ -19,9 +19,15 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Home,
   },
   {
-    key: "experience",
-    href: "/admin/experience",
-    label: "Experience",
+    key: "experiences",
+    href: "/admin/experiences",
+    label: "Experiences",
     icon: Briefcase,
+  },
+  {
+    key: "projects",
+    href: "/admin/projects",
+    label: "Projects",
+    icon: FolderOpen,
   },
 ];

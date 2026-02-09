@@ -12,7 +12,7 @@ import { toExperienceUpsertPayload } from "@/lib/mapper/experience";
 import type { Experience } from "@/types/experience";
 import { motion } from "framer-motion";
 import { GripVertical, Plus, Save, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const isUuid = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -51,12 +51,18 @@ const AdminExperience = () => {
       .map((text) => ({ text }));
 
   // init sekali saja (biar tidak reset tiap revalidate)
-  const initialized = useRef(false);
+  // const initialized = useRef(false);
+  // useEffect(() => {
+  //   if (initialized.current) return;
+  //   setFormData(experiences);
+  //   initialized.current = true;
+  // }, [experiences]);
+
   useEffect(() => {
-    if (initialized.current) return;
-    setFormData(experiences);
-    initialized.current = true;
-  }, [experiences]);
+    if (formData.length === 0 && experiences.length > 0) {
+      setFormData(experiences);
+    }
+  }, [experiences, formData.length]);
 
   const addExperience = () => {
     setFormData((prev) => [

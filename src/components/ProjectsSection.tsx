@@ -116,7 +116,7 @@ export const ProjectsSection = () => {
 
                     {/* Overlay */}
                     <Link
-                      href={`/project/${project.slug}`}
+                      href={`/projects/${project.slug}`}
                       className="absolute inset-0 flex items-center justify-center gap-4 bg-gradient-to-t from-background via-background/50 to-transparent opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100"
                     >
                       <Button
