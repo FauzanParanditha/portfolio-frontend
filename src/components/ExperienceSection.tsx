@@ -2,12 +2,11 @@
 
 import { useExperiences } from "@/hooks/use-experiences";
 import { motion, useInView } from "framer-motion";
-import { Building, Calendar, MapPin } from "lucide-react";
 import { useRef } from "react";
 
 export const ExperienceSection = () => {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   const { experiences, isLoading, isError } = useExperiences();
 
@@ -16,141 +15,103 @@ export const ExperienceSection = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.3,
+        staggerChildren: 0.1,
         duration: 0.6,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, x: -50 },
+    hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
-      x: 0,
+      y: 0,
       transition: {
         duration: 0.6,
-        ease: [0.4, 0, 0.2, 1] as const,
+        ease: [0.16, 1, 0.3, 1] as const,
       },
     },
   };
 
   return (
-    <section ref={ref} className="bg-card/30 px-6 py-20" id="experience">
-      <div className="container mx-auto">
+    <section ref={ref} className="w-full bg-background border-b border-thin pt-32 pb-32" id="experience">
+      <div className="container mx-auto px-6">
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          className="mb-16 text-center"
+           variants={containerVariants}
+           initial="hidden"
+           animate={isInView ? "visible" : "hidden"}
+           className="flex flex-col gap-16"
         >
-          <motion.h2
-            variants={itemVariants}
-            className="mb-6 bg-gradient-primary bg-clip-text text-4xl font-bold text-transparent md:text-5xl"
-          >
-            Experience
-          </motion.h2>
-          <motion.p
-            variants={itemVariants}
-            className="mx-auto max-w-2xl text-lg text-muted-foreground"
-          >
-            My professional journey in web development, building scalable
-            solutions and leading development teams.
-          </motion.p>
-        </motion.div>
+          {/* Section Header */}
+          <motion.div variants={itemVariants} className="flex justify-between items-end border-b border-thin pb-8">
+            <h2 className="text-display font-bold uppercase tracking-tight leading-[0.9]">
+              Experience
+            </h2>
+            <div className="hidden md:block uppercase text-xs tracking-widest text-muted-foreground font-mono">
+              [ CAREER PATH ]
+            </div>
+          </motion.div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          className="relative"
-        >
-          {/* Timeline line */}
-          <div className="absolute bottom-0 left-4 top-0 w-0.5 transform bg-primary/20 md:left-1/2 md:-translate-x-1/2" />
-
-          {experiences.map((exp, index) => (
-            <motion.div
-              key={exp.id}
-              variants={itemVariants}
-              className={`relative mb-12 ${
-                index % 2 === 0
-                  ? "md:pr-1/2 md:text-right"
-                  : "md:pl-1/2 md:ml-auto"
-              }`}
-            >
-              {/* Timeline dot */}
-              {/* <motion.div
-                whileHover={{ scale: 1.2 }}
-                className={`bg-primary border-background shadow-glow absolute h-4 w-4 rounded-full border-4 ${
-                  index % 2 === 0
-                    ? "left-2 md:left-auto md:right-0 md:-mr-2"
-                    : "left-2 md:-ml-2"
-                } top-8 z-10`}
-              /> */}
-
+          {/* Experience List */}
+          <div className="flex flex-col w-full">
+            {experiences.map((exp, index) => (
               <motion.div
-                whileHover={{
-                  scale: 1.02,
-                  transition: { duration: 0.2 },
-                }}
-                className="ml-8 rounded-xl border border-border bg-card p-6 shadow-card transition-all duration-300 hover:shadow-glow md:ml-0"
+                key={exp.id}
+                variants={itemVariants}
+                className="group flex flex-col md:flex-row border-b border-thin py-12 gap-8 items-start hover:bg-foreground hover:text-background transition-colors duration-500 px-6 -mx-6 md:px-12 md:-mx-12"
               >
-                {/* Title + Company */}
-                <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
-                  <h3 className="text-xl font-bold text-primary">
-                    {exp.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Building className="h-4 w-4" />
-                    <span>{exp.company}</span>
+                {/* Index / Meta */}
+                <div className="md:w-1/4 flex flex-col gap-4">
+                  <span className="font-mono text-xs opacity-50">(0{index + 1})</span>
+                  <div className="font-mono text-sm uppercase tracking-widest">
+                    {exp.startDate} — <br />
+                    {exp.isCurrent ? "Present" : "Finished"}
                   </div>
                 </div>
 
-                {/* Date + Location */}
-                <div className="mb-4 flex flex-col gap-4 text-sm text-muted-foreground sm:flex-row">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {exp.startDate} – {exp.isCurrent ? "Present" : "Finished"}
+                {/* Main Content */}
+                <div className="md:w-3/4 flex flex-col gap-6">
+                  <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
+                    <h3 className="text-2xl md:text-4xl font-bold uppercase tracking-tight">
+                      {exp.title}
+                    </h3>
+                    <span className="text-lg md:text-xl opacity-60">@ {exp.company}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{exp.location}</span>
-                  </div>
-                </div>
 
-                {/* Description */}
-                <ul className="mb-4 space-y-2">{exp.description}</ul>
+                  <p className="text-lg md:text-xl opacity-80 leading-relaxed max-w-3xl">
+                    {exp.description}
+                  </p>
 
-                {/* Highlights */}
-                <div className="flex flex-wrap gap-2">
-                  {exp.highlights.length > 0 && (
-                    <ul className="mb-4 space-y-2">
-                      {exp.highlights.map((item, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-2 text-muted-foreground"
-                        >
-                          <span className="mt-1.5 text-xs text-primary">●</span>
-                          {item.text}
+                  {/* Highlights */}
+                  {(exp.highlights?.length ?? 0) > 0 && (
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {(exp.highlights || []).map((item, i) => (
+                        <li key={i} className="flex gap-4 opacity-70">
+                           <span className="shrink-0 mt-1.5 w-1.5 h-1.5 bg-current rounded-full"></span>
+                           <span className="text-sm md:text-base">{item.text}</span>
                         </li>
                       ))}
                     </ul>
                   )}
-                </div>
 
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {exp.tags.map((tag) => (
-                    <span
-                      key={tag.id + tag.name}
-                      className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
+                  {/* Tags */}
+                  {(exp.tags?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {(exp.tags || []).map((tag) => (
+                        <span
+                          key={tag.id + tag.name}
+                          className="border border-current px-3 py-1 text-xs uppercase tracking-widest font-mono rounded-full"
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
-            </motion.div>
-          ))}
+            ))}
+          </div>
+
         </motion.div>
       </div>
     </section>
