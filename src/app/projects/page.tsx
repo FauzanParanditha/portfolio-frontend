@@ -11,7 +11,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ExternalLink, Eye, Github, Search, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, Github, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -89,47 +89,49 @@ const Projects = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background font-sans">
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg"
+        className="sticky top-0 z-50 bg-background/80 py-6 backdrop-blur-md"
       >
-        <div className="container mx-auto flex items-center justify-between px-6 py-4">
+        <div className="container mx-auto flex items-center justify-between px-6 lg:px-12">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2 transition-opacity hover:bg-transparent hover:opacity-70"
+            >
               <ArrowLeft className="h-4 w-4" />
               Back to Home
             </Button>
           </Link>
-          <h1 className="bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-xl font-bold text-transparent">
-            All Projects
-          </h1>
+          <h1 className="text-xl font-medium tracking-tight">Projects</h1>
         </div>
       </motion.header>
 
       {/* Hero Section */}
-      <section className="px-6 py-16">
-        <div className="container mx-auto text-center">
+      <section className="px-6 py-20 lg:px-12 lg:py-32">
+        <div className="container mx-auto">
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="mb-6 bg-gradient-to-r from-primary via-blue-500 to-primary bg-clip-text text-4xl font-bold text-transparent md:text-6xl"
+            className="mb-8 max-w-4xl text-5xl font-medium tracking-tight md:text-7xl lg:text-8xl"
           >
-            My Projects
+            Selected Works
           </motion.h2>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="mx-auto max-w-2xl text-lg text-muted-foreground"
+            className="max-w-2xl text-lg text-muted-foreground md:text-xl"
           >
-            A comprehensive collection of my work, showcasing various
-            technologies and solutions across different domains.
+            A collection of digital experiences and solutions, focused on clean
+            design and robust engineering.
           </motion.p>
 
           {/* Search Bar */}
@@ -137,20 +139,20 @@ const Projects = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative mx-auto mt-8 max-w-md"
+            className="relative mt-16 max-w-xl"
           >
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search projects or technologies..."
+              placeholder="Search works..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="rounded-full border-border bg-card py-6 pl-10 pr-10"
+              className="rounded-none border-0 border-b border-border bg-transparent px-0 py-6 pl-10 text-lg shadow-none focus-visible:border-primary focus-visible:ring-0"
             />
             {searchQuery && (
               <button
                 onClick={() => handleSearchChange("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -162,29 +164,27 @@ const Projects = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-6 flex flex-wrap justify-center gap-2"
+            className="mt-12 flex flex-wrap gap-6"
           >
             {categories.map((category) => (
-              <Button
+              <button
                 key={category}
-                variant={activeCategory === category ? "default" : "outline"}
-                size="sm"
                 onClick={() => handleCategoryChange(category)}
-                className={`rounded-full transition-all ${
+                className={`text-sm tracking-wide transition-all hover:opacity-100 ${
                   activeCategory === category
-                    ? "bg-primary text-primary-foreground"
-                    : "border-border hover:border-primary hover:text-primary"
+                    ? "border-b border-foreground pb-1 font-medium opacity-100"
+                    : "opacity-60"
                 }`}
               >
                 {category}
-              </Button>
+              </button>
             ))}
           </motion.div>
         </div>
       </section>
 
       {/* Projects Grid */}
-      <section className="px-6 py-12">
+      <section className="px-6 pb-24 pt-8 lg:px-12">
         <div className="container mx-auto">
           {isLoading && (
             <p className="py-16 text-center text-muted-foreground">
@@ -225,7 +225,7 @@ const Projects = () => {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3"
+            className="grid grid-cols-1 gap-16 md:grid-cols-2 lg:gap-24"
           >
             <AnimatePresence mode="popLayout">
               {!isLoading &&
@@ -236,107 +236,70 @@ const Projects = () => {
                     variants={itemVariants}
                     initial="hidden"
                     animate="visible"
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    whileHover={{ y: -8 }}
-                    className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-lg transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10"
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="group flex flex-col gap-6"
                   >
-                    {/* Category badge = first tag */}
-                    {project.tags.length > 0 && (
-                      <div className="absolute left-4 top-4 z-10">
-                        <span className="rounded-full bg-primary/90 px-3 py-1 text-xs font-medium text-primary-foreground">
-                          {project.tags[0].name}
-                        </span>
-                      </div>
-                    )}
-
                     {/* Image */}
-                    <div className="relative h-52 overflow-hidden">
+                    <Link
+                      href={`/projects/${project.slug}`}
+                      className="relative block aspect-[4/3] overflow-hidden bg-muted/20"
+                    >
                       <motion.img
                         src={project.coverImageUrl || "/placeholder.jpg"}
                         alt={project.title}
-                        className="h-full w-full object-cover"
-                        whileHover={{ scale: 1.1 }}
-                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="h-full w-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
                       />
+                    </Link>
 
-                      <Link
-                        href={`/projects/${project.slug}`}
-                        className="absolute inset-0 flex items-center justify-center gap-4 bg-gradient-to-t from-background via-background/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                      >
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-background/90 backdrop-blur-sm"
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </Button>
-                      </Link>
-                    </div>
+                    {/* Content below image */}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <Link
+                            href={`/projects/${project.slug}`}
+                            className="transition-opacity group-hover:opacity-80"
+                          >
+                            <h3 className="text-2xl font-medium tracking-tight">
+                              {project.title}
+                            </h3>
+                          </Link>
 
-                    <div className="p-6">
-                      <h3 className="mb-3 text-xl font-bold transition-colors group-hover:text-primary">
-                        {project.title}
-                      </h3>
+                          {/* Tags/Category minimal style */}
+                          {project.tags.length > 0 && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {project.tags.map((t) => t.name).join(" • ")}
+                            </p>
+                          )}
+                        </div>
 
-                      <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                        {/* Quick links */}
+                        <div className="flex gap-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                          {project.repoUrl && (
+                            <a
+                              href={project.repoUrl}
+                              target="_blank"
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label="View Source"
+                            >
+                              <Github className="h-5 w-5" />
+                            </a>
+                          )}
+                          {project.demoUrl && (
+                            <a
+                              href={project.demoUrl}
+                              target="_blank"
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label="Live Demo"
+                            >
+                              <ExternalLink className="h-5 w-5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="line-clamp-2 max-w-md text-base text-muted-foreground opacity-80">
                         {project.shortDesc}
                       </p>
-
-                      {/* Features */}
-                      {project.features.length > 0 && (
-                        <div className="mb-4 grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                          {project.features.map((f, i) => (
-                            <div key={i} className="flex items-center gap-1">
-                              <span className="text-primary">●</span>
-                              {f.text}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Technologies */}
-                      {project.tags.length > 0 && (
-                        <div className="mb-4 flex flex-wrap gap-2">
-                          {project.tags.map((t) => (
-                            <span
-                              key={t.id}
-                              className="rounded bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
-                            >
-                              {t.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="flex gap-3">
-                        {project.repoUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                            className="flex-1"
-                          >
-                            <a href={project.repoUrl} target="_blank">
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              Live Demo
-                            </a>
-                          </Button>
-                        )}
-                        {project.demoUrl && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                            className="flex-1"
-                          >
-                            <a href={project.demoUrl} target="_blank">
-                              <Github className="mr-2 h-4 w-4" />
-                              Source
-                            </a>
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -389,21 +352,24 @@ const Projects = () => {
       </section>
 
       {/* CTA Footer */}
-      <section className="px-6 py-16">
+      <section className="border-t border-border/40 px-6 py-24 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="container mx-auto text-center"
+          className="container mx-auto max-w-3xl text-center"
         >
-          <h3 className="mb-4 text-2xl font-bold">
+          <h3 className="mb-6 text-4xl font-medium tracking-tight">
             Interested in working together?
           </h3>
-          <p className="mb-6 text-muted-foreground">
+          <p className="mb-10 text-xl text-muted-foreground">
             I&apos;m always open to discussing new projects and opportunities.
           </p>
           <Link href="/#contact">
-            <Button size="lg" className="bg-primary hover:bg-primary/90">
+            <Button
+              size="lg"
+              className="rounded-none bg-foreground px-8 py-6 text-base tracking-wide text-background hover:bg-foreground/90"
+            >
               Get in Touch
             </Button>
           </Link>
