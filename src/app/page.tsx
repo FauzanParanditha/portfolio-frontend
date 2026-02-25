@@ -22,9 +22,9 @@ const Index = () => {
         <motion.div
           key="main"
           className="bg-background text-foreground min-h-screen"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
+          initial={{ opacity: 0, scale: 0.9, y: 50 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         >
           <Navbar />
           <HeroSection />
