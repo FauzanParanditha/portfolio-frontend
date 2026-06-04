@@ -42,3 +42,10 @@ next-env.d.ts
 
 #vscode
 .vscode/
+
+# claude code (local tooling config)
+.claude/
+
+# internal coordination notes (berisi kontrak internal & catatan keamanan — jangan publikasikan)
+docs/NOTES-FOR-FRONTEND.md
+docs/NOTES-FOR-BACKEND.md

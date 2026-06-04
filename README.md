@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portfolio Frontend
 
-## Getting Started
+Frontend portfolio pribadi berbasis **Next.js 16 (App Router)**, **React 19**, dan **TypeScript**. Terdiri dari dua area:
 
-First, run the development server:
+- **Public** — halaman portfolio untuk pengunjung (`/`, `/projects`, `/projects/[slug]`).
+- **Admin** — dashboard CMS untuk mengelola konten (`/admin/*`), dilindungi autentikasi JWT.
+
+Backend (REST API) terpisah dan diakses melalui environment variable `NEXT_PUBLIC_API_URL`.
+
+## Tech Stack
+
+| Kategori | Teknologi |
+|----------|-----------|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| UI | React 19, Tailwind CSS, Radix UI, shadcn/ui pattern, class-variance-authority |
+| Data fetching | SWR + Axios |
+| Form & validasi | Zod |
+| Auth | JWT via cookie (`cookies-next`), `jwt-decode` |
+| Ikon & animasi | lucide-react, framer-motion |
+| Notifikasi | sonner |
+
+## Prasyarat
+
+- **Node.js** 20+
+- **pnpm** (package manager yang dipakai project ini — jangan campur dengan npm/yarn)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install -g pnpm
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   pnpm install
+   ```
 
-## Learn More
+2. Buat file `.env.local` di root project:
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   NODE_ENV=development
+   NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   > Catatan: `NEXT_PUBLIC_API_URL` **sudah termasuk** prefix `/api/v1`. Sesuaikan dengan URL backend Anda.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. Jalankan dev server:
 
-## Deploy on Vercel
+   ```bash
+   pnpm dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   Buka [http://localhost:3000](http://localhost:3000).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Perintah
+
+| Perintah | Kegunaan |
+|----------|----------|
+| `pnpm dev` | Menjalankan dev server (Turbopack) |
+| `pnpm build` | Build untuk production |
+| `pnpm start` | Menjalankan hasil build production |
+| `pnpm lint` | Menjalankan ESLint |
+| `pnpm audit` | Mengecek vulnerability dependensi |
+
+## Struktur Project
+
+```
+src/
+  app/                  # Routes (App Router)
+    admin/              # Area admin (layout, provider, halaman dashboard)
+    auth/login/         # Halaman login
+    projects/[slug]/    # Halaman detail project public
+    not-found.tsx       # Halaman 404
+  context/              # AdminAuthContext (state autentikasi admin)
+  components/
+    ui/                 # Komponen primitive (pola shadcn/ui)
+    admin/              # Komponen khusus area admin
+    beauty/             # Komponen animasi/dekoratif
+  hooks/                # Custom hooks (mayoritas berbasis SWR)
+  lib/
+    axios/              # adminClient & publicClient
+    fetcher/            # Fetcher untuk SWR
+    mapper/             # Konversi data UI <-> payload API
+  schema/               # Skema validasi Zod
+  types/                # Tipe domain & response API
+  utils/                # Konstanta & helper
+```
+
+## Autentikasi (Admin)
+
+- Login: `POST /auth/login` → token disimpan di cookie.
+- Sesi dipulihkan via `GET /me`.
+- Saat token kedaluwarsa (401), client mencoba `POST /auth/refresh` sekali; bila gagal, sesi dihapus dan diarahkan ke `/auth/login`.
+- Proteksi route admin saat ini berjalan di sisi client (menyembunyikan UI). **Otorisasi sebenarnya wajib ditegakkan oleh backend** di setiap endpoint.
+
+## Konvensi
+
+- Endpoint **admin** diakses lewat `adminClient` (otomatis menyertakan token + auto-refresh).
+- Endpoint **public** diakses lewat `publicClient` (tanpa token).
+- Validasi form menggunakan **Zod** (lihat `src/schema/`).
+- Penggabungan className memakai helper `cn()` (`src/lib/utils.ts`).
+- Menu sidebar admin diatur terpusat di `src/components/admin/sidebar.config.ts`.
+
+Untuk panduan teknis lebih lengkap (termasuk catatan keamanan & jebakan umum), lihat [CLAUDE.md](CLAUDE.md).
+
+## Deploy
+
+Project ini dapat di-deploy ke [Vercel](https://vercel.com/) atau platform lain yang mendukung Next.js. Pastikan environment variable `NEXT_PUBLIC_API_URL` dikonfigurasi di environment production.

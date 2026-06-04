@@ -47,7 +47,7 @@ let refreshingPromise: Promise<string | null> | null = null;
 
 async function refreshToken(): Promise<string | null> {
   try {
-    const res = await refreshAxios.post<RefreshResponse>("/v1/auth/refresh");
+    const res = await refreshAxios.post<RefreshResponse>("/auth/refresh");
     const newToken = res.data.data?.token ?? null;
     if (newToken) setAccessTokenCookie(newToken);
     return newToken;
