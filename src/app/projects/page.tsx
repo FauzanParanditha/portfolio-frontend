@@ -74,9 +74,9 @@ const Projects = () => {
     );
   }, [projects, activeCategory]);
 
-  const totalPages = meta?.total
-    ? Math.ceil(meta.total / PROJECTS_PER_PAGE)
-    : 1;
+  const totalPages =
+    meta?.totalPages ??
+    (meta?.total ? Math.ceil(meta.total / PROJECTS_PER_PAGE) : 1);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);

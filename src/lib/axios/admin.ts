@@ -1,13 +1,11 @@
 import { toast } from "@/hooks/use-toast";
-import { jwtConfig } from "@/utils/var";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
-import { deleteCookie, getCookie, setCookie } from "cookies-next";
 
-type RefreshResponse = { data?: { token?: string }; message?: string };
 type ApiErrorResponse = { message?: string };
 
-const ACCESS_TOKEN_NAME = jwtConfig.admin.accessTokenName;
-
+// Auth admin memakai HttpOnly cookie `access_token` yang di-set backend.
+// JS TIDAK membaca/menulis token — browser mengirim cookie otomatis lewat
+// `withCredentials: true`. Tidak ada Authorization header manual.
 const adminClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
@@ -20,39 +18,25 @@ const refreshAxios = axios.create({
   timeout: 15000,
 });
 
-function setAccessTokenCookie(token: string) {
-  setCookie(ACCESS_TOKEN_NAME, token, {
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-  });
-}
+let refreshingPromise: Promise<boolean> | null = null;
 
-function attachToken(config: AxiosRequestConfig) {
-  const token = getCookie(ACCESS_TOKEN_NAME) as string | undefined;
-  if (token) {
-    config.headers = config.headers ?? {};
-    (config.headers as Record<string, string>).Authorization =
-      `Bearer ${token}`;
+// Rotasi cookie: cookie dikirim otomatis (withCredentials), backend membalas
+// Set-Cookie baru. Tidak perlu melampirkan token via JS.
+async function refreshSession(): Promise<boolean> {
+  try {
+    await refreshAxios.post("/auth/refresh");
+    return true;
+  } catch {
+    return false;
   }
 }
 
-adminClient.interceptors.request.use((config) => {
-  if (typeof window === "undefined") return config;
-  attachToken(config);
-  return config;
-});
-
-let refreshingPromise: Promise<string | null> | null = null;
-
-async function refreshToken(): Promise<string | null> {
+// Best-effort: minta backend menghapus cookie (HttpOnly, tak bisa dihapus JS).
+async function logoutSession(): Promise<void> {
   try {
-    const res = await refreshAxios.post<RefreshResponse>("/auth/refresh");
-    const newToken = res.data.data?.token ?? null;
-    if (newToken) setAccessTokenCookie(newToken);
-    return newToken;
+    await refreshAxios.post("/auth/logout");
   } catch {
-    return null;
+    // diabaikan — kita tetap arahkan ke login
   }
 }
 
@@ -68,18 +52,18 @@ adminClient.interceptors.response.use(
       original._retry = true;
 
       if (!refreshingPromise) {
-        refreshingPromise = refreshToken().finally(() => {
+        refreshingPromise = refreshSession().finally(() => {
           refreshingPromise = null;
         });
       }
 
-      const newToken = await refreshingPromise;
-      if (newToken) {
-        attachToken(original);
+      const refreshed = await refreshingPromise;
+      if (refreshed) {
+        // cookie sudah dirotasi backend; cukup ulangi request asli.
         return adminClient(original);
       }
 
-      deleteCookie(ACCESS_TOKEN_NAME);
+      await logoutSession();
       toast({
         title: "Sesi admin berakhir.",
         description: "Silakan login ulang.",

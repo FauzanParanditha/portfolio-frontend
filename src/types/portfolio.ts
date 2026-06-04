@@ -46,6 +46,7 @@ export interface ApiListMeta {
   page: number;
   q: string;
   total: number;
+  totalPages: number;
 }
 
 export interface ApiListResponse<T> {
