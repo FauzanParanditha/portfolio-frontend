@@ -112,3 +112,42 @@ Aturan:
 Item keamanan yang perlu dikoordinasikan dengan backend ditulis di
 `../go-portfolio-backend/docs/NOTES-FOR-BACKEND.md`. Baca itu + `SECURITY.md` backend
 sebelum menyentuh alur auth / penyimpanan token.
+
+## Tim Agent & Orchestrasi
+
+Sesi utama berperan sebagai **PM/orchestrator**: pecah tugas, tentukan urutan, delegasikan ke subagent
+(`.claude/agents/`), lalu rakit hasilnya. Subagent tidak memanggil subagent lain — koordinasi terjadi di
+sesi utama.
+
+Ringkasan stack untuk konteks delegasi:
+- **Frontend (repo ini):** Next.js 16 App Router + React 19 + TypeScript + Tailwind, package manager **pnpm**.
+- **Backend (repo terpisah `../go-portfolio-backend`):** Go + Fiber v2 + GORM (PostgreSQL) + Atlas, auth JWT HS256.
+- **Testing/verifikasi:** `pnpm build` (verifikasi utama) + `pnpm lint`; `pnpm audit` setelah ubah dependensi.
+- **Konvensi:** komentar & string UI Bahasa Indonesia; pakai pnpm (bukan npm/yarn); commit konvensional.
+
+Panduan delegasi:
+- **architect** — dipanggil DULUAN untuk fitur besar/lintas-halaman: rancang struktur komponen, alur data (SWR), dan kontrak konsumsi API sebelum implementasi.
+- **frontend-engineer** — semua pekerjaan UI/klien (halaman, komponen, hook SWR, form Zod, auth admin).
+- **backend-engineer** — API/logika server/database (di repo backend terpisah; koordinasi lewat `docs/`).
+- **qa-engineer** — setelah implementasi: verifikasi build/lint, tulis/jalankan test, reproduksi & verifikasi bug.
+- **code-reviewer** — sebelum merge: tinjau kualitas kode (read-only, melapor).
+- **security-auditor** — sebelum rilis / saat menyentuh auth/data sensitif: audit kerentanan (read-only, melapor).
+
+### Alur tipikal sebuah fitur
+1. **architect** merancang & memecah tugas + menyelaraskan kontrak API dengan backend.
+2. **frontend-engineer** (& **backend-engineer** bila lintas-repo) implementasi.
+3. **qa-engineer** verifikasi build/lint & menjalankan test.
+4. **code-reviewer** meninjau kualitas.
+5. **security-auditor** mengaudit bila fitur sensitif.
+6. Sesi utama merangkum, pastikan Definition of Done terpenuhi, lalu siapkan untuk merge.
+
+### Definition of Done (global)
+- [ ] `pnpm build` sukses & `pnpm lint` tanpa error baru.
+- [ ] `pnpm audit` bersih bila dependensi berubah.
+- [ ] Test relevan (bila ada) hijau.
+- [ ] Tidak ada rahasia ter-hardcode; access token tetap cookie HttpOnly (tidak di JS); `.env.local` untracked.
+- [ ] Sudah di-review (code-reviewer) dan, bila sensitif, di-audit (security-auditor).
+- [ ] Dokumentasi/README diperbarui bila perlu.
+
+> Catatan: `security-auditor` & `code-reviewer` sengaja **read-only** — mereka melaporkan temuan; perbaikan
+> dikerjakan engineer terkait.

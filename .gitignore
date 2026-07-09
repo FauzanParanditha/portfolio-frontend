@@ -44,7 +44,9 @@ next-env.d.ts
 .vscode/
 
 # claude code (local tooling config)
-.claude/
+.claude/*
+# ...kecuali definisi subagent tim yang sengaja dibagikan ke repo
+!.claude/agents/
 
 # internal coordination notes (berisi kontrak internal & catatan keamanan — jangan publikasikan)
 docs/NOTES-FOR-FRONTEND.md
