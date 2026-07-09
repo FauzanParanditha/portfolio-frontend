@@ -15,7 +15,7 @@ Backend (REST API) terpisah dan diakses melalui environment variable `NEXT_PUBLI
 | UI | React 19, Tailwind CSS, Radix UI, shadcn/ui pattern, class-variance-authority |
 | Data fetching | SWR + Axios |
 | Form & validasi | Zod |
-| Auth | JWT via cookie (`cookies-next`), `jwt-decode` |
+| Auth | Cookie HttpOnly `access_token` (dikelola backend), Axios `withCredentials` |
 | Ikon & animasi | lucide-react, framer-motion |
 | Notifikasi | sonner |
 
