@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import LoginFormPage from "./LoginForm";
 
 export const metadata = {
@@ -5,5 +6,10 @@ export const metadata = {
 };
 
 export default function LoginPage() {
-  return <LoginFormPage />;
+  // Suspense wajib karena LoginForm memakai useSearchParams (baca `?redirect`).
+  return (
+    <Suspense>
+      <LoginFormPage />
+    </Suspense>
+  );
 }
