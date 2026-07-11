@@ -126,10 +126,10 @@ const AdminExperience = () => {
       const body = toExperienceUpsertPayload(exp, index + 1);
 
       if (isUuid(exp.id)) {
-        await updateOne(exp.id, body as any); // updateOne signature boleh kamu ubah jadi payload type
+        await updateOne(exp.id, body);
         toast({ title: "Updated", description: "Saved.", variant: "success" });
       } else {
-        const res = await createOne(body as any);
+        const res = await createOne(body);
 
         // response kamu kemungkinan { data: ExperienceResponse }
         const created = res?.data ?? res;
@@ -353,7 +353,7 @@ const AdminExperience = () => {
                       updateExperience(
                         experience.id,
                         "highlights",
-                        textToHighlights(e.target.value) as any,
+                        textToHighlights(e.target.value),
                       )
                     }
                     placeholder={"BACKEND\nFRONTEND\nCI/CD"}

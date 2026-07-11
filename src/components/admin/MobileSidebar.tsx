@@ -4,7 +4,7 @@ import { Role } from "@/context/AdminAuthContext";
 import { ChevronDown, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { SheetClose } from "../ui/sheet";
 import { NAV_ITEMS, type NavItem } from "./sidebar.config";
 
@@ -14,8 +14,11 @@ export function MobileSidebar({ role }: { role?: Role }) {
   const allowed = (roles?: Role[]) =>
     !roles || roles.length === 0 || (role ? roles.includes(role) : true);
 
-  const isActive = (href?: string) =>
-    !!href && (pathname === href || pathname.startsWith(href + "/"));
+  const isActive = useCallback(
+    (href?: string) =>
+      !!href && (pathname === href || pathname.startsWith(href + "/")),
+    [pathname],
+  );
 
   // default open untuk group yang mengandung route aktif
   const defaultOpen = useMemo(() => {
@@ -34,7 +37,7 @@ export function MobileSidebar({ role }: { role?: Role }) {
     };
     walk(NAV_ITEMS);
     return map;
-  }, [pathname]);
+  }, [isActive]);
 
   const [open, setOpen] = useState<Record<string, boolean>>(defaultOpen);
   const toggle = (key: string) => setOpen((p) => ({ ...p, [key]: !p[key] }));

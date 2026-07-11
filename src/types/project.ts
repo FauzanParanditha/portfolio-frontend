@@ -21,7 +21,7 @@ export type Project = {
   solution: string;
 
   results: string[];
-  technicalDetails: Record<string, any>;
+  technicalDetails: Record<string, unknown>;
 
   demoUrl?: string | null;
   repoUrl?: string | null;
@@ -49,7 +49,7 @@ export type ProjectUpsertPayload = {
   solution: string;
 
   results: string[];
-  technicalDetails: Record<string, any>;
+  technicalDetails: Record<string, unknown>;
 
   demoUrl?: string | null;
   repoUrl?: string | null;

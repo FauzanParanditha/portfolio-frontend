@@ -7,6 +7,24 @@ import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { NAV_ITEMS, NavItem } from "./sidebar.config";
 
+// Fungsi murni level-modul (rekursif) — menerima pathname sebagai argumen
+// agar tidak menjadi dependency reaktif di dalam komponen.
+const isItemActive = (pathname: string, item: NavItem): boolean => {
+  const href = item.href;
+
+  const activeSelf =
+    !!href &&
+    (() => {
+      // Root admin harus exact match saja
+      if (href === "/admin") return pathname === "/admin";
+
+      return pathname === href || pathname.startsWith(href + "/");
+    })();
+
+  const activeChild = (item.items ?? []).some((c) => isItemActive(pathname, c));
+  return activeSelf || activeChild;
+};
+
 export function Sidebar({ role }: { role?: Role }) {
   const pathname = usePathname();
   const user = useAdminAuth();
@@ -16,29 +34,13 @@ export function Sidebar({ role }: { role?: Role }) {
   const allowed = (roles?: Role[]) =>
     !roles || roles.length === 0 || (role ? roles.includes(role) : true);
 
-  const isItemActive = (item: NavItem): boolean => {
-    const href = item.href;
-
-    const activeSelf =
-      !!href &&
-      (() => {
-        // Root admin harus exact match saja
-        if (href === "/admin") return pathname === "/admin";
-
-        return pathname === href || pathname.startsWith(href + "/");
-      })();
-
-    const activeChild = (item.items ?? []).some(isItemActive);
-    return activeSelf || activeChild;
-  };
-
   const defaultOpenKeys = useMemo(() => {
     const keys: Record<string, boolean> = {};
     const walk = (items: NavItem[]) => {
       for (const it of items) {
         const key = it.key ?? it.href ?? it.label;
         if (it.items?.length) {
-          if (isItemActive(it)) keys[key] = true;
+          if (isItemActive(pathname, it)) keys[key] = true;
           walk(it.items);
         }
       }
@@ -63,7 +65,7 @@ export function Sidebar({ role }: { role?: Role }) {
           .filter((i) => allowed(i.roles))
           .map((item) => {
             const key = item.key ?? item.href ?? item.label;
-            const active = isItemActive(item);
+            const active = isItemActive(pathname, item);
             const hasChildren = !!item.items?.length;
 
             const paddingLeft = 12 + level * 12;

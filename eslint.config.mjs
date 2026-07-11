@@ -10,7 +10,8 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  // Objek khusus global ignores: harus HANYA berisi `ignores` agar
+  // ESLint memperlakukannya sebagai pengabaian global (bukan per-config).
   {
     ignores: [
       "node_modules/**",
@@ -19,7 +20,9 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
-
+  },
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
     rules: {
       "@typescript-eslint/no-unused-vars": 0,
     },

@@ -121,7 +121,7 @@ export const ContactSection = () => {
               [ INQUIRIES & COLLABORATION ]
             </div>
             <h2 className="text-display font-bold uppercase tracking-tight leading-[0.9]">
-              Let's build <br/> something bold.
+              Let&apos;s build <br/> something bold.
             </h2>
           </motion.div>
 

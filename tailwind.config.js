@@ -88,5 +88,7 @@ module.exports = {
       },
     },
   },
+  // File config CommonJS: plugin di-load via require (bukan ESM import).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   plugins: [require("tailwindcss-animate")],
 };
