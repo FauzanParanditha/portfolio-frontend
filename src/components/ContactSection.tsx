@@ -107,7 +107,7 @@ export const ContactSection = () => {
   ];
 
   return (
-    <section ref={ref} className="w-full bg-zinc-950 pt-32 pb-32" id="contact">
+    <section ref={ref} className="w-full bg-zinc-950 pt-32 pb-32" id="contact" aria-labelledby="contact-heading">
       <div className="container mx-auto px-6">
         <motion.div
            variants={containerVariants}
@@ -120,7 +120,7 @@ export const ContactSection = () => {
             <div className="eyebrow mb-4">
               [ INQUIRIES & COLLABORATION ]
             </div>
-            <h2 className="section-title">
+            <h2 id="contact-heading" className="section-title">
               Let&apos;s build <br/> something bold.
             </h2>
           </motion.div>
@@ -159,45 +159,49 @@ export const ContactSection = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-2">
-                      <label className="eyebrow">Name</label>
+                      <label htmlFor="contact-name" className="eyebrow">Name</label>
                       <Input
+                        id="contact-name"
                         name="name"
                         type="text"
                         required
-                        className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:ring-0 px-0 rounded-none h-12"
+                        className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none h-12"
                         placeholder="John Doe"
                       />
                    </div>
                    <div className="space-y-2">
-                      <label className="eyebrow">Email</label>
+                      <label htmlFor="contact-email" className="eyebrow">Email</label>
                       <Input
+                        id="contact-email"
                         name="email"
                         type="email"
                         required
-                        className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:ring-0 px-0 rounded-none h-12"
+                        className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none h-12"
                         placeholder="john@example.com"
                       />
                    </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="eyebrow">Subject</label>
+                  <label htmlFor="contact-subject" className="eyebrow">Subject</label>
                   <Input
+                    id="contact-subject"
                     name="subject"
                     type="text"
                     required
-                    className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:ring-0 px-0 rounded-none h-12"
+                    className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none h-12"
                     placeholder="Project Inquiry"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="eyebrow">Message</label>
+                  <label htmlFor="contact-message" className="eyebrow">Message</label>
                   <Textarea
+                    id="contact-message"
                     name="message"
                     required
                     rows={4}
-                    className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:ring-0 px-0 rounded-none resize-none pt-4"
+                    className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none resize-none pt-4"
                     placeholder="Tell me about your idea..."
                   />
                 </div>
@@ -213,7 +217,7 @@ export const ContactSection = () => {
                        <span className="animate-pulse">TRANSMITTING...</span>
                     ) : (
                       <>
-                        Submit <MoveRight className="ml-2 h-4 w-4" />
+                        Submit <MoveRight className="ml-2 h-4 w-4" aria-hidden="true" />
                       </>
                     )}
                   </Button>

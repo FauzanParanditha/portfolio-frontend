@@ -114,9 +114,11 @@ section[id] {
      Hierarki lewat weight + warna, bukan ukuran raksasa. */
 
   /* Label kecil / kicker: seragam untuk SEMUA eyebrow (CURRENT FOCUS,
-     label section, dsb) menggantikan campuran text-[9px]/[10px]/xs. */
+     label section, dsb) menggantikan campuran text-[9px]/[10px]/xs.
+     Warna default zinc-400 (7.76:1 di latar gelap zinc-950 = lolos WCAG AA).
+     Di atas latar TERANG, wajib override eksplisit ke text-zinc-600/black. */
   .eyebrow {
-    @apply font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-500;
+    @apply font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-400;
   }
 
   /* Judul tiap section: weight medium (tidak berteriak), warna putih. */

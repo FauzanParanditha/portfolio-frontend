@@ -55,12 +55,13 @@ export const Navbar = () => {
       <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between px-5 py-4 text-zinc-400 sm:px-8 md:py-5 lg:px-14">
         <Link
           href="/"
-          className="text-lg font-medium leading-none tracking-tight text-white sm:text-2xl md:text-[2rem]"
+          className="rounded-sm text-lg font-medium leading-none tracking-tight text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 sm:text-2xl md:text-[2rem]"
         >
           PARANDITHA
         </Link>
 
-        <nav className="hidden flex-col gap-1 md:flex">
+        {/* Navigasi utama (desktop) — beri label agar tak ambigu dgn versi mobile. */}
+        <nav aria-label="Navigasi utama" className="hidden flex-col gap-1 md:flex">
           <span className="text-xl font-semibold leading-none text-white">
             Quick Links
           </span>
@@ -69,7 +70,7 @@ export const Navbar = () => {
               <span key={link.name}>
                 <Link
                   href={link.href}
-                  className="transition-colors hover:text-white"
+                  className="rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                 >
                   {link.name}
                 </Link>
@@ -87,7 +88,8 @@ export const Navbar = () => {
           </span>
         </div>
 
-        <div className="flex flex-col gap-1 text-xs opacity-80 md:hidden">
+        {/* Navigasi utama (mobile) — landmark <nav> dgn label pembeda. */}
+        <nav aria-label="Navigasi utama (mobile)" className="flex flex-col gap-1 text-xs opacity-80 md:hidden">
           <span className="text-xs font-semibold leading-none text-white">
             Quick Links
           </span>
@@ -96,13 +98,13 @@ export const Navbar = () => {
               <Link
                 key={link.name}
                 href={link.href}
-                className="leading-none transition-colors hover:text-white"
+                className="rounded-sm leading-none transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
               >
                 {link.name}
               </Link>
             ))}
           </div>
-        </div>
+        </nav>
       </div>
     </motion.header>
   );

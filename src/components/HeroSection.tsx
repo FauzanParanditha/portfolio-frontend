@@ -57,7 +57,8 @@ export const HeroSection = () => {
             variants={itemVariants}
             className="absolute right-14 top-8 z-20 hidden w-[400px] flex-col gap-4 rounded-lg bg-white p-6 text-black shadow-2xl lg:flex"
           >
-            <p className="eyebrow">Current Focus</p>
+            {/* Kartu latar putih: override eyebrow ke zinc-600 (7.73:1 di putih). */}
+            <p className="eyebrow text-zinc-600">Current Focus</p>
             <p className="text-2xl font-semibold leading-tight">
               Scalable product features, readable code, and measurable business
               outcomes.
@@ -65,15 +66,15 @@ export const HeroSection = () => {
             <div className="grid grid-cols-3 gap-3 pt-2 text-center">
               <div className="border border-zinc-300 p-3">
                 <p className="stat-num text-xl font-bold">5+</p>
-                <p className="eyebrow">Years</p>
+                <p className="eyebrow text-zinc-600">Years</p>
               </div>
               <div className="border border-zinc-300 p-3">
                 <p className="stat-num text-xl font-bold">30+</p>
-                <p className="eyebrow">Features</p>
+                <p className="eyebrow text-zinc-600">Features</p>
               </div>
               <div className="border border-zinc-300 p-3">
                 <p className="stat-num text-xl font-bold">99%</p>
-                <p className="eyebrow">Uptime</p>
+                <p className="eyebrow text-zinc-600">Uptime</p>
               </div>
             </div>
           </motion.div>
@@ -115,7 +116,8 @@ export const HeroSection = () => {
       >
         <div className="eyebrow mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-3 px-5 py-3 sm:px-8 md:flex-row md:gap-0 md:py-6 lg:px-14">
           <div className="flex items-center">© Fullstack Engineering</div>
-          <div className="opacity-60 md:-ml-12">(Portfolio - 2026)</div>
+          {/* opacity dihapus: zinc-400 (7.76:1) sudah cukup redup & tetap lolos AA. */}
+          <div className="md:-ml-12">(Portfolio - 2026)</div>
           <div className="flex items-center gap-4">
             <span>Programmer</span>
             <div className="h-4 w-12 rounded-[4px] bg-white opacity-90"></div>

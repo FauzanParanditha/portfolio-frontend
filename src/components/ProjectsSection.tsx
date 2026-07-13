@@ -40,7 +40,7 @@ export const ProjectsSection = () => {
   };
 
   return (
-    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-16" id="projects">
+    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-16" id="projects" aria-labelledby="projects-heading">
       <div className="container mx-auto px-6">
         <motion.div
           variants={containerVariants}
@@ -50,7 +50,7 @@ export const ProjectsSection = () => {
         >
           {/* Header */}
           <motion.div variants={itemVariants} className="flex justify-between items-end border-b border-thin pb-8">
-            <h2 className="section-title">
+            <h2 id="projects-heading" className="section-title">
               Selected <br/> Works
             </h2>
             <div className="eyebrow hidden md:block">
@@ -104,7 +104,7 @@ export const ProjectsSection = () => {
                         <Link href={`/projects/${project.slug}`}>
                           <h3 className="text-2xl md:text-3xl font-bold uppercase tracking-tight transition-colors hover:opacity-70 flex items-center gap-2">
                              {project.title}
-                             <ArrowUpRight className="h-5 w-5 opacity-0 -translate-x-2 translate-y-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-300"/>
+                             <ArrowUpRight className="h-5 w-5 opacity-0 -translate-x-2 translate-y-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-300" aria-hidden="true"/>
                           </h3>
                         </Link>
                         <span className="eyebrow tabular-nums">(0{index + 1})</span>

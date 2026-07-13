@@ -34,12 +34,12 @@ export const Footer = () => {
           <div className="flex flex-col sm:flex-row gap-16 md:gap-32 w-full md:w-1/2 md:justify-end">
              <div className="flex flex-col gap-6">
                 <span className="eyebrow">[ NAVIGATION ]</span>
-                <nav className="flex flex-col gap-4">
+                <nav aria-label="Navigasi footer" className="flex flex-col gap-4">
                   {quickLinks.map((link) => (
                     <Link
                       key={link.name}
                       href={link.href}
-                      className="text-lg uppercase tracking-widest font-bold hover:underline underline-offset-8 transition-all"
+                      className="rounded-sm text-lg uppercase tracking-widest font-bold hover:underline underline-offset-8 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                     >
                       {link.name}
                     </Link>
@@ -49,14 +49,14 @@ export const Footer = () => {
 
              <div className="flex flex-col gap-6">
                 <span className="eyebrow">[ SOCIALS ]</span>
-                <nav className="flex flex-col gap-4">
+                <nav aria-label="Tautan sosial" className="flex flex-col gap-4">
                   {socialLinks.map((social) => (
                     <a
                       key={social.label}
                       href={social.href}
-                      className="text-lg uppercase tracking-widest font-bold hover:underline underline-offset-8 transition-all flex items-center gap-3"
+                      className="rounded-sm text-lg uppercase tracking-widest font-bold hover:underline underline-offset-8 transition-all flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                     >
-                      <social.icon className="h-5 w-5" />
+                      <social.icon className="h-5 w-5" aria-hidden="true" />
                       {social.label}
                     </a>
                   ))}

@@ -34,7 +34,7 @@ export const ExperienceSection = () => {
   };
 
   return (
-    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-32" id="experience">
+    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-32" id="experience" aria-labelledby="experience-heading">
       <div className="container mx-auto px-6">
         <motion.div
            variants={containerVariants}
@@ -44,7 +44,7 @@ export const ExperienceSection = () => {
         >
           {/* Section Header */}
           <motion.div variants={itemVariants} className="flex justify-between items-end border-b border-thin pb-8">
-            <h2 className="section-title">
+            <h2 id="experience-heading" className="section-title">
               Experience
             </h2>
             <div className="eyebrow hidden md:block">

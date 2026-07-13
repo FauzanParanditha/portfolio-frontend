@@ -26,12 +26,21 @@ const Index = () => {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         >
+          {/* Skip link: elemen fokus pertama, memungkinkan lompat ke konten utama. */}
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-black focus:outline-none focus:ring-2 focus:ring-white"
+          >
+            Lewati ke konten
+          </a>
           <Navbar />
-          <HeroSection />
-          <AboutSection />
-          <ExperienceSection />
-          <ProjectsSection />
-          <ContactSection />
+          <main id="main">
+            <HeroSection />
+            <AboutSection />
+            <ExperienceSection />
+            <ProjectsSection />
+            <ContactSection />
+          </main>
           <Footer />
         </motion.div>
       )}
