@@ -77,7 +77,7 @@ export const WelcomeAnimation = ({ onComplete }: WelcomeAnimationProps) => {
           {letters.map((letter, index) => (
             <motion.span
               key={index}
-              className="text-7xl sm:text-8xl md:text-[14vw] font-bold leading-none"
+              className="text-[clamp(2.5rem,13vw,205px)] font-bold leading-none"
               initial={{ color: "#333333" }} // Dark gray
               animate={
                 stage === "colorReveal" || stage === "exit" ? { color: "#ffffff" } : { color: "#333333" }
