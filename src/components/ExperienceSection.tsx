@@ -34,7 +34,7 @@ export const ExperienceSection = () => {
   };
 
   return (
-    <section ref={ref} className="w-full bg-background border-b border-thin pt-32 pb-32" id="experience">
+    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-32" id="experience">
       <div className="container mx-auto px-6">
         <motion.div
            variants={containerVariants}
@@ -44,10 +44,10 @@ export const ExperienceSection = () => {
         >
           {/* Section Header */}
           <motion.div variants={itemVariants} className="flex justify-between items-end border-b border-thin pb-8">
-            <h2 className="text-display font-bold uppercase tracking-tight leading-[0.9]">
+            <h2 className="section-title">
               Experience
             </h2>
-            <div className="hidden md:block uppercase text-xs tracking-widest text-muted-foreground font-mono">
+            <div className="eyebrow hidden md:block">
               [ CAREER PATH ]
             </div>
           </motion.div>
@@ -62,8 +62,8 @@ export const ExperienceSection = () => {
               >
                 {/* Index / Meta */}
                 <div className="md:w-1/4 flex flex-col gap-4">
-                  <span className="font-mono text-xs opacity-50">(0{index + 1})</span>
-                  <div className="font-mono text-sm uppercase tracking-widest">
+                  <span className="stat-num text-xs opacity-50">(0{index + 1})</span>
+                  <div className="stat-num text-sm uppercase tracking-widest">
                     {exp.startDate} — <br />
                     {exp.isCurrent ? "Present" : "Finished"}
                   </div>

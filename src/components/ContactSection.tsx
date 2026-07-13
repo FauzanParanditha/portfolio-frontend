@@ -107,7 +107,7 @@ export const ContactSection = () => {
   ];
 
   return (
-    <section ref={ref} className="w-full bg-background pt-32 pb-32" id="contact">
+    <section ref={ref} className="w-full bg-zinc-950 pt-32 pb-32" id="contact">
       <div className="container mx-auto px-6">
         <motion.div
            variants={containerVariants}
@@ -117,10 +117,10 @@ export const ContactSection = () => {
         >
           {/* Section Header */}
           <motion.div variants={itemVariants} className="flex flex-col gap-4 border-b border-thin pb-8">
-            <div className="uppercase text-xs tracking-widest text-muted-foreground font-mono mb-4">
+            <div className="eyebrow mb-4">
               [ INQUIRIES & COLLABORATION ]
             </div>
-            <h2 className="text-display font-bold uppercase tracking-tight leading-[0.9]">
+            <h2 className="section-title">
               Let&apos;s build <br/> something bold.
             </h2>
           </motion.div>
@@ -131,7 +131,7 @@ export const ContactSection = () => {
               variants={itemVariants}
               className="lg:col-span-4 flex flex-col gap-12"
             >
-              <p className="text-lg leading-relaxed opacity-80">
+              <p className="body-copy">
                  Whether you need an interactive frontend, a scalable backend, or a complete digital overhaul, I am ready to discuss your next project.
               </p>
 
@@ -142,7 +142,7 @@ export const ContactSection = () => {
                     href={item.href}
                     className="group border-b border-thin pb-4 flex flex-col hover:opacity-70 transition-opacity"
                   >
-                    <span className="font-mono text-xs opacity-50 uppercase tracking-widest mb-2">(0{idx+1}) {item.title}</span>
+                    <span className="eyebrow mb-2">(0{idx+1}) {item.title}</span>
                     <span className="text-xl font-medium tracking-tight group-hover:underline underline-offset-4">{item.value}</span>
                   </a>
                 ))}
@@ -159,7 +159,7 @@ export const ContactSection = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div className="space-y-2">
-                      <label className="font-mono text-xs uppercase tracking-widest opacity-70">Name</label>
+                      <label className="eyebrow">Name</label>
                       <Input
                         name="name"
                         type="text"
@@ -169,7 +169,7 @@ export const ContactSection = () => {
                       />
                    </div>
                    <div className="space-y-2">
-                      <label className="font-mono text-xs uppercase tracking-widest opacity-70">Email</label>
+                      <label className="eyebrow">Email</label>
                       <Input
                         name="email"
                         type="email"
@@ -181,7 +181,7 @@ export const ContactSection = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="font-mono text-xs uppercase tracking-widest opacity-70">Subject</label>
+                  <label className="eyebrow">Subject</label>
                   <Input
                     name="subject"
                     type="text"
@@ -192,7 +192,7 @@ export const ContactSection = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="font-mono text-xs uppercase tracking-widest opacity-70">Message</label>
+                  <label className="eyebrow">Message</label>
                   <Textarea
                     name="message"
                     required

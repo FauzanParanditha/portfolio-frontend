@@ -55,7 +55,7 @@ export const AboutSection = () => {
   ];
 
   return (
-    <section ref={ref} className="w-full bg-background border-b border-thin pt-32 pb-32" id="about">
+    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-32" id="about">
       <div className="container mx-auto px-6">
         <motion.div
           variants={containerVariants}
@@ -65,11 +65,11 @@ export const AboutSection = () => {
         >
           {/* Section Header */}
           <motion.div variants={itemVariants} className="md:col-span-5 flex flex-col justify-between">
-            <h2 className="text-display font-bold uppercase tracking-tight leading-[0.9]">
+            <h2 className="section-title">
               About <br />
               (Me)
             </h2>
-            <div className="hidden md:block mt-16 uppercase text-xs tracking-widest text-muted-foreground font-mono">
+            <div className="eyebrow hidden md:block mt-16">
               [ PROFILE & CAPABILITIES ]
             </div>
           </motion.div>
@@ -91,7 +91,7 @@ export const AboutSection = () => {
                   } ${index > 1 ? "border-t-0" : ""}`}
                 >
                   <div className="flex justify-between items-start">
-                    <span className="font-mono text-xs opacity-50">(0{index + 1})</span>
+                    <span className="stat-num text-xs opacity-50">(0{index + 1})</span>
                     <skill.icon className="h-6 w-6" />
                   </div>
                   <div>

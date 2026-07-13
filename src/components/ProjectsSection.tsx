@@ -40,7 +40,7 @@ export const ProjectsSection = () => {
   };
 
   return (
-    <section ref={ref} className="w-full bg-background border-b border-thin pt-32 pb-16" id="projects">
+    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-16" id="projects">
       <div className="container mx-auto px-6">
         <motion.div
           variants={containerVariants}
@@ -50,24 +50,24 @@ export const ProjectsSection = () => {
         >
           {/* Header */}
           <motion.div variants={itemVariants} className="flex justify-between items-end border-b border-thin pb-8">
-            <h2 className="text-display font-bold uppercase tracking-tight leading-[0.9]">
+            <h2 className="section-title">
               Selected <br/> Works
             </h2>
-            <div className="hidden md:block uppercase text-xs tracking-widest text-muted-foreground font-mono">
+            <div className="eyebrow hidden md:block">
               [ RECENT PROJECTS ]
             </div>
           </motion.div>
 
           {isLoading && (
-            <p className="text-sm font-mono uppercase tracking-widest">Loading records...</p>
+            <p className="eyebrow">Loading records...</p>
           )}
 
           {isError && !isLoading && (
-            <p className="text-sm font-mono uppercase tracking-widest text-red-500">Failed to load records.</p>
+            <p className="eyebrow text-red-500">Failed to load records.</p>
           )}
 
           {!isLoading && !isError && projects.length === 0 && (
-            <p className="text-sm font-mono uppercase tracking-widest">No featured works available.</p>
+            <p className="eyebrow">No featured works available.</p>
           )}
 
           {/* Projects Grid */}
@@ -107,10 +107,10 @@ export const ProjectsSection = () => {
                              <ArrowUpRight className="h-5 w-5 opacity-0 -translate-x-2 translate-y-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-300"/>
                           </h3>
                         </Link>
-                        <span className="font-mono text-xs opacity-50 uppercase tracking-widest">(0{index + 1})</span>
+                        <span className="eyebrow tabular-nums">(0{index + 1})</span>
                       </div>
                       
-                      <p className="text-sm md:text-base leading-relaxed opacity-70">
+                      <p className="text-sm md:text-base leading-relaxed text-zinc-400">
                         {project.shortDesc}
                       </p>
 

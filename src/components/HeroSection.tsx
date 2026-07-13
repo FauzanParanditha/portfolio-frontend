@@ -27,7 +27,7 @@ export const HeroSection = () => {
   };
 
   return (
-    <section className="relative flex h-screen w-full flex-col justify-between overflow-hidden bg-black pt-20 font-sans text-white md:pt-28">
+    <section className="relative flex h-screen w-full flex-col justify-between overflow-hidden bg-zinc-950 pt-20 font-sans text-white md:pt-28">
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -41,7 +41,7 @@ export const HeroSection = () => {
             variants={itemVariants}
             className="relative z-10 max-w-3xl"
           >
-            <h1 className="text-[3rem] font-medium leading-[1.05] tracking-tight sm:text-4xl md:text-5xl lg:text-[4rem]">
+            <h1 className="text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl md:text-5xl lg:text-[4rem]">
               Building reliable web
               <br />
               applications with clean
@@ -57,31 +57,23 @@ export const HeroSection = () => {
             variants={itemVariants}
             className="absolute right-14 top-8 z-20 hidden w-[400px] flex-col gap-4 rounded-lg bg-white p-6 text-black shadow-2xl lg:flex"
           >
-            <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
-              Current Focus
-            </p>
+            <p className="eyebrow">Current Focus</p>
             <p className="text-2xl font-semibold leading-tight">
               Scalable product features, readable code, and measurable business
               outcomes.
             </p>
             <div className="grid grid-cols-3 gap-3 pt-2 text-center">
               <div className="border border-zinc-300 p-3">
-                <p className="text-xl font-bold">5+</p>
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">
-                  Years
-                </p>
+                <p className="stat-num text-xl font-bold">5+</p>
+                <p className="eyebrow">Years</p>
               </div>
               <div className="border border-zinc-300 p-3">
-                <p className="text-xl font-bold">30+</p>
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">
-                  Features
-                </p>
+                <p className="stat-num text-xl font-bold">30+</p>
+                <p className="eyebrow">Features</p>
               </div>
               <div className="border border-zinc-300 p-3">
-                <p className="text-xl font-bold">99%</p>
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">
-                  Uptime
-                </p>
+                <p className="stat-num text-xl font-bold">99%</p>
+                <p className="eyebrow">Uptime</p>
               </div>
             </div>
           </motion.div>
@@ -91,7 +83,7 @@ export const HeroSection = () => {
         <div className="z-10 mx-auto mt-6 w-full max-w-[1400px] px-5 sm:px-8 md:mt-10 lg:px-14">
           <motion.div
             variants={itemVariants}
-            className="hide-scrollbar flex h-auto w-full justify-between gap-3 overflow-x-auto whitespace-nowrap bg-white py-1.5 text-[9px] font-bold uppercase tracking-wider text-black md:justify-around md:gap-4 md:text-xs md:tracking-widest"
+            className="hide-scrollbar eyebrow flex h-auto w-full justify-between gap-3 overflow-x-auto whitespace-nowrap bg-white py-1.5 text-black md:justify-around md:gap-4"
           >
             <span>Web Development</span>
             <span>API Engineering</span>
@@ -121,7 +113,7 @@ export const HeroSection = () => {
         transition={{ delay: 1, duration: 1 }}
         className="w-full border-t border-zinc-800"
       >
-        <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-3 px-5 py-3 font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-500 sm:px-8 md:flex-row md:gap-0 md:py-6 md:text-xs md:tracking-[0.2em] lg:px-14">
+        <div className="eyebrow mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-3 px-5 py-3 sm:px-8 md:flex-row md:gap-0 md:py-6 lg:px-14">
           <div className="flex items-center">© Fullstack Engineering</div>
           <div className="opacity-60 md:-ml-12">(Portfolio - 2026)</div>
           <div className="flex items-center gap-4">

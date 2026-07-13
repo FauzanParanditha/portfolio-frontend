@@ -50,12 +50,12 @@ export const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: isVisible ? 0 : -110, opacity: isVisible ? 1 : 0.98 }}
       transition={{ type: "spring", stiffness: 260, damping: 30, mass: 0.7 }}
-      className="fixed left-0 right-0 top-0 z-50 border-b border-zinc-800 bg-black/90 backdrop-blur-md will-change-transform"
+      className="fixed left-0 right-0 top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md will-change-transform"
     >
       <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between px-5 py-4 text-zinc-400 sm:px-8 md:py-5 lg:px-14">
         <Link
           href="/"
-          className="text-md font-medium leading-none tracking-tight text-white sm:text-2xl md:text-[2rem]"
+          className="text-lg font-medium leading-none tracking-tight text-white sm:text-2xl md:text-[2rem]"
         >
           PARANDITHA
         </Link>

@@ -19,11 +19,11 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="border-t border-thin bg-background pt-32 pb-16">
+    <footer className="border-t border-thin bg-zinc-950 pt-32 pb-16">
       <div className="container mx-auto px-6">
         <div className="flex flex-col gap-16 md:flex-row justify-between items-start border-b border-thin pb-16">
           <div className="flex flex-col gap-8 w-full md:w-1/2">
-             <div className="text-display font-bold uppercase tracking-tight leading-[0.9]">
+             <div className="section-title">
                Fauzan <br/> Paranditha
              </div>
              <p className="text-xl md:text-2xl font-medium max-w-lg leading-relaxed mix-blend-difference">
@@ -33,7 +33,7 @@ export const Footer = () => {
 
           <div className="flex flex-col sm:flex-row gap-16 md:gap-32 w-full md:w-1/2 md:justify-end">
              <div className="flex flex-col gap-6">
-                <span className="font-mono text-xs uppercase tracking-widest opacity-50">[ NAVIGATION ]</span>
+                <span className="eyebrow">[ NAVIGATION ]</span>
                 <nav className="flex flex-col gap-4">
                   {quickLinks.map((link) => (
                     <Link
@@ -48,7 +48,7 @@ export const Footer = () => {
              </div>
 
              <div className="flex flex-col gap-6">
-                <span className="font-mono text-xs uppercase tracking-widest opacity-50">[ SOCIALS ]</span>
+                <span className="eyebrow">[ SOCIALS ]</span>
                 <nav className="flex flex-col gap-4">
                   {socialLinks.map((social) => (
                     <a
@@ -66,7 +66,7 @@ export const Footer = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-6 font-mono text-xs uppercase tracking-widest opacity-50">
+        <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-6 eyebrow tabular-nums">
           <p>
             © {currentYear} FAUZAN PARANDITHA.
           </p>
