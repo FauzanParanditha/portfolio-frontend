@@ -1,14 +1,24 @@
-import { Github, Linkedin, Mail, Twitter } from "lucide-react";
+import { Github, Linkedin, Mail } from "lucide-react";
 import Link from "next/link";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   const socialLinks = [
-    { icon: Github, href: "#", label: "GitHub" },
-    { icon: Linkedin, href: "#", label: "LinkedIn" },
-    { icon: Twitter, href: "#", label: "Twitter" },
-    { icon: Mail, href: "#", label: "Email" },
+    // external: true untuk tautan http (dibuka tab baru + rel aman); mailto tidak.
+    {
+      icon: Github,
+      href: "https://github.com/FauzanParanditha",
+      label: "GitHub",
+      external: true,
+    },
+    {
+      icon: Linkedin,
+      href: "https://www.linkedin.com/in/paranditha/",
+      label: "LinkedIn",
+      external: true,
+    },
+    { icon: Mail, href: "mailto:paranditha@gmail.com", label: "Email", external: false },
   ];
 
   const quickLinks = [
@@ -54,6 +64,9 @@ export const Footer = () => {
                     <a
                       key={social.label}
                       href={social.href}
+                      {...(social.external
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
                       className="rounded-sm text-lg uppercase tracking-widest font-bold hover:underline underline-offset-8 transition-all flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
                     >
                       <social.icon className="h-5 w-5" aria-hidden="true" />
