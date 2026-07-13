@@ -63,13 +63,19 @@ adminClient.interceptors.response.use(
         return adminClient(original);
       }
 
-      await logoutSession();
-      toast({
-        title: "Sesi admin berakhir.",
-        description: "Silakan login ulang.",
-        variant: "warning",
-      });
-      window.location.href = "/auth/login";
+      // Hanya arahkan ke login bila user memang sedang di area admin.
+      // Probe /me pasif (mis. AdminAuthProvider) yang jalan di halaman publik
+      // atau di /auth/login TIDAK boleh memicu redirect — kalau tidak, halaman
+      // login akan reload terus-menerus (loop) saat belum login.
+      if (window.location.pathname.startsWith("/admin")) {
+        await logoutSession();
+        toast({
+          title: "Sesi admin berakhir.",
+          description: "Silakan login ulang.",
+          variant: "warning",
+        });
+        window.location.href = "/auth/login";
+      }
       return Promise.reject(error);
     }
 
