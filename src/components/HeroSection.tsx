@@ -106,7 +106,7 @@ export const HeroSection = () => {
               variants={itemVariants}
               className="flex items-start tracking-tighter"
             >
-              <span className="text-5xl font-bold leading-none text-white sm:text-[10vw] md:text-[14vw] xl:text-[10.5vw]">
+              <span className="text-[clamp(2.5rem,14vw,205px)] font-bold leading-none text-white">
                 PARANDITHA
               </span>
             </motion.div>
