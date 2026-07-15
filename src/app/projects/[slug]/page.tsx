@@ -184,6 +184,7 @@ const ProjectDetailPage = () => {
                 width={1920}
                 height={1080}
                 priority
+                unoptimized
               />
             </div>
 
@@ -305,6 +306,7 @@ const ProjectDetailPage = () => {
                     alt={`${project.title} screenshot ${index + 1}`}
                     className="h-full w-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
                     fill
+                    unoptimized
                   />
                   <div className="absolute inset-0 z-10 bg-background/0 transition-colors group-hover:bg-background/10" />
                 </motion.div>
