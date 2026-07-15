@@ -18,6 +18,7 @@ import { toProjectUpsertPayload } from "@/lib/mapper/project";
 import { Project } from "@/types/project";
 import { motion } from "framer-motion";
 import { Edit, ExternalLink, Github, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 const emptyProject: Project = {
@@ -534,12 +535,23 @@ const AdminProjects = () => {
               transition={{ delay: index * 0.1 }}
               className="overflow-hidden rounded-xl border border-border bg-card bg-white shadow-sm"
             >
-              <div className="aspect-video bg-muted">
-                <img
-                  src={project.coverImageUrl}
-                  alt={project.title}
-                  className="h-full w-full object-cover"
-                />
+              <div className="relative aspect-video bg-muted">
+                {/* URL cover berasal dari input bebas (host sembarang), jadi
+                    pakai unoptimized agar tak terikat allowlist next.config. */}
+                {project.coverImageUrl ? (
+                  <Image
+                    src={project.coverImageUrl}
+                    alt={project.title}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                    Tanpa gambar
+                  </div>
+                )}
               </div>
               <div className="p-4">
                 <h3 className="mb-1 font-semibold text-black">
