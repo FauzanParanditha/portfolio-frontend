@@ -63,7 +63,7 @@ export const BackgroundGradient = ({
       <motion.div
         {...sharedMotionProps}
         className={cn(
-          "pointer-events-none absolute inset-0 z-[1] opacity-60 blur-xl transition-opacity duration-500 group-hover:opacity-100",
+          "pointer-events-none absolute inset-0 z-1 opacity-60 blur-xl transition-opacity duration-500 group-hover:opacity-100",
           colorsClass,
         )}
         aria-hidden={true}
@@ -71,10 +71,7 @@ export const BackgroundGradient = ({
       {/* Solid gradient */}
       <motion.div
         {...sharedMotionProps}
-        className={cn(
-          "pointer-events-none absolute inset-0 z-[2]",
-          colorsClass,
-        )}
+        className={cn("pointer-events-none absolute inset-0 z-2", colorsClass)}
         aria-hidden={true}
       />
 

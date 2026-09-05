@@ -8,7 +8,9 @@ interface WelcomeAnimationProps {
 }
 
 export const WelcomeAnimation = ({ onComplete }: WelcomeAnimationProps) => {
-  const [stage, setStage] = useState<"initial" | "colorReveal" | "exit">("initial");
+  const [stage, setStage] = useState<"initial" | "colorReveal" | "exit">(
+    "initial",
+  );
   const prefersReducedMotion = useReducedMotion();
 
   const text = "PARANDITHA";
@@ -24,10 +26,13 @@ export const WelcomeAnimation = ({ onComplete }: WelcomeAnimationProps) => {
     // 1. Initial delay
     const t1 = setTimeout(() => setStage("colorReveal"), 400);
     // 2. Wait for color reveal, then complete
-    const t2 = setTimeout(() => {
-      setStage("exit");
-      onComplete();
-    }, 400 + (letters.length * 100) + 1000); // 100ms per letter + 1s pause
+    const t2 = setTimeout(
+      () => {
+        setStage("exit");
+        onComplete();
+      },
+      400 + letters.length * 100 + 1000,
+    ); // 100ms per letter + 1s pause
 
     return () => {
       clearTimeout(t1);
@@ -48,39 +53,49 @@ export const WelcomeAnimation = ({ onComplete }: WelcomeAnimationProps) => {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[100] bg-black overflow-hidden flex flex-col justify-between p-6 md:p-10 text-white font-sans"
-      exit={{ opacity: 0, scale: 1.05, transition: { duration: 0.8, ease: "easeInOut" } }}
+      className="fixed inset-0 z-100 flex flex-col justify-between overflow-hidden bg-black p-6 font-sans text-white md:p-10"
+      exit={{
+        opacity: 0,
+        scale: 1.05,
+        transition: { duration: 0.8, ease: "easeInOut" },
+      }}
     >
       {/* Tombol lewati: fokusable via keyboard, tampil saat difokus. */}
       <button
         type="button"
         onClick={onComplete}
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[110] focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-black focus:outline-none focus:ring-2 focus:ring-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-110 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-black focus:ring-2 focus:ring-white focus:outline-hidden"
       >
         Lewati intro
       </button>
 
       {/* Top right dot */}
-      <motion.div 
-        className="flex justify-end w-full"
+      <motion.div
+        className="flex w-full justify-end"
         exit={{ opacity: 0, transition: { duration: 0.3 } }}
       >
-        <div className="w-2 md:w-2.5 h-2 md:h-2.5 bg-gray-300 rounded-full"></div>
+        <div className="h-2 w-2 rounded-full bg-gray-300 md:h-2.5 md:w-2.5"></div>
       </motion.div>
 
       {/* Center Text */}
-      <div className="flex-1 flex items-center justify-center relative w-full overflow-hidden">
-        <motion.div 
+      <div className="relative flex w-full flex-1 items-center justify-center overflow-hidden">
+        <motion.div
           className="flex items-start tracking-tighter"
-          exit={{ y: -40, opacity: 0, transition: { duration: 0.6, ease: "easeOut" } }}
+          exit={{
+            y: -40,
+            opacity: 0,
+            transition: { duration: 0.6, ease: "easeOut" },
+          }}
         >
           {letters.map((letter, index) => (
             <motion.span
               key={index}
-              className="text-[clamp(2.5rem,13vw,205px)] font-bold leading-none"
+              className="text-[clamp(2.5rem,13vw,205px)] leading-none font-bold"
               initial={{ color: "#333333" }} // Dark gray
               animate={
-                stage === "colorReveal" || stage === "exit" ? { color: "#ffffff" } : { color: "#333333" }
+                stage === "colorReveal" || stage === "exit"
+                  ? { color: "#ffffff" }
+                  : { color: "#333333" }
               }
               transition={{
                 duration: 0.1,
@@ -90,11 +105,13 @@ export const WelcomeAnimation = ({ onComplete }: WelcomeAnimationProps) => {
               {letter}
             </motion.span>
           ))}
-          <motion.span 
-            className="text-3xl sm:text-4xl md:text-[5vw] font-bold ml-1 md:ml-3 mt-2 md:mt-4 md:pt-4"
+          <motion.span
+            className="mt-2 ml-1 text-3xl font-bold sm:text-4xl md:mt-4 md:ml-3 md:pt-4 md:text-[5vw]"
             initial={{ color: "#333333" }}
             animate={
-                stage === "colorReveal" || stage === "exit" ? { color: "#ffffff" } : { color: "#333333" }
+              stage === "colorReveal" || stage === "exit"
+                ? { color: "#ffffff" }
+                : { color: "#333333" }
             }
             transition={{
               duration: 0.1,
@@ -107,23 +124,18 @@ export const WelcomeAnimation = ({ onComplete }: WelcomeAnimationProps) => {
       </div>
 
       {/* Footer Elements */}
-      <motion.div 
-        className="flex flex-col md:flex-row justify-between items-center text-[10px] md:text-xs text-zinc-400 tracking-[0.2em] uppercase gap-6 md:gap-0 font-mono"
+      <motion.div
+        className="flex flex-col items-center justify-between gap-6 font-mono text-[10px] tracking-[0.2em] text-zinc-400 uppercase md:flex-row md:gap-0 md:text-xs"
         exit={{ opacity: 0, y: 20, transition: { duration: 0.5 } }}
       >
-        <div className="flex items-center">
-          © CURATED INTERFACES ビジュアル
-        </div>
+        <div className="flex items-center">© CURATED INTERFACES ビジュアル</div>
         {/* opacity dihapus: zinc-400 (7.76:1) sudah redup & tetap lolos AA. */}
-        <div className="md:-ml-12">
-          (WDX® — 02)
-        </div>
+        <div className="md:-ml-12">(WDX® — 02)</div>
         <div className="flex items-center gap-4">
           <span>DIGITAL DESIGNER</span>
-          <div className="w-12 h-4 bg-white rounded-[4px] opacity-90"></div>
+          <div className="h-4 w-12 rounded-[4px] bg-white opacity-90"></div>
         </div>
       </motion.div>
     </motion.div>
   );
 };
-

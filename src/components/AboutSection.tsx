@@ -55,29 +55,44 @@ export const AboutSection = () => {
   ];
 
   return (
-    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-32" id="about" aria-labelledby="about-heading">
+    <section
+      ref={ref}
+      className="border-thin w-full border-b bg-zinc-950 pt-32 pb-32"
+      id="about"
+      aria-labelledby="about-heading"
+    >
       <div className="container mx-auto px-6">
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate={isInView ? "visible" : "hidden"}
-          className="grid grid-cols-1 md:grid-cols-12 gap-16"
+          className="grid grid-cols-1 gap-16 md:grid-cols-12"
         >
           {/* Section Header */}
-          <motion.div variants={itemVariants} className="md:col-span-5 flex flex-col justify-between">
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-col justify-between md:col-span-5"
+          >
             <h2 id="about-heading" className="section-title">
               About <br />
               (Me)
             </h2>
-            <div className="eyebrow hidden md:block mt-16">
+            <div className="eyebrow mt-16 hidden md:block">
               [ PROFILE & CAPABILITIES ]
             </div>
           </motion.div>
 
           {/* Section Content */}
-          <motion.div variants={itemVariants} className="md:col-span-7 flex flex-col gap-16">
-            <p className="text-xl md:text-3xl leading-relaxed font-medium">
-              With over 5 years of experience in fullstack development, I specialize in creating scalable web applications that deliver exceptional user experiences. I am passionate about clean architecture, brutalist design, and solving complex problems with ruthless efficiency.
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-col gap-16 md:col-span-7"
+          >
+            <p className="text-xl leading-relaxed font-medium md:text-3xl">
+              With over 5 years of experience in fullstack development, I
+              specialize in creating scalable web applications that deliver
+              exceptional user experiences. I am passionate about clean
+              architecture, brutalist design, and solving complex problems with
+              ruthless efficiency.
             </p>
 
             {/* Capabilities Grid */}
@@ -86,17 +101,23 @@ export const AboutSection = () => {
                 <motion.div
                   key={skill.title}
                   variants={itemVariants}
-                  className={`p-8 border-thin flex flex-col gap-6 hover:bg-foreground hover:text-background transition-colors duration-300 ${
+                  className={`border-thin hover:bg-foreground hover:text-background flex flex-col gap-6 p-8 transition-colors duration-300 ${
                     index % 2 !== 0 ? "sm:border-l-0" : ""
                   } ${index > 1 ? "border-t-0" : ""}`}
                 >
-                  <div className="flex justify-between items-start">
-                    <span className="stat-num text-xs opacity-50">(0{index + 1})</span>
+                  <div className="flex items-start justify-between">
+                    <span className="stat-num text-xs opacity-50">
+                      (0{index + 1})
+                    </span>
                     <skill.icon className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold uppercase tracking-wider mb-2">{skill.title}</h3>
-                    <p className="text-sm opacity-70 leading-relaxed">{skill.description}</p>
+                    <h3 className="mb-2 text-lg font-bold tracking-wider uppercase">
+                      {skill.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed opacity-70">
+                      {skill.description}
+                    </p>
                   </div>
                 </motion.div>
               ))}

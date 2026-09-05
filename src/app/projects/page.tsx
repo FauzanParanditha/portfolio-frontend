@@ -11,7 +11,8 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ExternalLink, Github, Search, X } from "lucide-react";
+import { GithubIcon } from "@/components/icons/BrandIcons";
+import { ArrowLeft, ExternalLink, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -89,13 +90,13 @@ const Projects = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="bg-background min-h-screen font-sans">
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="sticky top-0 z-50 bg-background/80 py-6 backdrop-blur-md"
+        className="bg-background/80 sticky top-0 z-50 py-6 backdrop-blur-md"
       >
         <div className="container mx-auto flex items-center justify-between px-6 lg:px-12">
           <Link href="/">
@@ -128,7 +129,7 @@ const Projects = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="max-w-2xl text-lg text-muted-foreground md:text-xl"
+            className="text-muted-foreground max-w-2xl text-lg md:text-xl"
           >
             A collection of digital experiences and solutions, focused on clean
             design and robust engineering.
@@ -141,18 +142,18 @@ const Projects = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="relative mt-16 max-w-xl"
           >
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2" />
             <Input
               type="text"
               placeholder="Search works..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="rounded-none border-0 border-b border-border bg-transparent px-0 py-6 pl-10 text-lg shadow-none focus-visible:border-primary focus-visible:ring-0"
+              className="border-border focus-visible:border-primary rounded-none border-0 border-b bg-transparent px-0 py-6 pl-10 text-lg shadow-none focus-visible:ring-0"
             />
             {searchQuery && (
               <button
                 onClick={() => handleSearchChange("")}
-                className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground absolute top-1/2 right-0 -translate-y-1/2 transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -172,7 +173,7 @@ const Projects = () => {
                 onClick={() => handleCategoryChange(category)}
                 className={`text-sm tracking-wide transition-all hover:opacity-100 ${
                   activeCategory === category
-                    ? "border-b border-foreground pb-1 font-medium opacity-100"
+                    ? "border-foreground border-b pb-1 font-medium opacity-100"
                     : "opacity-60"
                 }`}
               >
@@ -184,10 +185,10 @@ const Projects = () => {
       </section>
 
       {/* Projects Grid */}
-      <section className="px-6 pb-24 pt-8 lg:px-12">
+      <section className="px-6 pt-8 pb-24 lg:px-12">
         <div className="container mx-auto">
           {isLoading && (
-            <p className="py-16 text-center text-muted-foreground">
+            <p className="text-muted-foreground py-16 text-center">
               Loading projects...
             </p>
           )}
@@ -204,7 +205,7 @@ const Projects = () => {
               animate={{ opacity: 1 }}
               className="py-16 text-center"
             >
-              <p className="text-lg text-muted-foreground">
+              <p className="text-muted-foreground text-lg">
                 No projects found.
               </p>
               <Button
@@ -242,7 +243,7 @@ const Projects = () => {
                     {/* Image */}
                     <Link
                       href={`/projects/${project.slug}`}
-                      className="relative block aspect-[4/3] overflow-hidden bg-muted/20"
+                      className="bg-muted/20 relative block aspect-4/3 overflow-hidden"
                     >
                       <motion.img
                         src={project.coverImageUrl || "/placeholder.jpg"}
@@ -266,7 +267,7 @@ const Projects = () => {
 
                           {/* Tags/Category minimal style */}
                           {project.tags.length > 0 && (
-                            <p className="mt-1 text-sm text-muted-foreground">
+                            <p className="text-muted-foreground mt-1 text-sm">
                               {project.tags.map((t) => t.name).join(" • ")}
                             </p>
                           )}
@@ -281,7 +282,7 @@ const Projects = () => {
                               className="text-muted-foreground hover:text-foreground"
                               aria-label="View Source"
                             >
-                              <Github className="h-5 w-5" />
+                              <GithubIcon className="h-5 w-5" />
                             </a>
                           )}
                           {project.demoUrl && (
@@ -297,7 +298,7 @@ const Projects = () => {
                         </div>
                       </div>
 
-                      <p className="line-clamp-2 max-w-md text-base text-muted-foreground opacity-80">
+                      <p className="text-muted-foreground line-clamp-2 max-w-md text-base opacity-80">
                         {project.shortDesc}
                       </p>
                     </div>
@@ -352,7 +353,7 @@ const Projects = () => {
       </section>
 
       {/* CTA Footer */}
-      <section className="border-t border-border/40 px-6 py-24 lg:px-12">
+      <section className="border-border/40 border-t px-6 py-24 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -362,13 +363,13 @@ const Projects = () => {
           <h3 className="mb-6 text-4xl font-medium tracking-tight">
             Interested in working together?
           </h3>
-          <p className="mb-10 text-xl text-muted-foreground">
+          <p className="text-muted-foreground mb-10 text-xl">
             I&apos;m always open to discussing new projects and opportunities.
           </p>
           <Link href="/#contact">
             <Button
               size="lg"
-              className="rounded-none bg-foreground px-8 py-6 text-base tracking-wide text-background hover:bg-foreground/90"
+              className="bg-foreground text-background hover:bg-foreground/90 rounded-none px-8 py-6 text-base tracking-wide"
             >
               Get in Touch
             </Button>

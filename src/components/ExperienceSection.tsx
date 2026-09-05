@@ -34,61 +34,73 @@ export const ExperienceSection = () => {
   };
 
   return (
-    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-32" id="experience" aria-labelledby="experience-heading">
+    <section
+      ref={ref}
+      className="border-thin w-full border-b bg-zinc-950 pt-32 pb-32"
+      id="experience"
+      aria-labelledby="experience-heading"
+    >
       <div className="container mx-auto px-6">
         <motion.div
-           variants={containerVariants}
-           initial="hidden"
-           animate={isInView ? "visible" : "hidden"}
-           className="flex flex-col gap-16"
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="flex flex-col gap-16"
         >
           {/* Section Header */}
-          <motion.div variants={itemVariants} className="flex justify-between items-end border-b border-thin pb-8">
+          <motion.div
+            variants={itemVariants}
+            className="border-thin flex items-end justify-between border-b pb-8"
+          >
             <h2 id="experience-heading" className="section-title">
               Experience
             </h2>
-            <div className="eyebrow hidden md:block">
-              [ CAREER PATH ]
-            </div>
+            <div className="eyebrow hidden md:block">[ CAREER PATH ]</div>
           </motion.div>
 
           {/* Experience List */}
-          <div className="flex flex-col w-full">
+          <div className="flex w-full flex-col">
             {experiences.map((exp, index) => (
               <motion.div
                 key={exp.id}
                 variants={itemVariants}
-                className="group flex flex-col md:flex-row border-b border-thin py-12 gap-8 items-start hover:bg-foreground hover:text-background transition-colors duration-500 px-6 -mx-6 md:px-12 md:-mx-12"
+                className="group border-thin hover:bg-foreground hover:text-background -mx-6 flex flex-col items-start gap-8 border-b px-6 py-12 transition-colors duration-500 md:-mx-12 md:flex-row md:px-12"
               >
                 {/* Index / Meta */}
-                <div className="md:w-1/4 flex flex-col gap-4">
-                  <span className="stat-num text-xs opacity-50">(0{index + 1})</span>
-                  <div className="stat-num text-sm uppercase tracking-widest">
+                <div className="flex flex-col gap-4 md:w-1/4">
+                  <span className="stat-num text-xs opacity-50">
+                    (0{index + 1})
+                  </span>
+                  <div className="stat-num text-sm tracking-widest uppercase">
                     {exp.startDate} — <br />
                     {exp.isCurrent ? "Present" : "Finished"}
                   </div>
                 </div>
 
                 {/* Main Content */}
-                <div className="md:w-3/4 flex flex-col gap-6">
-                  <div className="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4">
-                    <h3 className="text-2xl md:text-4xl font-bold uppercase tracking-tight">
+                <div className="flex flex-col gap-6 md:w-3/4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-baseline md:gap-4">
+                    <h3 className="text-2xl font-bold tracking-tight uppercase md:text-4xl">
                       {exp.title}
                     </h3>
-                    <span className="text-lg md:text-xl opacity-60">@ {exp.company}</span>
+                    <span className="text-lg opacity-60 md:text-xl">
+                      @ {exp.company}
+                    </span>
                   </div>
 
-                  <p className="text-lg md:text-xl opacity-80 leading-relaxed max-w-3xl">
+                  <p className="max-w-3xl text-lg leading-relaxed opacity-80 md:text-xl">
                     {exp.description}
                   </p>
 
                   {/* Highlights */}
                   {(exp.highlights?.length ?? 0) > 0 && (
-                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       {(exp.highlights || []).map((item, i) => (
                         <li key={i} className="flex gap-4 opacity-70">
-                           <span className="shrink-0 mt-1.5 w-1.5 h-1.5 bg-current rounded-full"></span>
-                           <span className="text-sm md:text-base">{item.text}</span>
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-current"></span>
+                          <span className="text-sm md:text-base">
+                            {item.text}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -96,11 +108,11 @@ export const ExperienceSection = () => {
 
                   {/* Tags */}
                   {(exp.tags?.length ?? 0) > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       {(exp.tags || []).map((tag) => (
                         <span
                           key={tag.id + tag.name}
-                          className="border border-current px-3 py-1 text-xs uppercase tracking-widest font-mono rounded-full"
+                          className="rounded-full border border-current px-3 py-1 font-mono text-xs tracking-widest uppercase"
                         >
                           {tag.name}
                         </span>
@@ -111,7 +123,6 @@ export const ExperienceSection = () => {
               </motion.div>
             ))}
           </div>
-
         </motion.div>
       </div>
     </section>

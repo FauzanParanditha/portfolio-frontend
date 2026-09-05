@@ -74,6 +74,10 @@ adminClient.interceptors.response.use(
           description: "Silakan login ulang.",
           variant: "warning",
         });
+        // Sama seperti logout: reload penuh agar cache SWR & state admin
+        // benar-benar dibuang saat sesi berakhir. Lagi pula berkas ini bukan
+        // komponen React, jadi useRouter() memang tidak tersedia di sini.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/auth/login";
       }
       return Promise.reject(error);

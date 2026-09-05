@@ -17,11 +17,14 @@ const Index = () => {
   return (
     <AnimatePresence mode="wait">
       {showWelcome ? (
-        <WelcomeAnimation key="welcome" onComplete={() => setShowWelcome(false)} />
+        <WelcomeAnimation
+          key="welcome"
+          onComplete={() => setShowWelcome(false)}
+        />
       ) : (
         <motion.div
           key="main"
-          className="min-h-screen bg-zinc-950 text-foreground"
+          className="text-foreground min-h-screen bg-zinc-950"
           initial={{ opacity: 0, scale: 0.9, y: 50 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
@@ -29,7 +32,7 @@ const Index = () => {
           {/* Skip link: elemen fokus pertama, memungkinkan lompat ke konten utama. */}
           <a
             href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-black focus:outline-none focus:ring-2 focus:ring-white"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-60 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-black focus:ring-2 focus:ring-white focus:outline-hidden"
           >
             Lewati ke konten
           </a>

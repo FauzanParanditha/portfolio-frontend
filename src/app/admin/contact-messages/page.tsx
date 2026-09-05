@@ -90,12 +90,16 @@ const AdminContactMessages = () => {
   const total = meta?.total ?? 0;
 
   // Clamp halaman ke totalPages agar tidak terjebak di halaman kosong
-  // (mis. setelah menghapus pesan terakhir di halaman > 1). Guard `page > tp`
-  // mencegah loop set-state.
-  useEffect(() => {
-    const tp = meta?.totalPages ?? 1;
-    if (page > tp) setPage(Math.max(1, tp));
-  }, [meta?.totalPages, page]);
+  // (mis. setelah menghapus pesan terakhir di halaman > 1).
+  //
+  // Ini pola "adjusting state during render" yang direkomendasikan React:
+  // React membuang hasil render ini dan langsung merender ulang dengan nilai
+  // baru, sehingga halaman kosong tidak pernah sempat tampil. Versi useEffect
+  // sebelumnya menimbulkan render berantai (dan sekilas halaman kosong).
+  // Guard `page > totalPages` menjamin penyesuaian ini konvergen.
+  if (page > totalPages) {
+    setPage(Math.max(1, totalPages));
+  }
 
   // Empty-state kontekstual: bedakan hasil filter/pencarian kosong vs benar-benar kosong.
   const isFiltered = q !== "" || filter !== "all";
@@ -160,7 +164,10 @@ const AdminContactMessages = () => {
 
   return (
     <div className="p-8">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -180,7 +187,7 @@ const AdminContactMessages = () => {
             </Label>
             <div className="relative">
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
                 aria-hidden="true"
               />
               <Input
@@ -194,7 +201,7 @@ const AdminContactMessages = () => {
           </div>
 
           <div
-            className="flex items-center gap-1 rounded-lg border border-border bg-white p-1"
+            className="border-border flex items-center gap-1 rounded-lg border bg-white p-1"
             role="group"
             aria-label="Filter status pesan"
           >
@@ -207,10 +214,10 @@ const AdminContactMessages = () => {
                   onClick={() => changeFilter(tab.key)}
                   aria-pressed={active}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                    "focus-visible:ring-ring rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-hidden",
                     active
                       ? "bg-primary text-primary-foreground"
-                      : "text-zinc-600 hover:bg-muted hover:text-zinc-900",
+                      : "hover:bg-muted text-zinc-600 hover:text-zinc-900",
                   )}
                 >
                   {tab.label}
@@ -224,7 +231,7 @@ const AdminContactMessages = () => {
         {error ? (
           <div
             role="alert"
-            className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive"
+            className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-6 text-sm"
           >
             Gagal memuat pesan. Coba muat ulang halaman.
           </div>
@@ -234,22 +241,22 @@ const AdminContactMessages = () => {
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-border bg-white p-4"
+                className="border-border rounded-xl border bg-white p-4"
               >
                 <div className="mb-3 flex items-center justify-between">
-                  <div className="h-4 w-40 animate-pulse rounded bg-muted" />
-                  <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                  <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+                  <div className="bg-muted h-4 w-24 animate-pulse rounded" />
                 </div>
-                <div className="mb-2 h-4 w-2/3 animate-pulse rounded bg-muted" />
-                <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                <div className="bg-muted mb-2 h-4 w-2/3 animate-pulse rounded" />
+                <div className="bg-muted h-3 w-full animate-pulse rounded" />
               </div>
             ))}
           </div>
         ) : messages.length === 0 ? (
           // State: empty
-          <div className="rounded-xl border border-dashed border-border bg-white p-12 text-center">
+          <div className="border-border rounded-xl border border-dashed bg-white p-12 text-center">
             <Mail
-              className="mx-auto mb-3 h-8 w-8 text-muted-foreground"
+              className="text-muted-foreground mx-auto mb-3 h-8 w-8"
               aria-hidden="true"
             />
             <p className="text-muted-foreground">
@@ -265,22 +272,22 @@ const AdminContactMessages = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
                 className={cn(
-                  "rounded-xl border bg-white p-4 shadow-sm transition-colors",
+                  "rounded-xl border bg-white p-4 shadow-xs transition-colors",
                   msg.isRead
                     ? "border-border"
-                    : "border-primary/40 bg-primary/[0.03]",
+                    : "border-primary/40 bg-primary/3",
                 )}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <button
                     type="button"
                     onClick={() => openDetail(msg)}
-                    className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="focus-visible:ring-ring min-w-0 flex-1 text-left focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden"
                   >
                     <div className="mb-1 flex items-center gap-2">
                       {!msg.isRead && (
                         <span
-                          className="h-2 w-2 shrink-0 rounded-full bg-primary"
+                          className="bg-primary h-2 w-2 shrink-0 rounded-full"
                           aria-hidden="true"
                         />
                       )}
@@ -292,7 +299,7 @@ const AdminContactMessages = () => {
                       >
                         {msg.name}
                       </span>
-                      <span className="truncate text-sm text-muted-foreground">
+                      <span className="text-muted-foreground truncate text-sm">
                         {msg.email}
                       </span>
                       <span
@@ -316,13 +323,13 @@ const AdminContactMessages = () => {
                     >
                       {msg.subject}
                     </p>
-                    <p className="line-clamp-1 text-sm text-muted-foreground">
+                    <p className="text-muted-foreground line-clamp-1 text-sm">
                       {msg.message}
                     </p>
                   </button>
 
                   <div className="flex shrink-0 flex-col items-end gap-2">
-                    <span className="whitespace-nowrap text-xs text-muted-foreground">
+                    <span className="text-muted-foreground text-xs whitespace-nowrap">
                       {formatDate(msg.createdAt)}
                     </span>
                     <div className="flex items-center gap-1">
@@ -362,7 +369,7 @@ const AdminContactMessages = () => {
         {/* Pagination */}
         {!isLoading && !error && messages.length > 0 && totalPages > 1 && (
           <div className="mt-6 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Halaman {page} dari {totalPages}
             </p>
             <div className="flex items-center gap-2">
@@ -404,7 +411,7 @@ const AdminContactMessages = () => {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-zinc-900">
                   <MailOpen
-                    className="h-5 w-5 text-muted-foreground"
+                    className="text-muted-foreground h-5 w-5"
                     aria-hidden="true"
                   />
                   {selected.subject}
@@ -416,7 +423,7 @@ const AdminContactMessages = () => {
 
               <div className="space-y-4 text-sm">
                 <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
                     Email
                   </p>
                   <a
@@ -427,10 +434,10 @@ const AdminContactMessages = () => {
                   </a>
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
                     Pesan
                   </p>
-                  <p className="whitespace-pre-wrap break-words text-zinc-800">
+                  <p className="wrap-break-word whitespace-pre-wrap text-zinc-800">
                     {selected.message}
                   </p>
                 </div>

@@ -31,19 +31,17 @@ export function TypewriterLoop({
 
   const [index, setIndex] = useState(0); // index frasa saat ini
   const [sub, setSub] = useState(0); // panjang substring yang terlihat
-  const [phase, setPhase] = useState<
-    "idle" | "typing" | "pausing" | "deleting"
-  >("idle");
+  // Fase "pausing" dihapus: jeda setelah selesai mengetik kini cukup ditangani
+  // oleh timer menuju "deleting", tanpa transisi state perantara.
+  const [phase, setPhase] = useState<"idle" | "typing" | "deleting">("idle");
   const [stopped, setStopped] = useState(false);
 
   // Kickoff
   useEffect(() => {
-    if (!items.length) return;
-    if (reduce) {
-      setPhase("idle");
-      setSub(items[0].text.length);
-      return;
-    }
+    // Saat prefers-reduced-motion aktif, teks ditampilkan utuh lewat `visible`
+    // di bawah — tidak perlu menyetel state apa pun di sini (dulu setPhase +
+    // setSub sinkron di dalam effect, yang memicu render berantai).
+    if (!items.length || reduce) return;
     const t = setTimeout(() => setPhase("typing"), startDelay);
     return () => clearTimeout(t);
   }, [items, reduce, startDelay]);
@@ -55,27 +53,32 @@ export function TypewriterLoop({
 
     let t: ReturnType<typeof setTimeout>;
 
+    // Semua perpindahan state dijadwalkan lewat timer, tidak ada setState
+    // sinkron di badan effect — itu yang memicu cascading render.
     if (phase === "typing") {
-      if (sub < current.length) {
-        t = setTimeout(() => setSub((s) => s + 1), typingSpeed);
-      } else {
-        setPhase("pausing");
-      }
-    } else if (phase === "pausing") {
-      t = setTimeout(() => setPhase("deleting"), pauseBetween);
+      t =
+        sub < current.length
+          ? setTimeout(() => setSub((s) => s + 1), typingSpeed)
+          : // Selesai mengetik: tahan `pauseBetween`, lalu mulai menghapus.
+            setTimeout(() => setPhase("deleting"), pauseBetween);
     } else if (phase === "deleting") {
-      if (sub > 0) {
-        t = setTimeout(() => setSub((s) => s - 1), deletingSpeed);
-      } else {
+      t = setTimeout(() => {
+        if (sub > 0) {
+          setSub((s) => s - 1);
+          return;
+        }
+
+        // Sudah kosong: lanjut ke frasa berikutnya, atau berhenti di akhir
+        // daftar bila loop dimatikan.
         const next = index + 1;
         if (!loop && next >= items.length) {
-          setStopped(true); // berhenti di akhir daftar
+          setStopped(true);
           setPhase("idle");
           return;
         }
-        setIndex((i) => (i + 1) % items.length);
+        setIndex(next % items.length);
         setPhase("typing");
-      }
+      }, deletingSpeed);
     }
     return () => clearTimeout(t);
   }, [

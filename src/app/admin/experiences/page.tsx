@@ -12,7 +12,7 @@ import { toExperienceUpsertPayload } from "@/lib/mapper/experience";
 import type { Experience } from "@/types/experience";
 import { motion } from "framer-motion";
 import { GripVertical, Plus, Save, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const isUuid = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -58,11 +58,13 @@ const AdminExperience = () => {
   //   initialized.current = true;
   // }, [experiences]);
 
-  useEffect(() => {
-    if (formData.length === 0 && experiences.length > 0) {
-      setFormData(experiences);
-    }
-  }, [experiences, formData.length]);
+  // Salin data server ke state form sekali saat data pertama tiba (form ini
+  // editable, jadi datanya memang harus jadi state). Disesuaikan saat render
+  // alih-alih di dalam useEffect: guard `formData.length === 0` membuatnya
+  // hanya jalan sekali dan konvergen, tanpa render berantai.
+  if (formData.length === 0 && experiences.length > 0) {
+    setFormData(experiences);
+  }
 
   const addExperience = () => {
     setFormData((prev) => [
@@ -211,10 +213,10 @@ const AdminExperience = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="rounded-xl border border-border bg-card bg-white p-6 shadow-md"
+              className="border-border bg-card rounded-xl border bg-white p-6 shadow-md"
             >
               <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-2">
                   <GripVertical className="h-5 w-5" />
                   <span className="font-medium">Experience {index + 1}</span>
                   {!isUuid(experience.id) ? (
@@ -366,7 +368,7 @@ const AdminExperience = () => {
                   <Label>Tags</Label>
 
                   {tagsLoading ? (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-muted-foreground text-sm">
                       Loading tags...
                     </div>
                   ) : (
@@ -374,9 +376,9 @@ const AdminExperience = () => {
                       {Object.entries(tagsByType).map(([type, items]) => (
                         <div
                           key={type}
-                          className="rounded-lg border border-border p-3"
+                          className="border-border rounded-lg border p-3"
                         >
-                          <div className="mb-2 text-sm font-medium capitalize text-black">
+                          <div className="mb-2 text-sm font-medium text-black capitalize">
                             {type}
                           </div>
 
@@ -410,7 +412,7 @@ const AdminExperience = () => {
           ))}
 
           {formData.length === 0 && (
-            <div className="rounded-xl border border-dashed border-border bg-card bg-white p-12 text-center">
+            <div className="border-border bg-card rounded-xl border border-dashed bg-white p-12 text-center">
               <p className="mb-4 text-black">No experience entries yet</p>
               <Button
                 type="button"

@@ -119,7 +119,7 @@ export function Sidebar({ role }: { role?: Role }) {
                 </button>
 
                 {isOpen && (
-                  <div className="ml-1 mt-1">
+                  <div className="mt-1 ml-1">
                     <NavList items={item.items!} level={level + 1} />
                   </div>
                 )}

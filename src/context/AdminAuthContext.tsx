@@ -78,6 +78,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       if (typeof window !== "undefined") {
+        // Sengaja reload penuh, bukan router.push: saat logout kita ingin
+        // SELURUH state klien ikut hilang (cache SWR berisi data admin, state
+        // komponen, dsb). Navigasi client-side akan menyisakannya di memori.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/auth/login";
       }
     }

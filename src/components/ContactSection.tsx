@@ -72,7 +72,8 @@ export const ContactSection = () => {
 
       toast({
         title: "Message Transmitted.",
-        description: "Thank you for reaching out. I'll get back to you shortly.",
+        description:
+          "Thank you for reaching out. I'll get back to you shortly.",
         variant: "success",
       });
 
@@ -107,43 +108,55 @@ export const ContactSection = () => {
   ];
 
   return (
-    <section ref={ref} className="w-full bg-zinc-950 pt-32 pb-32" id="contact" aria-labelledby="contact-heading">
+    <section
+      ref={ref}
+      className="w-full bg-zinc-950 pt-32 pb-32"
+      id="contact"
+      aria-labelledby="contact-heading"
+    >
       <div className="container mx-auto px-6">
         <motion.div
-           variants={containerVariants}
-           initial="hidden"
-           animate={isInView ? "visible" : "hidden"}
-           className="flex flex-col gap-16"
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="flex flex-col gap-16"
         >
           {/* Section Header */}
-          <motion.div variants={itemVariants} className="flex flex-col gap-4 border-b border-thin pb-8">
-            <div className="eyebrow mb-4">
-              [ INQUIRIES & COLLABORATION ]
-            </div>
+          <motion.div
+            variants={itemVariants}
+            className="border-thin flex flex-col gap-4 border-b pb-8"
+          >
+            <div className="eyebrow mb-4">[ INQUIRIES & COLLABORATION ]</div>
             <h2 id="contact-heading" className="section-title">
-              Let&apos;s build <br/> something bold.
+              Let&apos;s build <br /> something bold.
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8">
+          <div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-8">
             {/* Contact Info */}
             <motion.div
               variants={itemVariants}
-              className="lg:col-span-4 flex flex-col gap-12"
+              className="flex flex-col gap-12 lg:col-span-4"
             >
               <p className="body-copy">
-                 Whether you need an interactive frontend, a scalable backend, or a complete digital overhaul, I am ready to discuss your next project.
+                Whether you need an interactive frontend, a scalable backend, or
+                a complete digital overhaul, I am ready to discuss your next
+                project.
               </p>
 
-              <div className="flex flex-col gap-6 w-full max-w-sm">
+              <div className="flex w-full max-w-sm flex-col gap-6">
                 {contactInfo.map((item, idx) => (
                   <a
                     key={item.title}
                     href={item.href}
-                    className="group border-b border-thin pb-4 flex flex-col hover:opacity-70 transition-opacity"
+                    className="group border-thin flex flex-col border-b pb-4 transition-opacity hover:opacity-70"
                   >
-                    <span className="eyebrow mb-2">(0{idx+1}) {item.title}</span>
-                    <span className="text-xl font-medium tracking-tight group-hover:underline underline-offset-4">{item.value}</span>
+                    <span className="eyebrow mb-2">
+                      (0{idx + 1}) {item.title}
+                    </span>
+                    <span className="text-xl font-medium tracking-tight underline-offset-4 group-hover:underline">
+                      {item.value}
+                    </span>
                   </a>
                 ))}
               </div>
@@ -154,54 +167,67 @@ export const ContactSection = () => {
               variants={itemVariants}
               className="lg:col-span-8 lg:pl-12"
             >
-              <form onSubmit={handleSubmit} className="flex flex-col gap-8 w-full max-w-2xl border border-thin p-8 md:p-12">
-                <h3 className="text-2xl font-bold uppercase tracking-widest border-b border-thin pb-4 mb-2">Send a Dispatch</h3>
+              <form
+                onSubmit={handleSubmit}
+                className="border-thin flex w-full max-w-2xl flex-col gap-8 border p-8 md:p-12"
+              >
+                <h3 className="border-thin mb-2 border-b pb-4 text-2xl font-bold tracking-widest uppercase">
+                  Send a Dispatch
+                </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="space-y-2">
-                      <label htmlFor="contact-name" className="eyebrow">Name</label>
-                      <Input
-                        id="contact-name"
-                        name="name"
-                        type="text"
-                        required
-                        className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none h-12"
-                        placeholder="John Doe"
-                      />
-                   </div>
-                   <div className="space-y-2">
-                      <label htmlFor="contact-email" className="eyebrow">Email</label>
-                      <Input
-                        id="contact-email"
-                        name="email"
-                        type="email"
-                        required
-                        className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none h-12"
-                        placeholder="john@example.com"
-                      />
-                   </div>
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="contact-name" className="eyebrow">
+                      Name
+                    </label>
+                    <Input
+                      id="contact-name"
+                      name="name"
+                      type="text"
+                      required
+                      className="border-b-border h-12 rounded-none border-x-0 border-t-0 bg-transparent px-0 focus-visible:border-b-2 focus-visible:border-b-white"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="contact-email" className="eyebrow">
+                      Email
+                    </label>
+                    <Input
+                      id="contact-email"
+                      name="email"
+                      type="email"
+                      required
+                      className="border-b-border h-12 rounded-none border-x-0 border-t-0 bg-transparent px-0 focus-visible:border-b-2 focus-visible:border-b-white"
+                      placeholder="john@example.com"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="contact-subject" className="eyebrow">Subject</label>
+                  <label htmlFor="contact-subject" className="eyebrow">
+                    Subject
+                  </label>
                   <Input
                     id="contact-subject"
                     name="subject"
                     type="text"
                     required
-                    className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none h-12"
+                    className="border-b-border h-12 rounded-none border-x-0 border-t-0 bg-transparent px-0 focus-visible:border-b-2 focus-visible:border-b-white"
                     placeholder="Project Inquiry"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="contact-message" className="eyebrow">Message</label>
+                  <label htmlFor="contact-message" className="eyebrow">
+                    Message
+                  </label>
                   <Textarea
                     id="contact-message"
                     name="message"
                     required
                     rows={4}
-                    className="rounded-none border-x-0 border-t-0 border-b-border bg-transparent focus-visible:border-b-white focus-visible:border-b-2 px-0 rounded-none resize-none pt-4"
+                    className="border-b-border resize-none rounded-none border-x-0 border-t-0 bg-transparent px-0 pt-4 focus-visible:border-b-2 focus-visible:border-b-white"
                     placeholder="Tell me about your idea..."
                   />
                 </div>
@@ -211,13 +237,17 @@ export const ContactSection = () => {
                     type="submit"
                     size="lg"
                     disabled={isSubmitting}
-                    className="bg-foreground text-background hover:bg-transparent hover:text-foreground border border-thin transition-colors duration-300 w-full md:w-auto px-12"
+                    className="bg-foreground text-background hover:text-foreground border-thin w-full border px-12 transition-colors duration-300 hover:bg-transparent md:w-auto"
                   >
                     {isSubmitting ? (
-                       <span className="animate-pulse">TRANSMITTING...</span>
+                      <span className="animate-pulse">TRANSMITTING...</span>
                     ) : (
                       <>
-                        Submit <MoveRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                        Submit{" "}
+                        <MoveRight
+                          className="ml-2 h-4 w-4"
+                          aria-hidden="true"
+                        />
                       </>
                     )}
                   </Button>

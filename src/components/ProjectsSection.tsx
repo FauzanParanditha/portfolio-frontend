@@ -40,7 +40,12 @@ export const ProjectsSection = () => {
   };
 
   return (
-    <section ref={ref} className="w-full bg-zinc-950 border-b border-thin pt-32 pb-16" id="projects" aria-labelledby="projects-heading">
+    <section
+      ref={ref}
+      className="border-thin w-full border-b bg-zinc-950 pt-32 pb-16"
+      id="projects"
+      aria-labelledby="projects-heading"
+    >
       <div className="container mx-auto px-6">
         <motion.div
           variants={containerVariants}
@@ -49,18 +54,17 @@ export const ProjectsSection = () => {
           className="flex flex-col gap-16"
         >
           {/* Header */}
-          <motion.div variants={itemVariants} className="flex justify-between items-end border-b border-thin pb-8">
+          <motion.div
+            variants={itemVariants}
+            className="border-thin flex items-end justify-between border-b pb-8"
+          >
             <h2 id="projects-heading" className="section-title">
-              Selected <br/> Works
+              Selected <br /> Works
             </h2>
-            <div className="eyebrow hidden md:block">
-              [ RECENT PROJECTS ]
-            </div>
+            <div className="eyebrow hidden md:block">[ RECENT PROJECTS ]</div>
           </motion.div>
 
-          {isLoading && (
-            <p className="eyebrow">Loading records...</p>
-          )}
+          {isLoading && <p className="eyebrow">Loading records...</p>}
 
           {isError && !isLoading && (
             <p className="eyebrow text-red-500">Failed to load records.</p>
@@ -76,7 +80,7 @@ export const ProjectsSection = () => {
               variants={containerVariants}
               initial="hidden"
               animate={isInView ? "visible" : "hidden"}
-              className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-16"
+              className="grid grid-cols-1 gap-x-8 gap-y-16 md:grid-cols-2"
             >
               {projects.map((project, index) => {
                 const technologies = project.tags?.map((t) => t.name) ?? [];
@@ -90,7 +94,10 @@ export const ProjectsSection = () => {
                     className="group relative flex flex-col gap-6"
                   >
                     {/* Project Image */}
-                    <Link href={`/projects/${project.slug}`} className="block overflow-hidden border border-thin aspect-[4/3] relative">
+                    <Link
+                      href={`/projects/${project.slug}`}
+                      className="border-thin relative block aspect-4/3 overflow-hidden border"
+                    >
                       <motion.img
                         src={project.coverImageUrl || taskManagerImg.src}
                         alt={project.title}
@@ -99,30 +106,38 @@ export const ProjectsSection = () => {
                     </Link>
 
                     {/* Metadata & Details */}
-                    <div className="flex flex-col gap-4 border-b border-thin pb-6">
-                      <div className="flex justify-between items-start">
+                    <div className="border-thin flex flex-col gap-4 border-b pb-6">
+                      <div className="flex items-start justify-between">
                         <Link href={`/projects/${project.slug}`}>
-                          <h3 className="text-2xl md:text-3xl font-bold uppercase tracking-tight transition-colors hover:opacity-70 flex items-center gap-2">
-                             {project.title}
-                             <ArrowUpRight className="h-5 w-5 opacity-0 -translate-x-2 translate-y-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-300" aria-hidden="true"/>
+                          <h3 className="flex items-center gap-2 text-2xl font-bold tracking-tight uppercase transition-colors hover:opacity-70 md:text-3xl">
+                            {project.title}
+                            <ArrowUpRight
+                              className="h-5 w-5 -translate-x-2 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100"
+                              aria-hidden="true"
+                            />
                           </h3>
                         </Link>
-                        <span className="eyebrow tabular-nums">(0{index + 1})</span>
+                        <span className="eyebrow tabular-nums">
+                          (0{index + 1})
+                        </span>
                       </div>
-                      
-                      <p className="text-sm md:text-base leading-relaxed text-zinc-400">
+
+                      <p className="text-sm leading-relaxed text-zinc-400 md:text-base">
                         {project.shortDesc}
                       </p>
 
-                      <div className="flex flex-wrap gap-2 mt-2">
+                      <div className="mt-2 flex flex-wrap gap-2">
                         {technologies.slice(0, 4).map((tech) => (
-                           <span key={tech} className="border border-thin px-2 py-1 text-[10px] md:text-xs uppercase tracking-widest font-mono">
-                             {tech}
-                           </span>
+                          <span
+                            key={tech}
+                            className="border-thin border px-2 py-1 font-mono text-[10px] tracking-widest uppercase md:text-xs"
+                          >
+                            {tech}
+                          </span>
                         ))}
                         {technologies.length > 4 && (
-                          <span className="border border-thin px-2 py-1 text-[10px] md:text-xs uppercase tracking-widest font-mono">
-                             +{technologies.length - 4}
+                          <span className="border-thin border px-2 py-1 font-mono text-[10px] tracking-widest uppercase md:text-xs">
+                            +{technologies.length - 4}
                           </span>
                         )}
                       </div>
@@ -144,9 +159,7 @@ export const ProjectsSection = () => {
               className="border-thin hover:bg-foreground hover:text-background"
               asChild
             >
-              <Link href="/projects">
-                Index of All Works
-              </Link>
+              <Link href="/projects">Index of All Works</Link>
             </Button>
           </motion.div>
         </motion.div>

@@ -50,19 +50,22 @@ export const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: isVisible ? 0 : -110, opacity: isVisible ? 1 : 0.98 }}
       transition={{ type: "spring", stiffness: 260, damping: 30, mass: 0.7 }}
-      className="fixed left-0 right-0 top-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md will-change-transform"
+      className="fixed top-0 right-0 left-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md will-change-transform"
     >
       <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between px-5 py-4 text-zinc-400 sm:px-8 md:py-5 lg:px-14">
         <Link
           href="/"
-          className="rounded-sm text-lg font-medium leading-none tracking-tight text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 sm:text-2xl md:text-[2rem]"
+          className="rounded-sm text-lg leading-none font-medium tracking-tight text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden sm:text-2xl md:text-[2rem]"
         >
           PARANDITHA
         </Link>
 
         {/* Navigasi utama (desktop) — beri label agar tak ambigu dgn versi mobile. */}
-        <nav aria-label="Navigasi utama" className="hidden flex-col gap-1 md:flex">
-          <span className="text-xl font-semibold leading-none text-white">
+        <nav
+          aria-label="Navigasi utama"
+          className="hidden flex-col gap-1 md:flex"
+        >
+          <span className="text-xl leading-none font-semibold text-white">
             Quick Links
           </span>
           <div className="flex flex-row gap-2 text-xl leading-none text-zinc-400">
@@ -70,7 +73,7 @@ export const Navbar = () => {
               <span key={link.name}>
                 <Link
                   href={link.href}
-                  className="rounded-sm transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                  className="rounded-sm transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden"
                 >
                   {link.name}
                 </Link>
@@ -80,7 +83,7 @@ export const Navbar = () => {
         </nav>
 
         <div className="hidden flex-col gap-1 text-right md:flex md:text-left">
-          <span className="text-xl font-semibold leading-none text-white">
+          <span className="text-xl leading-none font-semibold text-white">
             Based in Indonesia
           </span>
           <span className="text-xl leading-none text-zinc-400">
@@ -89,8 +92,11 @@ export const Navbar = () => {
         </div>
 
         {/* Navigasi utama (mobile) — landmark <nav> dgn label pembeda. */}
-        <nav aria-label="Navigasi utama (mobile)" className="flex flex-col gap-1 text-xs opacity-80 md:hidden">
-          <span className="text-xs font-semibold leading-none text-white">
+        <nav
+          aria-label="Navigasi utama (mobile)"
+          className="flex flex-col gap-1 text-xs opacity-80 md:hidden"
+        >
+          <span className="text-xs leading-none font-semibold text-white">
             Quick Links
           </span>
           <div className="flex flex-row gap-1 text-xs leading-none text-zinc-400">
@@ -98,7 +104,7 @@ export const Navbar = () => {
               <Link
                 key={link.name}
                 href={link.href}
-                className="rounded-sm leading-none transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+                className="rounded-sm leading-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden"
               >
                 {link.name}
               </Link>

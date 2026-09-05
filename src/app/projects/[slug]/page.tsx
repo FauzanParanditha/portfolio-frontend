@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/hooks/use-project";
 import { AnimatePresence, motion } from "framer-motion";
+import { GithubIcon } from "@/components/icons/BrandIcons";
 import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  Github,
   X,
 } from "lucide-react";
 import Image from "next/image";
@@ -33,7 +33,7 @@ const ProjectDetailPage = () => {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background px-6 py-16">
+      <div className="bg-background min-h-screen px-6 py-16">
         <div className="container mx-auto">
           <p className="text-muted-foreground">Loading project...</p>
         </div>
@@ -44,7 +44,7 @@ const ProjectDetailPage = () => {
   // Error / not found
   if (isError || !project) {
     return (
-      <div className="min-h-screen bg-background px-6 py-16">
+      <div className="bg-background min-h-screen px-6 py-16">
         <div className="container mx-auto space-y-4">
           <Button
             variant="ghost"
@@ -79,13 +79,13 @@ const ProjectDetailPage = () => {
   const technologies = project.tags?.map((t) => t.name) ?? [];
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="bg-background min-h-screen font-sans">
       {/* Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="sticky top-0 z-40 bg-background/80 py-6 backdrop-blur-md"
+        className="bg-background/80 sticky top-0 z-40 py-6 backdrop-blur-md"
       >
         <div className="container mx-auto flex items-center justify-between px-6 lg:px-12">
           <Button
@@ -105,7 +105,7 @@ const ProjectDetailPage = () => {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm font-medium tracking-wide opacity-70 transition-opacity hover:opacity-100"
               >
-                <Github className="h-4 w-4" /> Code
+                <GithubIcon className="h-4 w-4" /> Code
               </a>
             )}
             {project.demoUrl && (
@@ -133,30 +133,30 @@ const ProjectDetailPage = () => {
           >
             <div className="max-w-3xl">
               {project.category && (
-                <span className="mb-6 inline-block text-sm uppercase tracking-widest text-muted-foreground">
+                <span className="text-muted-foreground mb-6 inline-block text-sm tracking-widest uppercase">
                   {project.category}
                 </span>
               )}
               <h1 className="mb-8 text-5xl font-medium tracking-tight md:text-7xl lg:text-8xl">
                 {project.title}
               </h1>
-              <p className="text-xl leading-relaxed text-muted-foreground md:text-2xl">
+              <p className="text-muted-foreground text-xl leading-relaxed md:text-2xl">
                 {project.longDescription}
               </p>
             </div>
 
-            <div className="flex flex-col gap-4 text-sm tracking-wide text-foreground/80 md:min-w-[200px]">
+            <div className="text-foreground/80 flex flex-col gap-4 text-sm tracking-wide md:min-w-[200px]">
               {project.timeline && (
-                <div className="flex justify-between border-b border-border/40 pb-2">
-                  <span className="text-xs uppercase text-muted-foreground">
+                <div className="border-border/40 flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground text-xs uppercase">
                     Timeline
                   </span>
                   <span>{project.timeline}</span>
                 </div>
               )}
               {project.role && (
-                <div className="flex justify-between border-b border-border/40 pb-2">
-                  <span className="text-xs uppercase text-muted-foreground">
+                <div className="border-border/40 flex justify-between border-b pb-2">
+                  <span className="text-muted-foreground text-xs uppercase">
                     Role
                   </span>
                   <span>{project.role}</span>
@@ -176,7 +176,7 @@ const ProjectDetailPage = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="container mx-auto"
           >
-            <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted/20 md:aspect-[21/9]">
+            <div className="bg-muted/20 relative aspect-video w-full overflow-hidden md:aspect-21/9">
               <Image
                 src={project.coverImageUrl}
                 alt={project.title}
@@ -190,7 +190,7 @@ const ProjectDetailPage = () => {
 
             {/* Technologies (tags) Minimalist */}
             {technologies.length > 0 && (
-              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm uppercase tracking-widest text-muted-foreground">
+              <div className="text-muted-foreground mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm tracking-widest uppercase">
                 {technologies.map((tech, index) => (
                   <span key={tech + index}>{tech}</span>
                 ))}
@@ -222,7 +222,7 @@ const ProjectDetailPage = () => {
                 className="prose prose-lg dark:prose-invert"
               >
                 <h3 className="mb-6 text-xl font-medium">The Challenge</h3>
-                <p className="leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground leading-relaxed">
                   {project.challenge}
                 </p>
               </motion.div>
@@ -237,7 +237,7 @@ const ProjectDetailPage = () => {
                 className="prose prose-lg dark:prose-invert"
               >
                 <h3 className="mb-6 text-xl font-medium">The Solution</h3>
-                <p className="leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground leading-relaxed">
                   {project.solution}
                 </p>
               </motion.div>
@@ -263,9 +263,9 @@ const ProjectDetailPage = () => {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.1 }}
-                    className="flex gap-4 border-t border-border/40 pt-6"
+                    className="border-border/40 flex gap-4 border-t pt-6"
                   >
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-muted-foreground text-sm">
                       0{index + 1}
                     </span>
                     <span className="text-lg leading-relaxed">{result}</span>
@@ -299,7 +299,7 @@ const ProjectDetailPage = () => {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
                   onClick={() => setSelectedImage(index)}
-                  className="group relative aspect-[4/3] cursor-pointer overflow-hidden bg-muted/20"
+                  className="group bg-muted/20 relative aspect-4/3 cursor-pointer overflow-hidden"
                 >
                   <Image
                     src={screenshot}
@@ -308,7 +308,7 @@ const ProjectDetailPage = () => {
                     fill
                     unoptimized
                   />
-                  <div className="absolute inset-0 z-10 bg-background/0 transition-colors group-hover:bg-background/10" />
+                  <div className="bg-background/0 group-hover:bg-background/10 absolute inset-0 z-10 transition-colors" />
                 </motion.div>
               ))}
             </div>
@@ -323,14 +323,14 @@ const ProjectDetailPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background p-4 md:p-12"
+            className="bg-background fixed inset-0 z-50 flex items-center justify-center p-4 md:p-12"
             onClick={() => setSelectedImage(null)}
           >
             <button
               onClick={() => setSelectedImage(null)}
-              className="absolute right-6 top-6 z-50 text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground absolute top-6 right-6 z-50 transition-colors"
             >
-              <X className="h-8 w-8 text-foreground/50 hover:text-foreground" />
+              <X className="text-foreground/50 hover:text-foreground h-8 w-8" />
             </button>
 
             <button
@@ -338,7 +338,7 @@ const ProjectDetailPage = () => {
                 e.stopPropagation();
                 prevImage();
               }}
-              className="fixed left-6 top-1/2 z-50 hidden -translate-y-1/2 text-foreground/50 hover:text-foreground md:block"
+              className="text-foreground/50 hover:text-foreground fixed top-1/2 left-6 z-50 hidden -translate-y-1/2 md:block"
             >
               <ChevronLeft className="h-10 w-10" />
             </button>
@@ -363,7 +363,7 @@ const ProjectDetailPage = () => {
                 e.stopPropagation();
                 nextImage();
               }}
-              className="fixed right-6 top-1/2 z-50 hidden -translate-y-1/2 text-foreground/50 hover:text-foreground md:block"
+              className="text-foreground/50 hover:text-foreground fixed top-1/2 right-6 z-50 hidden -translate-y-1/2 md:block"
             >
               <ChevronRight className="h-10 w-10" />
             </button>
@@ -373,7 +373,7 @@ const ProjectDetailPage = () => {
 
       {(project.technicalDetails ||
         (project.features && project.features.length > 0)) && (
-        <section className="border-b border-t border-border/40 bg-muted/10 px-6 py-24 lg:px-12">
+        <section className="border-border/40 bg-muted/10 border-t border-b px-6 py-24 lg:px-12">
           <div className="container mx-auto max-w-6xl">
             <div className="grid gap-16 lg:grid-cols-2">
               {/* Technical Details */}
@@ -396,9 +396,9 @@ const ProjectDetailPage = () => {
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true }}
                           transition={{ delay: index * 0.1 }}
-                          className="flex flex-col gap-2 border-b border-border/40 py-4 sm:flex-row sm:gap-8"
+                          className="border-border/40 flex flex-col gap-2 border-b py-4 sm:flex-row sm:gap-8"
                         >
-                          <span className="min-w-[140px] text-xs uppercase tracking-widest text-muted-foreground">
+                          <span className="text-muted-foreground min-w-[140px] text-xs tracking-widest uppercase">
                             {key}
                           </span>
                           <span className="text-foreground">{value}</span>
@@ -430,7 +430,7 @@ const ProjectDetailPage = () => {
                         transition={{ delay: index * 0.1 }}
                         className="flex items-start gap-4"
                       >
-                        <span className="mt-1 text-sm text-muted-foreground opacity-50">
+                        <span className="text-muted-foreground mt-1 text-sm opacity-50">
                           0{index + 1}
                         </span>
                         <span className="text-lg">{feature.text}</span>
@@ -455,7 +455,7 @@ const ProjectDetailPage = () => {
           <h3 className="mb-6 text-4xl font-medium tracking-tight">
             Interested in similar solutions?
           </h3>
-          <p className="mb-10 text-xl text-muted-foreground">
+          <p className="text-muted-foreground mb-10 text-xl">
             Let&apos;s discuss how I can help bring your ideas to life.
           </p>
           <div className="flex flex-col justify-center gap-6 sm:flex-row">

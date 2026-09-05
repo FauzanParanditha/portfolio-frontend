@@ -73,9 +73,14 @@ Auth memakai **cookie HttpOnly `access_token`** yang di-set backend. Karena Http
 - Proteksi route admin saat ini **client-side** ([src/components/AdminGuard.tsx](src/components/AdminGuard.tsx) + cek `user` di [src/app/admin/layout.tsx](src/app/admin/layout.tsx)). Ini hanya menyembunyikan UI — keamanan nyata wajib ditegakkan backend.
 
 ### UI / Styling
-- **Tailwind CSS** (v3.4) + `cn()` dari [src/lib/utils.ts](src/lib/utils.ts) untuk menggabung class.
+- **Tailwind CSS v4** + `cn()` dari [src/lib/utils.ts](src/lib/utils.ts) untuk menggabung class.
+  Konfigurasi memakai pendekatan CSS-first v4: **tidak ada `tailwind.config.js`** — tema, plugin,
+  dan utility kustom didefinisikan langsung di [src/app/globals.css](src/app/globals.css) lewat
+  `@theme`, `@plugin`, `@utility`, dan `@custom-variant`.
 - Komponen `ui/` mengikuti pola **shadcn/ui** (Radix + class-variance-authority). Saat butuh primitive baru, ikuti gaya file yang sudah ada.
 - Ikon: `lucide-react`. Animasi: `framer-motion`. Toast/notif: `sonner` + hook `use-toast`.
+  lucide-react v1 **tidak lagi memuat ikon brand**; GitHub & LinkedIn disediakan lokal di
+  [src/components/icons/BrandIcons.tsx](src/components/icons/BrandIcons.tsx).
 - Menu sidebar admin: tambah/ubah hanya di [src/components/admin/sidebar.config.ts](src/components/admin/sidebar.config.ts).
 
 ### Validasi & Error

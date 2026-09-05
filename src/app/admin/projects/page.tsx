@@ -17,7 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { toProjectUpsertPayload } from "@/lib/mapper/project";
 import { Project } from "@/types/project";
 import { motion } from "framer-motion";
-import { Edit, ExternalLink, Github, Plus, Trash2 } from "lucide-react";
+import { GithubIcon } from "@/components/icons/BrandIcons";
+import { Edit, ExternalLink, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -198,7 +199,7 @@ const AdminProjects = () => {
                 Add Project
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto bg-white text-muted-foreground">
+            <DialogContent className="text-muted-foreground max-h-[90vh] max-w-2xl overflow-y-auto bg-white">
               <DialogHeader>
                 <DialogTitle className="text-muted-foreground">
                   {editingProject ? "Edit Project" : "Add New Project"}
@@ -206,7 +207,7 @@ const AdminProjects = () => {
               </DialogHeader>
               <form
                 onSubmit={handleSubmit}
-                className="space-y-4 text-muted-foreground"
+                className="text-muted-foreground space-y-4"
               >
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -408,7 +409,7 @@ const AdminProjects = () => {
                       "deployment",
                     ].map((k) => (
                       <div key={k} className="space-y-1">
-                        <Label className="text-xs capitalize text-muted-foreground">
+                        <Label className="text-muted-foreground text-xs capitalize">
                           {k}
                         </Label>
                         <Input
@@ -433,7 +434,7 @@ const AdminProjects = () => {
                   <Label className="text-muted-foreground">Tags</Label>
 
                   {tagsLoading ? (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-muted-foreground text-sm">
                       Loading tags...
                     </div>
                   ) : (
@@ -445,7 +446,7 @@ const AdminProjects = () => {
                         return (
                           <label
                             key={t.id}
-                            className="flex items-center gap-2 rounded-md border px-3 py-1 text-sm text-muted-foreground"
+                            className="text-muted-foreground flex items-center gap-2 rounded-md border px-3 py-1 text-sm"
                           >
                             <input
                               type="checkbox"
@@ -491,7 +492,7 @@ const AdminProjects = () => {
                   />
                 </div>
 
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <label className="text-muted-foreground flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
                     checked={formData.isFeatured}
@@ -533,9 +534,9 @@ const AdminProjects = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="overflow-hidden rounded-xl border border-border bg-card bg-white shadow-sm"
+              className="border-border bg-card overflow-hidden rounded-xl border bg-white shadow-xs"
             >
-              <div className="relative aspect-video bg-muted">
+              <div className="bg-muted relative aspect-video">
                 {/* URL cover berasal dari input bebas (host sembarang), jadi
                     pakai unoptimized agar tak terikat allowlist next.config. */}
                 {project.coverImageUrl ? (
@@ -548,7 +549,7 @@ const AdminProjects = () => {
                     className="object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                  <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
                     Tanpa gambar
                   </div>
                 )}
@@ -557,7 +558,7 @@ const AdminProjects = () => {
                 <h3 className="mb-1 font-semibold text-black">
                   {project.title}
                 </h3>
-                <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mb-3 line-clamp-2 text-sm">
                   {project.shortDesc}
                 </p>
                 <div className="mb-4 flex flex-wrap gap-1">
@@ -569,7 +570,7 @@ const AdminProjects = () => {
                     .map((label) => (
                       <span
                         key={label}
-                        className="rounded bg-muted px-2 py-1 text-xs"
+                        className="bg-muted rounded px-2 py-1 text-xs"
                       >
                         {label}
                       </span>
@@ -578,7 +579,7 @@ const AdminProjects = () => {
                   {(project.tags?.length
                     ? project.tags.length
                     : project.features.length) > 3 && (
-                    <span className="rounded bg-muted px-2 py-1 text-xs">
+                    <span className="bg-muted rounded px-2 py-1 text-xs">
                       +
                       {(project.tags?.length
                         ? project.tags.length
@@ -605,7 +606,7 @@ const AdminProjects = () => {
                         rel="noopener noreferrer"
                         className="text-muted-foreground hover:text-black"
                       >
-                        <Github className="h-4 w-4" />
+                        <GithubIcon className="h-4 w-4" />
                       </a>
                     )}
                   </div>
@@ -633,8 +634,8 @@ const AdminProjects = () => {
         </div>
 
         {projects.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="mb-4 text-muted-foreground">No projects yet</p>
+          <div className="border-border bg-card rounded-xl border border-dashed p-12 text-center">
+            <p className="text-muted-foreground mb-4">No projects yet</p>
             <Button
               variant="outline"
               onClick={() => setIsOpen(true)}

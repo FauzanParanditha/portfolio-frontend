@@ -32,16 +32,16 @@ export const HeroSection = () => {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative flex w-full flex-grow flex-col"
+        className="relative flex w-full grow flex-col"
       >
         {/* Main Content Area */}
-        <div className="relative mx-auto flex w-full max-w-[1400px] flex-grow flex-col px-5 pt-6 sm:px-8 md:pt-10 lg:px-14">
+        <div className="relative mx-auto flex w-full max-w-[1400px] grow flex-col px-5 pt-6 sm:px-8 md:pt-10 lg:px-14">
           {/* Main Headline */}
           <motion.div
             variants={itemVariants}
             className="relative z-10 max-w-3xl"
           >
-            <h1 className="text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl md:text-5xl lg:text-[4rem]">
+            <h1 className="text-4xl leading-[1.05] font-medium tracking-tight sm:text-5xl md:text-5xl lg:text-[4rem]">
               Building reliable web
               <br />
               applications with clean
@@ -55,11 +55,11 @@ export const HeroSection = () => {
           {/* Floating Focus Card */}
           <motion.div
             variants={itemVariants}
-            className="absolute right-14 top-8 z-20 hidden w-[400px] flex-col gap-4 rounded-lg bg-white p-6 text-black shadow-2xl lg:flex"
+            className="absolute top-8 right-14 z-20 hidden w-[400px] flex-col gap-4 rounded-lg bg-white p-6 text-black shadow-2xl lg:flex"
           >
             {/* Kartu latar putih: override eyebrow ke zinc-600 (7.73:1 di putih). */}
             <p className="eyebrow text-zinc-600">Current Focus</p>
-            <p className="text-2xl font-semibold leading-tight">
+            <p className="text-2xl leading-tight font-semibold">
               Scalable product features, readable code, and measurable business
               outcomes.
             </p>
@@ -84,7 +84,7 @@ export const HeroSection = () => {
         <div className="z-10 mx-auto mt-6 w-full max-w-[1400px] px-5 sm:px-8 md:mt-10 lg:px-14">
           <motion.div
             variants={itemVariants}
-            className="hide-scrollbar eyebrow flex h-auto w-full justify-between gap-3 overflow-x-auto whitespace-nowrap bg-white py-1.5 text-black md:justify-around md:gap-4"
+            className="hide-scrollbar eyebrow flex h-auto w-full justify-between gap-3 overflow-x-auto bg-white py-1.5 whitespace-nowrap text-black md:justify-around md:gap-4"
           >
             <span>Web Development</span>
             <span>API Engineering</span>
@@ -93,13 +93,13 @@ export const HeroSection = () => {
         </div>
 
         {/* Massive Bottom Text */}
-        <div className="relative mt-4 flex w-full flex-grow items-center overflow-hidden md:mt-8">
+        <div className="relative mt-4 flex w-full grow items-center overflow-hidden md:mt-8">
           <div className="mx-auto w-full max-w-[1400px] px-5 sm:px-8 lg:px-14">
             <motion.div
               variants={itemVariants}
               className="flex items-start tracking-tighter"
             >
-              <span className="text-[clamp(2.5rem,14vw,205px)] font-bold leading-none text-white">
+              <span className="text-[clamp(2.5rem,14vw,205px)] leading-none font-bold text-white">
                 PARANDITHA
               </span>
             </motion.div>
