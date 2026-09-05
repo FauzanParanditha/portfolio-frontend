@@ -10,6 +10,7 @@ import { useGuestRedirect } from "@/hooks/use-guest-redirects";
 import { toast } from "@/hooks/use-toast";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import { loginSchema } from "@/schema/loginSchema";
+import Link from "next/link";
 import { useState } from "react";
 
 export const metadata = {
@@ -55,7 +56,7 @@ export default function LoginFormPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-blue-100 to-purple-100 px-4">
       {/* Hapus <title> karena sudah ada metadata */}
 
       <AnimatedCard className="w-full max-w-md space-y-6">
@@ -100,13 +101,13 @@ export default function LoginFormPage() {
           </button>
         </form>
 
-        <div className="flex justify-between text-center text-sm">
-          <a
+        <div className="text-center text-sm">
+          <Link
             href="/auth/forgot-password"
             className="text-cyan-600 hover:underline"
           >
-            Forgot Password?
-          </a>
+            Lupa password?
+          </Link>
         </div>
       </AnimatedCard>
     </div>

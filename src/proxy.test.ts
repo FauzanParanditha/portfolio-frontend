@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
-import { proxy } from "@/proxy";
+import { isGateEnabled, proxy } from "@/proxy";
 import { jwtConfig } from "@/utils/var";
 
 const ACCESS_TOKEN_COOKIE = jwtConfig.admin.accessTokenName;
@@ -27,6 +27,36 @@ function makeRequest(
 }
 
 describe("proxy (gate presence-check admin)", () => {
+  // Regresi: nama cookie HARUS sama persis dengan yang di-set backend
+  // (`accessTokenCookieName = "access_token"` di auth_handler.go). Test lain
+  // di berkas ini memakai konstanta yang sama untuk mock, jadi mereka tetap
+  // hijau walau namanya melenceng — pengecekan literal inilah pengamannya.
+  it("memakai nama cookie yang sama dengan backend", () => {
+    expect(ACCESS_TOKEN_COOKIE).toBe("access_token");
+  });
+
+  // Gate bisa dimatikan untuk deploy lintas-domain, saat cookie backend memang
+  // tidak pernah terkirim ke domain frontend. Salah ketik TIDAK boleh diam-diam
+  // melumpuhkan gate, jadi hanya nilai "mati" yang eksplisit yang diterima.
+  describe("isGateEnabled", () => {
+    it("aktif secara default (env tidak di-set atau kosong)", () => {
+      expect(isGateEnabled(undefined)).toBe(true);
+      expect(isGateEnabled("")).toBe(true);
+    });
+
+    it("mati untuk nilai mati yang dikenal, apa pun kapitalisasinya", () => {
+      for (const v of ["off", "OFF", " false ", "0", "disabled"]) {
+        expect(isGateEnabled(v)).toBe(false);
+      }
+    });
+
+    it("tetap aktif untuk nilai tak dikenal (mis. salah ketik)", () => {
+      for (const v of ["on", "true", "1", "offf", "nonaktif"]) {
+        expect(isGateEnabled(v)).toBe(true);
+      }
+    });
+  });
+
   it("/admin tanpa cookie → redirect ke /auth/login dengan ?redirect=%2Fadmin", () => {
     const res = proxy(makeRequest("/admin", "", false));
 

@@ -27,17 +27,17 @@ const AdminOverview = () => {
       sub: overview
         ? `${overview.experiences.current} current • ${overview.experiences.recentCount} recent`
         : "",
-      path: "/admin/experience",
+      path: "/admin/experiences",
       color: "bg-green-500/10 text-green-500",
     },
     {
       icon: Mail,
-      label: "Contact Info",
+      label: "Contact Messages",
       value: overview?.contactMessages.total ?? 0,
       sub: overview
         ? `${overview.contactMessages.unread} unread • ${overview.contactMessages.recentCount} recent`
         : "",
-      path: "/admin/contact",
+      path: "/admin/contact-messages",
       color: "bg-orange-500/10 text-orange-500",
     },
   ];
@@ -52,7 +52,7 @@ const AdminOverview = () => {
           <h1 className="mb-2 text-3xl font-bold text-black">
             Dashboard Overview
           </h1>
-          <p className="mb-8 text-muted-foreground">
+          <p className="text-muted-foreground mb-8">
             {isLoading
               ? "Loading overview..."
               : error
@@ -72,7 +72,7 @@ const AdminOverview = () => {
               >
                 <Link
                   href={stat.path}
-                  className="block rounded-xl border border-border bg-white p-6 transition-colors hover:border-primary/50"
+                  className="border-border hover:border-primary/50 block rounded-xl border bg-white p-6 transition-colors"
                 >
                   <div
                     className={`mb-4 flex h-12 w-12 items-center justify-center rounded-lg ${stat.color}`}
@@ -87,7 +87,7 @@ const AdminOverview = () => {
                   <p className="text-muted-foreground">{stat.label}</p>
 
                   {stat.sub ? (
-                    <p className="mt-2 text-xs text-muted-foreground">
+                    <p className="text-muted-foreground mt-2 text-xs">
                       {stat.sub}
                     </p>
                   ) : null}
