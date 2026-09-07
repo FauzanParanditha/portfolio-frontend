@@ -57,7 +57,7 @@ export const IntroOverlay = () => {
         </div>
 
         <div className="intro-overlay__foot">
-          <span>Fullstack Developer</span>
+          <span>Fullstack Programmer</span>
           <span>Go &middot; Next.js</span>
         </div>
       </div>

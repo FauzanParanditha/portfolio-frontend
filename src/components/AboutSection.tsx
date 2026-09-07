@@ -88,11 +88,11 @@ export const AboutSection = () => {
             className="flex flex-col gap-16 md:col-span-7"
           >
             <p className="text-xl leading-relaxed font-medium md:text-3xl">
-              With over 5 years of experience in fullstack development, I
-              specialize in creating scalable web applications that deliver
-              exceptional user experiences. I am passionate about clean
-              architecture, brutalist design, and solving complex problems with
-              ruthless efficiency.
+              With over 5 years of experience in fullstack development, I build
+              web applications that stay maintainable as they grow. I work
+              across the stack — Go APIs, PostgreSQL, and Next.js interfaces —
+              and care about clean architecture, versioned migrations, and tests
+              that make refactoring safe.
             </p>
 
             {/* Capabilities Grid */}

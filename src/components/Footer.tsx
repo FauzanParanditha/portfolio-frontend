@@ -43,8 +43,8 @@ export const Footer = () => {
               Fauzan <br /> Paranditha
             </div>
             <p className="max-w-lg text-xl leading-relaxed font-medium mix-blend-difference md:text-2xl">
-              Brutal efficiency. Elegant implementation. I build digital
-              realities for modern brands.
+              Backend-leaning fullstack programmer. I build Go APIs and Next.js
+              interfaces that stay readable as the product grows.
             </p>
           </div>
 

@@ -90,11 +90,11 @@ export const HeroSection = () => {
         style={{ animationDelay: "600ms" }}
       >
         <div className="eyebrow mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-3 px-5 py-3 sm:px-8 md:flex-row md:gap-0 md:py-6 lg:px-14">
-          <div className="flex items-center">© Fullstack Engineering</div>
+          <div className="flex items-center">© Fauzan Paranditha</div>
           {/* opacity dihapus: zinc-400 (7.76:1) sudah cukup redup & tetap lolos AA. */}
           <div className="md:-ml-12">(Portfolio - 2026)</div>
           <div className="flex items-center gap-4">
-            <span>Programmer</span>
+            <span>Fullstack Programmer</span>
             <div className="h-4 w-12 rounded-[4px] bg-white opacity-90"></div>
           </div>
         </div>
