@@ -6,7 +6,11 @@ import { HeroSection } from "@/components/HeroSection";
 import { IntroOverlay } from "@/components/IntroOverlay";
 import { Navbar } from "@/components/Navbar";
 import { ProjectsSection } from "@/components/ProjectsSection";
-import { getExperiences, getFeaturedProjects } from "@/lib/server/portfolio";
+import {
+  getExperiences,
+  getFeaturedProjects,
+  getTags,
+} from "@/lib/server/portfolio";
 
 /**
  * Beranda — komponen SERVER.
@@ -27,9 +31,10 @@ export const revalidate = 300;
 
 export default async function Home() {
   // Diambil paralel — keduanya tidak saling bergantung.
-  const [projects, experiences] = await Promise.all([
+  const [projects, experiences, tags] = await Promise.all([
     getFeaturedProjects(),
     getExperiences(),
+    getTags(),
   ]);
 
   return (
@@ -48,7 +53,7 @@ export default async function Home() {
 
       <main id="main">
         <HeroSection />
-        <AboutSection />
+        <AboutSection tags={tags} />
         <ExperienceSection experiences={experiences} />
         <ProjectsSection projects={projects} />
         <ContactSection />

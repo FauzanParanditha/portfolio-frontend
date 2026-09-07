@@ -33,6 +33,12 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
 - [x] **Unggah berkas di panel admin.** `POST /admin/uploads` + tombol unggah di
       form proyek (cover & screenshot). Jenis berkas ditentukan dari isinya;
       SVG ditolak karena bisa memuat skrip.
+- [x] **Skill di About dari API tag.** Grid keahlian tidak lagi ditulis manual;
+      disusun dari `GET /api/v1/tags` (endpoint publik baru) dan dikelompokkan
+      per `type`. Menambah keahlian cukup lewat `/admin/tags`, tanpa deploy.
+      14 keahlian yang dulu hardcode sudah dipindahkan ke database supaya tidak
+      ada konten yang hilang — silakan pangkas yang sudah tidak relevan lewat
+      panel.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -124,6 +130,16 @@ React terhidrasi.
 Perbaikannya: reveal berbasis CSS (`animation-timeline: view()` dengan
 `@supports` yang jatuh ke "selalu terlihat"), sama seperti `rise-in` yang sudah
 dipakai hero. Bisa digabung dengan pekerjaan motion di bawah.
+
+### 9b. Tipe tag baru butuh ikon
+
+`AboutSection` memetakan tipe tag ke ikon lewat `ICON_BY_TYPE`. Tipe yang belum
+terdaftar jatuh ke ikon generik dan tetap tampil — tidak rusak, hanya kurang
+khas. Kalau menambah tipe baru di `/admin/tags` (mis. `mobile`, `testing`),
+tambahkan juga ikonnya di peta tersebut.
+
+Perlu diketahui: perubahan tag baru muncul di beranda dalam **maksimal 5 menit**
+(`revalidate = 300` di `app/page.tsx`), bukan seketika.
 
 ### 10. `src/hooks/use-experiences.ts` jadi kode mati
 

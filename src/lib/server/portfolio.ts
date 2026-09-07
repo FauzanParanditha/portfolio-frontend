@@ -1,5 +1,6 @@
 import type {
   Experience,
+  ExperienceTag,
   ApiListResponse as ExperienceListResponse,
 } from "@/types/experience";
 import type {
@@ -72,4 +73,16 @@ export async function getExperiences(): Promise<Experience[]> {
   const json =
     await getJson<ExperienceListResponse<Experience>>("/experiences");
   return (json?.data ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/**
+ * Seluruh tag beserta tipenya, dipakai menyusun grid keahlian di section About.
+ *
+ * Endpoint `/tags` bersifat publik & read-only; pengelolaannya tetap lewat
+ * `/admin/tags`. Jadi menambah keahlian di situs cukup dilakukan dari panel,
+ * tanpa menyentuh kode lagi.
+ */
+export async function getTags(): Promise<ExperienceTag[]> {
+  const json = await getJson<{ data: ExperienceTag[] }>("/tags");
+  return json?.data ?? [];
 }
