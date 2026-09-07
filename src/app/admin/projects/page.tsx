@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminProjects } from "@/hooks/use-admin-projects";
+import { UploadButton } from "@/components/admin/UploadButton";
 import { useAdminTags } from "@/hooks/use-admin-tags";
 import { useToast } from "@/hooks/use-toast";
 import { toProjectUpsertPayload } from "@/lib/mapper/project";
@@ -462,7 +463,15 @@ const AdminProjects = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">Image URL</Label>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-muted-foreground">Image URL</Label>
+                    <UploadButton
+                      label="Unggah cover"
+                      onUploaded={(url) =>
+                        setFormData((prev) => ({ ...prev, coverImageUrl: url }))
+                      }
+                    />
+                  </div>
                   <Input
                     value={formData.coverImageUrl}
                     onChange={(e) =>
@@ -471,13 +480,32 @@ const AdminProjects = () => {
                         coverImageUrl: e.target.value,
                       })
                     }
+                    placeholder="Tempel URL, atau pakai tombol unggah"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-muted-foreground">
-                    Screenshots URLs (1 line = 1 url)
-                  </Label>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-muted-foreground">
+                      Screenshots URLs (1 line = 1 url)
+                    </Label>
+                    <UploadButton
+                      label="Tambah screenshot"
+                      onUploaded={(url) =>
+                        // Unggahan MENAMBAH baris, tidak menimpa daftar yang ada.
+                        setFormData((prev) => ({
+                          ...prev,
+                          screenshots: [
+                            ...(prev.screenshots ?? []),
+                            {
+                              imageUrl: url,
+                              sortOrder: (prev.screenshots ?? []).length + 1,
+                            },
+                          ],
+                        }))
+                      }
+                    />
+                  </div>
                   <Textarea
                     value={screenshotsToText(formData.screenshots)}
                     onChange={(e) =>

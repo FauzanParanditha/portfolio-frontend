@@ -19,11 +19,26 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
+    // Host gambar yang boleh dioptimasi next/image.
+    //
+    // Berkas yang diunggah lewat panel admin dilayani backend dari
+    // `{APP_PUBLIC_URL}/uploads/...`, jadi host backend harus terdaftar di sini
+    // supaya gambarnya bisa melewati optimasi — bukan dilewati dengan
+    // `unoptimized` seperti sebelumnya.
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      ...(process.env.NEXT_PUBLIC_API_URL
+        ? [
+            {
+              protocol: new URL(
+                process.env.NEXT_PUBLIC_API_URL,
+              ).protocol.replace(":", "") as "http" | "https",
+              hostname: new URL(process.env.NEXT_PUBLIC_API_URL).hostname,
+              port: new URL(process.env.NEXT_PUBLIC_API_URL).port || undefined,
+              pathname: "/uploads/**",
+            },
+          ]
+        : []),
     ],
   },
   async headers() {

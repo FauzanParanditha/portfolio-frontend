@@ -30,11 +30,26 @@ Dua artifact rujukan:
 Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar**
 — tidak perlu diubah.
 
+- [x] **Unggah berkas di panel admin.** `POST /admin/uploads` + tombol unggah di
+      form proyek (cover & screenshot). Jenis berkas ditentukan dari isinya;
+      SVG ditolak karena bisa memuat skrip.
+- [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
+      tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
+      kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
+
 > ⚠️ **Butuh tindakan Anda:** tombol "Download CV" hanya muncul bila
 > `NEXT_PUBLIC_CV_URL` diisi. Taruh berkas CV di `public/cv/` lalu set
 > path-nya di `.env.local` (contoh ada di `.env.example`). Selama kosong,
 > tombolnya sengaja disembunyikan agar recruiter tidak mendarat di 404 —
 > dan `next dev` akan mengingatkan lewat peringatan di konsol.
+>
+> Kini ada jalan pintas: unggah PDF CV lewat tombol unggah mana pun di form
+> proyek admin (backend menerima PDF), salin URL yang dibalas, lalu tempel ke
+> `NEXT_PUBLIC_CV_URL`. Tombol unggah khusus CV belum dibuat.
+
+> ⚠️ **Butuh tindakan Anda juga:** isi `NEXT_PUBLIC_CONTACT_PHONE` di
+> `.env.local` supaya baris WhatsApp muncul kembali. Nilainya dipakai untuk
+> teks sekaligus tautan `wa.me` (karakter non-angka dibuang otomatis).
 
 ---
 
@@ -72,8 +87,14 @@ mentah — tidak ada penyesuaian ukuran maupun WebP. Untuk portfolio berisi
 tangkapan layar, ini beban terbesar.
 
 Solusinya **bukan** `unoptimized` (yang dipakai di `projects/[slug]`), melainkan
-mendaftarkan host gambar di `next.config.ts` → `images.remotePatterns`. Saat ini
-baru `images.unsplash.com` yang terdaftar.
+mendaftarkan host gambar di `next.config.ts` → `images.remotePatterns`.
+
+**Sudah tidak terhalang lagi.** Host backend kini otomatis terdaftar di
+`remotePatterns` (diturunkan dari `NEXT_PUBLIC_API_URL`, dibatasi ke
+`/uploads/**`), jadi gambar yang diunggah lewat panel admin sudah boleh melewati
+optimasi. Sisa pekerjaannya: ganti tag `<img>` mentah di `ProjectsSection` dan
+`app/projects/page.tsx` dengan `next/image`, lalu buang `unoptimized` di
+`projects/[slug]`.
 
 ### 7. Hapus `public/videos/hero.mp4` · 5 menit
 

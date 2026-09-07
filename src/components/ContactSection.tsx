@@ -89,21 +89,41 @@ export const ContactSection = () => {
     }
   };
 
-  const contactInfo = [
+  // Kontak diambil dari env supaya nilainya bisa diisi tanpa menyentuh kode.
+  // Telepon SENGAJA disembunyikan bila kosong: sebelumnya nilainya masih
+  // placeholder "+62" dengan tautan ke https://wa.me/62 — recruiter yang
+  // mengkliknya mendarat di halaman WhatsApp yang tidak valid. Lebih baik
+  // barisnya absen daripada menawarkan kontak yang tidak bisa dihubungi.
+  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "paranditha@gmail.com";
+  const phone = process.env.NEXT_PUBLIC_CONTACT_PHONE;
+  const location =
+    process.env.NEXT_PUBLIC_CONTACT_LOCATION ?? "Tangerang Selatan, ID";
+
+  const contactInfo: {
+    title: string;
+    value: string;
+    href?: string;
+  }[] = [
     {
       title: "Email",
-      value: "paranditha@gmail.com",
-      href: "mailto:paranditha@gmail.com",
+      value: email,
+      href: `mailto:${email}`,
     },
+    ...(phone
+      ? [
+          {
+            title: "WhatsApp",
+            value: phone,
+            // wa.me hanya menerima angka: buang spasi, tanda plus, dan tanda hubung.
+            href: `https://wa.me/${phone.replace(/\D/g, "")}`,
+          },
+        ]
+      : []),
     {
-      title: "Phone",
-      value: "+62",
-      href: "https://wa.me/62",
-    },
-    {
+      // Lokasi bukan aksi — dulu ditautkan ke situs kantor, yang membingungkan.
+      // Kini teks biasa tanpa tautan.
       title: "Location",
-      value: "Tangerang Selatan, ID",
-      href: "https://pandi.id",
+      value: location,
     },
   ];
 
@@ -145,20 +165,35 @@ export const ContactSection = () => {
               </p>
 
               <div className="flex w-full max-w-sm flex-col gap-6">
-                {contactInfo.map((item, idx) => (
-                  <a
-                    key={item.title}
-                    href={item.href}
-                    className="group border-thin flex flex-col border-b pb-4 transition-opacity hover:opacity-70"
-                  >
-                    <span className="eyebrow mb-2">
-                      (0{idx + 1}) {item.title}
-                    </span>
-                    <span className="text-xl font-medium tracking-tight underline-offset-4 group-hover:underline">
-                      {item.value}
-                    </span>
-                  </a>
-                ))}
+                {contactInfo.map((item, idx) => {
+                  const body = (
+                    <>
+                      <span className="eyebrow mb-2">
+                        (0{idx + 1}) {item.title}
+                      </span>
+                      <span className="text-xl font-medium tracking-tight underline-offset-4 group-hover:underline">
+                        {item.value}
+                      </span>
+                    </>
+                  );
+
+                  return item.href ? (
+                    <a
+                      key={item.title}
+                      href={item.href}
+                      className="group border-thin flex flex-col border-b pb-4 transition-opacity hover:opacity-70"
+                    >
+                      {body}
+                    </a>
+                  ) : (
+                    <div
+                      key={item.title}
+                      className="group border-thin flex flex-col border-b pb-4"
+                    >
+                      {body}
+                    </div>
+                  );
+                })}
               </div>
             </motion.div>
 
