@@ -1,14 +1,22 @@
 "use client";
 
-import { useExperiences } from "@/hooks/use-experiences";
+import type { Experience } from "@/types/experience";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 
-export const ExperienceSection = () => {
+/**
+ * Riwayat pengalaman di beranda.
+ *
+ * Sama seperti ProjectsSection: data datang sebagai prop dari komponen server,
+ * sudah terurut, sehingga seluruh isinya terkirim di HTML pertama.
+ */
+export const ExperienceSection = ({
+  experiences,
+}: {
+  experiences: Experience[];
+}) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  const { experiences, isLoading, isError } = useExperiences();
 
   const containerVariants = {
     hidden: { opacity: 0 },

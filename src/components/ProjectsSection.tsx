@@ -1,20 +1,26 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useProjects } from "@/hooks/use-projects";
+import type { Project } from "@/types/portfolio";
 import { motion, useInView } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import taskManagerImg from "@/assets/project-taskmanager.jpg";
 import Link from "next/link";
 
-export const ProjectsSection = () => {
+/**
+ * Daftar proyek unggulan di beranda.
+ *
+ * Datanya kini datang sebagai prop dari komponen server (lihat
+ * `src/lib/server/portfolio.ts`), bukan lagi diambil SWR di browser — sehingga
+ * judul, deskripsi, dan tag setiap proyek sudah ada di HTML pertama. Komponen
+ * ini tetap "use client" karena animasi reveal-nya, tapi tidak lagi menahan
+ * isi apa pun di balik permintaan jaringan.
+ */
+export const ProjectsSection = ({ projects }: { projects: Project[] }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
-
-  const { projects, isLoading, isError } = useProjects({ featured: true });
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -64,18 +70,12 @@ export const ProjectsSection = () => {
             <div className="eyebrow hidden md:block">[ RECENT PROJECTS ]</div>
           </motion.div>
 
-          {isLoading && <p className="eyebrow">Loading records...</p>}
-
-          {isError && !isLoading && (
-            <p className="eyebrow text-red-500">Failed to load records.</p>
-          )}
-
-          {!isLoading && !isError && projects.length === 0 && (
+          {projects.length === 0 && (
             <p className="eyebrow">No featured works available.</p>
           )}
 
           {/* Projects Grid */}
-          {!isLoading && !isError && projects.length > 0 && (
+          {projects.length > 0 && (
             <motion.div
               variants={containerVariants}
               initial="hidden"
@@ -89,8 +89,6 @@ export const ProjectsSection = () => {
                   <motion.div
                     key={project.id}
                     variants={itemVariants}
-                    onHoverStart={() => setHoveredProject(project.id)}
-                    onHoverEnd={() => setHoveredProject(null)}
                     className="group relative flex flex-col gap-6"
                   >
                     {/* Project Image */}

@@ -251,3 +251,137 @@
     }
   }
 }
+
+/* ==========================================================================
+   Intro pembuka (lihat src/components/IntroOverlay.tsx)
+
+   Seluruhnya CSS: tidak ada timer JavaScript, sehingga intro tetap menyingkir
+   meski JS gagal dimuat. `pointer-events: none` membuat isi di bawahnya bisa
+   langsung digulir dan diklik — intro tidak pernah menahan siapa pun.
+   ========================================================================== */
+@layer components {
+  .intro-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.5rem;
+    background: #000;
+    color: #fff;
+    pointer-events: none;
+    animation: intro-dismiss 1600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @media (min-width: 768px) {
+    .intro-overlay {
+      padding: 2.5rem;
+    }
+  }
+
+  /* Sudah pernah tampil di sesi ini → langsung lewati. */
+  html[data-intro="seen"] .intro-overlay {
+    display: none;
+  }
+
+  .intro-overlay__dot {
+    align-self: flex-end;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #d4d4d8;
+  }
+
+  .intro-overlay__center {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .intro-overlay__word {
+    display: flex;
+    letter-spacing: -0.05em;
+  }
+
+  .intro-overlay__letter {
+    font-size: clamp(2.5rem, 13vw, 205px);
+    line-height: 1;
+    font-weight: 700;
+    color: #333;
+    animation: intro-letter 200ms ease-out forwards;
+  }
+
+  .intro-overlay__foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #a1a1aa;
+  }
+
+  /* Hormati preferensi pengguna: intro dilewati sepenuhnya. */
+  @media (prefers-reduced-motion: reduce) {
+    .intro-overlay {
+      display: none;
+    }
+  }
+}
+
+@keyframes intro-dismiss {
+  0%,
+  62% {
+    opacity: 1;
+    visibility: visible;
+  }
+  99% {
+    opacity: 0;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes intro-letter {
+  to {
+    color: #fff;
+  }
+}
+
+/* ==========================================================================
+   Entrance hero — sengaja CSS, bukan framer-motion.
+
+   Animasi CSS mulai begitu markup di-parse, tanpa menunggu hidrasi React.
+   Dengan framer-motion, teks hero tertulis `opacity: 0` di HTML dan baru
+   terlihat setelah JS berjalan — persis yang membuat beranda tampak kosong
+   bagi pengunjung berkoneksi lambat.
+   ========================================================================== */
+@layer utilities {
+  .rise-in {
+    animation: rise-in 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise-in {
+      animation: none;
+    }
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
