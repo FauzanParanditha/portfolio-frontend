@@ -15,52 +15,42 @@
  * 3. Hilang sendiri lewat animasi CSS, bukan timer JavaScript. Kalau JS gagal
  *    dimuat sekalipun, intro tetap menyingkir dan isi tetap terbaca.
  *
- * Skrip kecil di bawah menandai sesi supaya kunjungan berikutnya langsung
- * melihat isi tanpa intro. Ia sengaja ditaruh SEBELUM markup intro agar sudah
- * dieksekusi saat parser mencapai elemennya — tanpa kedip.
+ * Penandaan sesi (supaya kunjungan berikutnya langsung melihat isi tanpa intro)
+ * TIDAK ditangani di sini. Skripnya dipasang lewat `next/script` dengan
+ * strategy `beforeInteractive` di app/layout.tsx.
+ *
+ * Alasannya: `<script>` yang dirender di dalam komponen React hanya dieksekusi
+ * saat HTML awal di-parse. Pada navigasi sisi klien, React merender ulang tag
+ * itu tanpa menjalankannya — React sendiri memperingatkan hal ini. Menaruhnya
+ * di layout lewat next/script membuatnya benar-benar masuk ke dokumen dan
+ * berjalan sebelum hidrasi.
  */
-
-const INTRO_SESSION_SCRIPT = `
-try {
-  if (sessionStorage.getItem('introSeen')) {
-    document.documentElement.setAttribute('data-intro', 'seen');
-  } else {
-    sessionStorage.setItem('introSeen', '1');
-  }
-} catch (e) {
-  /* mode privat / storage diblokir — intro tampil seperti biasa */
-}
-`.trim();
 
 const NAME = "PARANDITHA";
 
 export const IntroOverlay = () => {
   return (
-    <>
-      <script dangerouslySetInnerHTML={{ __html: INTRO_SESSION_SCRIPT }} />
+    <div className="intro-overlay" aria-hidden="true">
+      <div className="intro-overlay__dot" />
 
-      <div className="intro-overlay" aria-hidden="true">
-        <div className="intro-overlay__dot" />
-
-        <div className="intro-overlay__center">
-          <div className="intro-overlay__word">
-            {NAME.split("").map((letter, i) => (
-              <span
-                key={i}
-                className="intro-overlay__letter"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                {letter}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="intro-overlay__foot">
-          <span>Fullstack Programmer</span>
-          <span>Go &middot; Next.js</span>
+      <div className="intro-overlay__center">
+        <div className="intro-overlay__word">
+          {NAME.split("").map((letter, i) => (
+            <span
+              key={i}
+              className="intro-overlay__letter"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              {letter}
+            </span>
+          ))}
         </div>
       </div>
-    </>
+
+      <div className="intro-overlay__foot">
+        <span>Fullstack Programmer</span>
+        <span>Go &middot; Next.js</span>
+      </div>
+    </div>
   );
 };
