@@ -178,20 +178,26 @@ const ProjectDetailPage = () => {
             className="container mx-auto"
           >
             <div className="bg-muted/20 relative aspect-video w-full overflow-hidden md:aspect-21/9">
-              {/* `unoptimized` dulu dipasang tanpa syarat untuk mencegah error
+              {/* Lapisan gambar diperbesar melebihi bingkai lalu digeser
+                  mengikuti posisi gulir. Hanya lapisan dekoratif yang bergerak;
+                  judul di atasnya tidak, karena teks ber-parallax menyulitkan
+                  pembacaan dan memicu mabuk gerak. */}
+              <div className="parallax-slow absolute inset-x-0 -inset-y-[8%]">
+                {/* `unoptimized` dulu dipasang tanpa syarat untuk mencegah error
                   host non-allowlist — efeknya optimasi mati untuk SEMUA gambar,
                   termasuk yang host-nya sebenarnya terdaftar. Sekarang
                   diputuskan per gambar. */}
-              <Image
-                src={project.coverImageUrl}
-                alt={project.title}
-                className="h-full w-full object-cover"
-                width={1920}
-                height={1080}
-                sizes="100vw"
-                priority
-                unoptimized={!canOptimizeImage(project.coverImageUrl)}
-              />
+                <Image
+                  src={project.coverImageUrl}
+                  alt={project.title}
+                  className="h-full w-full object-cover"
+                  width={1920}
+                  height={1080}
+                  sizes="100vw"
+                  priority
+                  unoptimized={!canOptimizeImage(project.coverImageUrl)}
+                />
+              </div>
             </div>
 
             {/* Technologies (tags) Minimalist */}

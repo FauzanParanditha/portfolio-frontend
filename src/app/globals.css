@@ -428,3 +428,39 @@
     transform: none;
   }
 }
+
+/* ==========================================================================
+   Parallax lapisan dekoratif — juga scroll-driven CSS, tanpa JavaScript.
+
+   Dipakai pada cover halaman detail proyek. Pola pengamannya sama seperti
+   `.reveal-on-scroll`: dibungkus `@supports` dan `prefers-reduced-motion`,
+   sehingga browser tanpa dukungan (atau pengguna yang meminta pengurangan
+   gerak) melihat gambar diam pada posisi normal.
+
+   HANYA untuk lapisan dekoratif. Jangan dipasang pada teks atau kontrol —
+   teks yang ber-parallax menyulitkan pembacaan dan memicu mabuk gerak.
+
+   Rentang gerak sengaja kecil (±8% tinggi bingkai): cukup terasa saat digulir,
+   tidak cukup untuk mengganggu.
+   ========================================================================== */
+@layer utilities {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .parallax-slow {
+        animation: parallax-slow linear both;
+        animation-timeline: view();
+        /* Sepanjang elemen melintasi viewport, dari masuk sampai keluar. */
+        animation-range: cover 0% cover 100%;
+      }
+    }
+  }
+}
+
+@keyframes parallax-slow {
+  from {
+    transform: translateY(-8%);
+  }
+  to {
+    transform: translateY(8%);
+  }
+}

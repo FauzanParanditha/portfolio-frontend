@@ -34,8 +34,11 @@ export const ExperienceSection = ({
                 key={exp.id}
                 className="reveal-on-scroll group border-thin hover:bg-foreground hover:text-background -mx-6 flex flex-col items-start gap-8 border-b px-6 py-12 transition-colors duration-500 md:-mx-12 md:flex-row md:px-12"
               >
-                {/* Index / Meta */}
-                <div className="flex flex-col gap-4 md:w-1/4">
+                {/* Index / Meta — menempel selama isi entri ini bergulir,
+                    sehingga periode dan nomornya tetap terbaca pada entri yang
+                    panjang. Murni CSS `position: sticky`; `self-start` wajib
+                    agar sticky bekerja di dalam kontainer flex. */}
+                <div className="flex flex-col gap-4 md:sticky md:top-28 md:w-1/4 md:self-start">
                   <span className="stat-num text-xs opacity-50">
                     (0{index + 1})
                   </span>

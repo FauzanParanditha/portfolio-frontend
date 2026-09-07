@@ -1,3 +1,4 @@
+import { ProjectCardOverlay } from "@/components/ProjectCardOverlay";
 import { ProjectImage } from "@/components/ProjectImage";
 import { Button } from "@/components/ui/button";
 import type { Project } from "@/types/portfolio";
@@ -57,8 +58,9 @@ export const ProjectsSection = ({ projects }: { projects: Project[] }) => {
                         // Grid 1 kolom di ponsel, 2 kolom mulai md — dipakai
                         // browser untuk memilih ukuran berkas yang diunduh.
                         sizes="(min-width: 768px) 50vw, 100vw"
-                        className="object-cover grayscale transition-all duration-700 ease-[0.16_1_0.3_1] group-hover:scale-105 group-hover:grayscale-0"
+                        className="object-cover grayscale transition-all duration-700 ease-[0.16_1_0.3_1] group-hover:scale-105 group-hover:grayscale-0 motion-reduce:transition-none"
                       />
+                      <ProjectCardOverlay />
                     </Link>
 
                     {/* Metadata & Details */}

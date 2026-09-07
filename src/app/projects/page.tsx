@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectCardOverlay } from "@/components/ProjectCardOverlay";
 import { ProjectImage } from "@/components/ProjectImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,8 +254,9 @@ const Projects = () => {
                         src={project.coverImageUrl}
                         alt={project.title}
                         sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                        className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
+                        className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105 motion-reduce:transition-none"
                       />
+                      <ProjectCardOverlay />
                     </Link>
 
                     {/* Content below image */}

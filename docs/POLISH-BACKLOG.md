@@ -58,6 +58,9 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       dan Projects sekalian jadi komponen server; Navbar lepas dari
       framer-motion, sehingga **tidak ada satu pun komponen di jalur beranda
       yang mengimpor framer-motion lagi**.
+- [x] **12 — Motion "WOW".** Overlay hover kartu proyek, timeline lengket di
+      Experience, dan parallax cover — **ketiganya murni CSS**, tanpa
+      mengembalikan framer-motion ke jalur beranda. Lenis sengaja dilewati.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -122,30 +125,24 @@ matikan lewat `agentRules: false` di `next.config.ts`.
 
 ---
 
-## "WOW" — kerjakan paling akhir
+## Belum dikerjakan
 
-### 12. Pindahkan kejutan ke dalam isi · ~3–4 jam
+### 13. `/projects` masih dirender di klien · ~2–3 jam
 
-Semua pola sudah dirinci dan **didemokan interaktif** di artifact Audit Motion.
-Yang paling tinggi rasio hasil terhadap usahanya:
+Ditemukan saat mengerjakan nomor 12, dan **tidak ada di audit awal** — audit itu
+hanya memeriksa beranda. `src/app/projects/page.tsx` masih `"use client"` dengan
+SWR, sehingga HTML-nya (18,5 KB) **tidak memuat satu pun kartu proyek**. Persis
+masalah yang diperbaiki di beranda pada nomor 1.
 
-| Pola | API framer-motion | Target |
-| ---- | ----------------- | ------ |
-| Overlay hover kartu proyek | `whileHover` + `variants` | `ProjectsSection.tsx`, `projects/page.tsx` |
-| Parallax cover | `useScroll` + `useTransform` | `projects/[slug]/page.tsx` |
-| Sticky timeline | `useScroll` + CSS sticky | `ExperienceSection.tsx` |
-| Smooth scroll | pustaka Lenis | `app/layout.tsx` |
+Ini penting karena `/projects` adalah halaman tujuan tombol "View projects" di
+hero — kemungkinan halaman kedua yang dibuka recruiter.
 
-Catatan hasil pemindaian: `whileHover`, `whileTap`, `useScroll`, `useTransform`,
-`useSpring`, `useMotionValue`, dan `layoutId` **belum pernah dipakai sama sekali**
-di repo ini. Seluruh separuh scroll- dan pointer-linked dari framer-motion masih
-kosong — di situlah semua "rasa mahal" template Framer berada.
+Lebih rumit daripada beranda: halaman ini punya pencarian, filter, dan paginasi
+yang benar-benar interaktif. Konversi yang benar berarti memindahkan state itu
+ke URL search params lalu mengambil data di server, bukan sekadar melepas
+`"use client"`.
 
-Kalau menambah Lenis: uji ulang anchor `#about`, `#experience`, `#projects`,
-`#contact` di Navbar, dan pastikan mundur ke gulir normal saat
-`prefers-reduced-motion`.
-
----
+Halaman detail `/projects/[slug]` perlu diperiksa juga — belum dicek.
 
 ## Dependensi yang sengaja ditahan
 
