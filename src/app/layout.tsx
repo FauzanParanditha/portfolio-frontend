@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getSiteUrl } from "@/lib/siteUrl";
-import "./app.css";
 import "./globals.css";
 import Providers from "./Providers";
 

@@ -51,6 +51,8 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       komponen tidak bisa melenceng.
 - [x] **7 — `public/videos/hero.mp4` (20 MB) dihapus.** Tidak dirujuk berkas mana
       pun. `public/` turun 20 MB → 280 KB.
+- [x] **8 — Animasi tak berujung.** Ternyata sebagian besar sudah beres sendiri
+      sebagai efek samping nomor 1; sisanya kode mati. Lihat catatan di bawah.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -88,12 +90,6 @@ sendiri belum disentuh.
 
 ## Berat halaman
 
-### 8. Kurangi animasi tak berujung · ~1 jam
-
-Hero menjalankan `TypewriterLoop` dan `TextGenerateEffectLoop` bersamaan,
-selamanya. Sisakan satu. Loop yang terus berjalan menahan CPU ponsel tetap
-aktif dan membuat halaman terasa gelisah.
-
 ---
 
 ## Sisa teknis dari langkah 1
@@ -111,6 +107,29 @@ React terhidrasi.
 Perbaikannya: reveal berbasis CSS (`animation-timeline: view()` dengan
 `@supports` yang jatuh ke "selalu terlihat"), sama seperti `rise-in` yang sudah
 dipakai hero. Bisa digabung dengan pekerjaan motion di bawah.
+
+### 8b. Koreksi: item 8 salah sejak awal
+
+Catatan lama di sini berbunyi *"Hero menjalankan TypewriterLoop dan
+TextGenerateEffectLoop bersamaan, selamanya."* **Itu tidak pernah benar** —
+ditulis dari dugaan, tanpa memeriksa kode. `git log -S` membuktikan HeroSection
+tidak pernah mengimpor keduanya.
+
+Kondisi sebenarnya setelah diperiksa:
+
+| Komponen | Status |
+| -------- | ------ |
+| `TypewriterLoop` | Tidak dipakai di mana pun → dihapus |
+| `BackgroundGradient` | Tidak dipakai di mana pun → dihapus |
+| `TextGenerateEffectLoop` | Dipakai HANYA di halaman login. Sudah menghormati `prefers-reduced-motion` dan membersihkan tween-nya sendiri — tidak diubah |
+| `src/app/app.css` | Sisa template Vite (`#root`, `.logo`, `.read-the-docs`, keyframe `logo-spin`), nol selektor terpakai, tapi diimpor di `layout.tsx` sehingga terkirim di SETIAP halaman → dihapus |
+
+Sisa `infinite` di CSS produksi tinggal dua: variabel tema Tailwind untuk
+`animate-spin` (FullScreenLoader) dan `animate-pulse` (skeleton admin).
+Keduanya indikator loading yang memang harus berputar selama memuat.
+
+**Halaman publik kini tidak menjalankan animasi tak berujung apa pun** — itu
+efek samping perombakan hero di nomor 1, bukan hasil pekerjaan terpisah.
 
 ### 7b. 20 MB itu masih ada di riwayat git
 
