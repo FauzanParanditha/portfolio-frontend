@@ -23,17 +23,22 @@ Dua artifact rujukan:
       diseragamkan jadi **"Fullstack Programmer"** (17 kemunculan) mengikuti
       pilihan yang sudah dipakai di metadata dan Navbar.
 
+- [x] **3 — Tombol Unduh CV + LinkedIn/GitHub di hero.** Baris aksi di bawah
+      headline, tampil di **semua** breakpoint. Tautan GitHub & LinkedIn memakai
+      URL yang sudah ada di Footer.
+
 Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar**
 — tidak perlu diubah.
+
+> ⚠️ **Butuh tindakan Anda:** tombol "Download CV" hanya muncul bila
+> `NEXT_PUBLIC_CV_URL` diisi. Taruh berkas CV di `public/cv/` lalu set
+> path-nya di `.env.local` (contoh ada di `.env.example`). Selama kosong,
+> tombolnya sengaja disembunyikan agar recruiter tidak mendarat di 404 —
+> dan `next dev` akan mengingatkan lewat peringatan di konsol.
 
 ---
 
 ## Prioritas tinggi — masih menyentuh sasaran recruiter
-
-### 3. Tombol Unduh CV + LinkedIn/GitHub di bagian atas · ~1 jam
-
-Aksi yang paling dicari recruiter, sekarang **tidak ada di mana pun**. Tautan
-sosial hanya nongol di footer paling bawah. Taruh di hero, dekat headline.
 
 ### 4. Tampilkan angka kredibilitas di ponsel · ~1 jam
 
@@ -50,6 +55,11 @@ diperiksa jauh lebih kuat — mis. cakupan test handler backend **76%**
 `Navbar.tsx` — versi mobile memakai empat tautan `text-xs` berjajar. Target
 sentuhnya jauh di bawah 44 px yang direkomendasikan. Perlu menu yang layak
 disentuh.
+
+Sebagian dari item ini sudah tersentuh saat mengerjakan nomor 3: hero diubah
+dari `h-screen` ke `min-h-svh` supaya bisa tumbuh saat isinya bertambah dan
+tidak melompat ketika bilah alamat browser ponsel muncul-hilang. Navigasinya
+sendiri belum disentuh.
 
 ---
 

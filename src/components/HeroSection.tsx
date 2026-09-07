@@ -1,3 +1,7 @@
+import { GithubIcon, LinkedinIcon } from "@/components/icons/BrandIcons";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
 /**
  * Hero beranda — komponen SERVER.
  *
@@ -10,9 +14,34 @@
  * Jeda antar-elemen memakai `animationDelay`, meniru `staggerChildren: 0.15`
  * yang sebelumnya dipakai.
  */
+
+// Tautan profil — nilainya sama dengan yang dipakai Footer.
+const GITHUB_URL = "https://github.com/FauzanParanditha";
+const LINKEDIN_URL = "https://www.linkedin.com/in/paranditha/";
+
+/**
+ * URL CV. Diambil dari env supaya berkasnya bisa diganti tanpa menyentuh kode
+ * — dan supaya tombolnya TIDAK tampil bila berkasnya belum ada, alih-alih
+ * mengirim recruiter ke halaman 404.
+ *
+ * Isi `NEXT_PUBLIC_CV_URL` di `.env.local`, mis. `/cv/fauzan-paranditha.pdf`
+ * setelah menaruh berkasnya di `public/cv/`.
+ */
+const CV_URL = process.env.NEXT_PUBLIC_CV_URL;
+
+if (!CV_URL && process.env.NODE_ENV !== "production") {
+  console.warn(
+    '[hero] NEXT_PUBLIC_CV_URL belum di-set — tombol "Download CV" disembunyikan. ' +
+      "Ini aksi yang paling dicari recruiter; lihat docs/POLISH-BACKLOG.md.",
+  );
+}
+
 export const HeroSection = () => {
   return (
-    <section className="relative flex h-screen w-full flex-col justify-between overflow-hidden bg-zinc-950 pt-20 font-sans text-white md:pt-28">
+    // `min-h-svh`, bukan `h-screen`: hero boleh tumbuh bila isinya bertambah
+    // (mis. baris tombol di bawah), dan `svh` menghindari lompatan tinggi saat
+    // bilah alamat browser ponsel muncul-hilang.
+    <section className="relative flex min-h-svh w-full flex-col justify-between overflow-hidden bg-zinc-950 pt-20 font-sans text-white md:pt-28">
       <div className="relative flex w-full grow flex-col">
         {/* Main Content Area */}
         <div className="relative mx-auto flex w-full max-w-[1400px] grow flex-col px-5 pt-6 sm:px-8 md:pt-10 lg:px-14">
@@ -27,6 +56,48 @@ export const HeroSection = () => {
               <br />
               performance, and real impact.
             </h1>
+          </div>
+
+          {/* Aksi utama. Sengaja di bawah headline dan TIDAK disembunyikan di
+              breakpoint mana pun — inilah yang dicari recruiter lebih dulu. */}
+          <div
+            className="rise-in mt-8 flex flex-wrap items-center gap-3"
+            style={{ animationDelay: "100ms" }}
+          >
+            <Button asChild size="lg">
+              <Link href="/projects">View projects</Link>
+            </Button>
+
+            {CV_URL ? (
+              <Button asChild size="lg" variant="outline">
+                <a href={CV_URL} target="_blank" rel="noopener noreferrer">
+                  Download CV
+                </a>
+              </Button>
+            ) : null}
+
+            <div className="flex items-center gap-3">
+              <a
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Profil GitHub"
+                className="flex items-center gap-2 rounded-sm border border-zinc-700 px-4 py-2.5 text-xs tracking-widest uppercase transition-colors hover:border-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden"
+              >
+                <GithubIcon className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">GitHub</span>
+              </a>
+              <a
+                href={LINKEDIN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Profil LinkedIn"
+                className="flex items-center gap-2 rounded-sm border border-zinc-700 px-4 py-2.5 text-xs tracking-widest uppercase transition-colors hover:border-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden"
+              >
+                <LinkedinIcon className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">LinkedIn</span>
+              </a>
+            </div>
           </div>
 
           {/* Floating Focus Card */}
