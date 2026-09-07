@@ -49,6 +49,8 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       `projects/[slug]` diganti keputusan per gambar. Daftar host dipusatkan di
       `src/lib/imageHosts.ts` sehingga izin di `next.config.ts` dan keputusan di
       komponen tidak bisa melenceng.
+- [x] **7 — `public/videos/hero.mp4` (20 MB) dihapus.** Tidak dirujuk berkas mana
+      pun. `public/` turun 20 MB → 280 KB.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -86,11 +88,6 @@ sendiri belum disentuh.
 
 ## Berat halaman
 
-### 7. Hapus `public/videos/hero.mp4` · 5 menit
-
-20 MB dan **tidak dirujuk berkas mana pun**. Tidak memperlambat pengunjung
-(karena tak pernah diunduh), tapi ikut terbawa di setiap deploy.
-
 ### 8. Kurangi animasi tak berujung · ~1 jam
 
 Hero menjalankan `TypewriterLoop` dan `TextGenerateEffectLoop` bersamaan,
@@ -114,6 +111,18 @@ React terhidrasi.
 Perbaikannya: reveal berbasis CSS (`animation-timeline: view()` dengan
 `@supports` yang jatuh ke "selalu terlihat"), sama seperti `rise-in` yang sudah
 dipakai hero. Bisa digabung dengan pekerjaan motion di bawah.
+
+### 7b. 20 MB itu masih ada di riwayat git
+
+`git rm` hanya mengeluarkan berkas dari commit berikutnya; blob-nya tetap
+tersimpan di riwayat. Jadi `public/` memang turun 20 MB → 280 KB (dan setiap
+deploy ikut ringan), tapi **`git clone` tetap mengunduh 25 MB** — sekitar 80%
+di antaranya berkas video ini.
+
+Membersihkannya butuh penulisan ulang riwayat (`git filter-repo` atau BFG) lalu
+force-push. Itu MENGUBAH hash semua commit dan merusak salinan siapa pun yang
+sudah meng-clone. Untuk repo perorangan biasanya aman, tapi keputusannya di
+tangan Anda — bukan sesuatu yang saya lakukan tanpa diminta.
 
 ### 6b. Host gambar baru harus didaftarkan
 
