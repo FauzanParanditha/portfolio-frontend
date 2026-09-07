@@ -1,5 +1,6 @@
 "use client";
 
+import { ProjectImage } from "@/components/ProjectImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -245,10 +246,14 @@ const Projects = () => {
                       href={`/projects/${project.slug}`}
                       className="bg-muted/20 relative block aspect-4/3 overflow-hidden"
                     >
-                      <motion.img
-                        src={project.coverImageUrl || "/placeholder.jpg"}
+                      {/* Dulu jatuh ke "/placeholder.jpg" yang TIDAK ADA di
+                          public/, jadi gambar rusak saat cover kosong.
+                          ProjectImage memakai aset statis yang benar-benar ada. */}
+                      <ProjectImage
+                        src={project.coverImageUrl}
                         alt={project.title}
-                        className="h-full w-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
+                        sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                        className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
                       />
                     </Link>
 

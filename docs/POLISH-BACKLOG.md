@@ -44,6 +44,11 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       elemen yang sama: mengalir di bawah tombol pada layar kecil, mengambang
       di kanan mulai `lg`. Kalimat deskriptifnya tetap desktop-only — di layar
       kecil ruangnya dipakai untuk angka.
+- [x] **6 — `next/image` untuk gambar proyek.** Tag `<img>` mentah di
+      `ProjectsSection` dan `/projects` diganti; `unoptimized` tanpa syarat di
+      `projects/[slug]` diganti keputusan per gambar. Daftar host dipusatkan di
+      `src/lib/imageHosts.ts` sehingga izin di `next.config.ts` dan keputusan di
+      komponen tidak bisa melenceng.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -81,22 +86,6 @@ sendiri belum disentuh.
 
 ## Berat halaman
 
-### 6. Pakai `next/image` untuk gambar proyek · ~2–3 jam
-
-`ProjectsSection.tsx` dan `app/projects/page.tsx` masih memakai tag `<img>`
-mentah — tidak ada penyesuaian ukuran maupun WebP. Untuk portfolio berisi
-tangkapan layar, ini beban terbesar.
-
-Solusinya **bukan** `unoptimized` (yang dipakai di `projects/[slug]`), melainkan
-mendaftarkan host gambar di `next.config.ts` → `images.remotePatterns`.
-
-**Sudah tidak terhalang lagi.** Host backend kini otomatis terdaftar di
-`remotePatterns` (diturunkan dari `NEXT_PUBLIC_API_URL`, dibatasi ke
-`/uploads/**`), jadi gambar yang diunggah lewat panel admin sudah boleh melewati
-optimasi. Sisa pekerjaannya: ganti tag `<img>` mentah di `ProjectsSection` dan
-`app/projects/page.tsx` dengan `next/image`, lalu buang `unoptimized` di
-`projects/[slug]`.
-
 ### 7. Hapus `public/videos/hero.mp4` · 5 menit
 
 20 MB dan **tidak dirujuk berkas mana pun**. Tidak memperlambat pengunjung
@@ -125,6 +114,17 @@ React terhidrasi.
 Perbaikannya: reveal berbasis CSS (`animation-timeline: view()` dengan
 `@supports` yang jatuh ke "selalu terlihat"), sama seperti `rise-in` yang sudah
 dipakai hero. Bisa digabung dengan pekerjaan motion di bawah.
+
+### 6b. Host gambar baru harus didaftarkan
+
+Gambar dari host yang tidak terdaftar tetap tampil, tapi **tanpa optimasi** —
+turun anggun, bukan rusak. Kalau sering memakai satu layanan hosting tertentu,
+tambahkan host-nya di `STATIC_HOSTS` (`src/lib/imageHosts.ts`) supaya ikut
+dioptimasi. Cara paling praktis: unggah lewat panel admin, karena host backend
+sudah otomatis terdaftar.
+
+Jangan tergoda memakai wildcard `hostname: "**"`: itu menjadikan optimizer Next
+proxy terbuka yang mau mengambil URL apa pun.
 
 ### 4b. Angka "76%" di hero akan basi
 

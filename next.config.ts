@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { imageRemotePatterns } from "./src/lib/imageHosts";
+
 // Security headers (hardening) yang diterapkan ke semua route.
 // Catatan: sengaja TIDAK memasang CSP script-src ketat agar tidak memecah
 // runtime Next.js/Turbopack (inline/eval script internal).
@@ -19,27 +21,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   images: {
-    // Host gambar yang boleh dioptimasi next/image.
-    //
-    // Berkas yang diunggah lewat panel admin dilayani backend dari
-    // `{APP_PUBLIC_URL}/uploads/...`, jadi host backend harus terdaftar di sini
-    // supaya gambarnya bisa melewati optimasi — bukan dilewati dengan
-    // `unoptimized` seperti sebelumnya.
-    remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com" },
-      ...(process.env.NEXT_PUBLIC_API_URL
-        ? [
-            {
-              protocol: new URL(
-                process.env.NEXT_PUBLIC_API_URL,
-              ).protocol.replace(":", "") as "http" | "https",
-              hostname: new URL(process.env.NEXT_PUBLIC_API_URL).hostname,
-              port: new URL(process.env.NEXT_PUBLIC_API_URL).port || undefined,
-              pathname: "/uploads/**",
-            },
-          ]
-        : []),
-    ],
+    // Daftar host dipusatkan di src/lib/imageHosts.ts supaya izin di sini dan
+    // keputusan `unoptimized` di komponen tidak pernah melenceng — kalau
+    // melenceng, next/image melempar saat render, bukan saat build.
+    remotePatterns: imageRemotePatterns(),
   },
   async headers() {
     return [

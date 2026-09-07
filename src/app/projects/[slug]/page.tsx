@@ -11,6 +11,7 @@ import {
   ExternalLink,
   X,
 } from "lucide-react";
+import { canOptimizeImage } from "@/lib/imageHosts";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -177,14 +178,19 @@ const ProjectDetailPage = () => {
             className="container mx-auto"
           >
             <div className="bg-muted/20 relative aspect-video w-full overflow-hidden md:aspect-21/9">
+              {/* `unoptimized` dulu dipasang tanpa syarat untuk mencegah error
+                  host non-allowlist — efeknya optimasi mati untuk SEMUA gambar,
+                  termasuk yang host-nya sebenarnya terdaftar. Sekarang
+                  diputuskan per gambar. */}
               <Image
                 src={project.coverImageUrl}
                 alt={project.title}
                 className="h-full w-full object-cover"
                 width={1920}
                 height={1080}
+                sizes="100vw"
                 priority
-                unoptimized
+                unoptimized={!canOptimizeImage(project.coverImageUrl)}
               />
             </div>
 
@@ -306,7 +312,8 @@ const ProjectDetailPage = () => {
                     alt={`${project.title} screenshot ${index + 1}`}
                     className="h-full w-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
                     fill
-                    unoptimized
+                    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                    unoptimized={!canOptimizeImage(screenshot)}
                   />
                   <div className="bg-background/0 group-hover:bg-background/10 absolute inset-0 z-10 transition-colors" />
                 </motion.div>

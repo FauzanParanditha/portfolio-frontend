@@ -1,12 +1,12 @@
 "use client";
 
+import { ProjectImage } from "@/components/ProjectImage";
 import { Button } from "@/components/ui/button";
 import type { Project } from "@/types/portfolio";
 import { motion, useInView } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { useRef } from "react";
 
-import taskManagerImg from "@/assets/project-taskmanager.jpg";
 import Link from "next/link";
 
 /**
@@ -96,10 +96,13 @@ export const ProjectsSection = ({ projects }: { projects: Project[] }) => {
                       href={`/projects/${project.slug}`}
                       className="border-thin relative block aspect-4/3 overflow-hidden border"
                     >
-                      <motion.img
-                        src={project.coverImageUrl || taskManagerImg.src}
+                      <ProjectImage
+                        src={project.coverImageUrl}
                         alt={project.title}
-                        className="h-full w-full object-cover grayscale transition-all duration-700 ease-[0.16_1_0.3_1] group-hover:scale-105 group-hover:grayscale-0"
+                        // Grid 1 kolom di ponsel, 2 kolom mulai md — dipakai
+                        // browser untuk memilih ukuran berkas yang diunduh.
+                        sizes="(min-width: 768px) 50vw, 100vw"
+                        className="object-cover grayscale transition-all duration-700 ease-[0.16_1_0.3_1] group-hover:scale-105 group-hover:grayscale-0"
                       />
                     </Link>
 
