@@ -39,6 +39,11 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       14 keahlian yang dulu hardcode sudah dipindahkan ke database supaya tidak
       ada konten yang hilang — silakan pangkas yang sudah tidak relevan lewat
       panel.
+- [x] **4 — Angka kredibilitas tampil di ponsel.** Kartu "Current Focus" dulu
+      `hidden lg:flex`, sehingga angkanya lenyap di ponsel & tablet. Kini satu
+      elemen yang sama: mengalir di bawah tombol pada layar kecil, mengambang
+      di kanan mulai `lg`. Kalimat deskriptifnya tetap desktop-only — di layar
+      kecil ruangnya dipakai untuk angka.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -60,16 +65,6 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
 ---
 
 ## Prioritas tinggi — masih menyentuh sasaran recruiter
-
-### 4. Tampilkan angka kredibilitas di ponsel · ~1 jam
-
-`HeroSection.tsx` — kartu "Current Focus" memakai `hidden lg:flex`, jadi
-**5+ Years / 30+ Features / 99% Uptime hilang total di ponsel dan tablet**,
-justru di perangkat yang paling sering dipakai recruiter memindai.
-
-Sekalian ganti metriknya. "30+ Features" tidak berarti apa-apa; yang bisa
-diperiksa jauh lebih kuat — mis. cakupan test handler backend **76%**
-(dari commit `7d14e80` di repo go-portfolio-backend).
 
 ### 5. Perbesar target sentuh navigasi ponsel · ~1–2 jam
 
@@ -130,6 +125,21 @@ React terhidrasi.
 Perbaikannya: reveal berbasis CSS (`animation-timeline: view()` dengan
 `@supports` yang jatuh ke "selalu terlihat"), sama seperti `rise-in` yang sudah
 dipakai hero. Bisa digabung dengan pekerjaan motion di bawah.
+
+### 4b. Angka "76%" di hero akan basi
+
+Hero menampilkan `76%` dengan label **Handler tests**. Labelnya sengaja spesifik:
+itu cakupan paket `internal/http/handlers` saja. **Agregat seluruh backend hanya
+40,8%** — memasang "76% test coverage" tanpa kualifikasi akan menyesatkan siapa
+pun yang mengeceknya.
+
+Angka ini ditulis manual, jadi akan melenceng seiring bertambahnya kode.
+Periksa ulang dengan `go test -cover ./internal/...` sesekali, atau ganti
+metriknya kalau tidak ingin membuat klaim cakupan sama sekali.
+
+Dua metrik lama dibuang: **"30+ Features"** (tidak bermakna) dan
+**"99% Uptime"** (klaim tentang sistem yang belum tentu Anda kendalikan, dan
+tidak bisa diverifikasi siapa pun).
 
 ### 9b. Tipe tag baru butuh ikon
 

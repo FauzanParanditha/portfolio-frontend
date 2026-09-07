@@ -100,29 +100,35 @@ export const HeroSection = () => {
             </div>
           </div>
 
-          {/* Floating Focus Card */}
+          {/* Kartu kredibilitas.
+              Dulu `hidden lg:flex`, sehingga angka-angka ini LENYAP di ponsel
+              dan tablet — justru perangkat yang paling sering dipakai recruiter
+              memindai. Kini satu elemen yang sama: mengalir di bawah tombol
+              pada layar kecil, mengambang di kanan mulai lg. */}
           <div
-            className="rise-in absolute top-8 right-14 z-20 hidden w-[400px] flex-col gap-4 rounded-lg bg-white p-6 text-black shadow-2xl lg:flex"
+            className="rise-in relative z-20 mt-10 flex w-full flex-col gap-4 rounded-lg bg-white p-6 text-black shadow-2xl lg:absolute lg:top-8 lg:right-14 lg:mt-0 lg:w-[400px]"
             style={{ animationDelay: "150ms" }}
           >
             {/* Kartu latar putih: override eyebrow ke zinc-600 (7.73:1 di putih). */}
             <p className="eyebrow text-zinc-600">Current Focus</p>
-            <p className="text-2xl leading-tight font-semibold">
+            {/* Kalimat ini hiasan desktop; di layar kecil ruangnya dipakai
+                untuk angka, yang jauh lebih berguna bagi pembaca. */}
+            <p className="hidden text-2xl leading-tight font-semibold lg:block">
               Scalable product features, readable code, and measurable business
               outcomes.
             </p>
             <div className="grid grid-cols-3 gap-3 pt-2 text-center">
-              <div className="border border-zinc-300 p-3">
+              <div className="flex flex-col justify-between border border-zinc-300 p-3">
                 <p className="stat-num text-xl font-bold">5+</p>
                 <p className="eyebrow text-zinc-600">Years</p>
               </div>
-              <div className="border border-zinc-300 p-3">
-                <p className="stat-num text-xl font-bold">30+</p>
-                <p className="eyebrow text-zinc-600">Features</p>
+              <div className="flex flex-col justify-between border border-zinc-300 p-3">
+                <p className="stat-num text-xl font-bold">Go·TS</p>
+                <p className="eyebrow text-zinc-600">Core stack</p>
               </div>
-              <div className="border border-zinc-300 p-3">
-                <p className="stat-num text-xl font-bold">99%</p>
-                <p className="eyebrow text-zinc-600">Uptime</p>
+              <div className="flex flex-col justify-between border border-zinc-300 p-3">
+                <p className="stat-num text-xl font-bold">76%</p>
+                <p className="eyebrow text-zinc-600">Handler tests</p>
               </div>
             </div>
           </div>
