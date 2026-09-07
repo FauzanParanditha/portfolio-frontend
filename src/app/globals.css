@@ -385,3 +385,46 @@
     transform: none;
   }
 }
+
+/* ==========================================================================
+   Reveal saat digulir — versi CSS, menggantikan `whileInView` framer-motion.
+
+   Alasan pindah: dengan framer-motion, section menulis `style="opacity:0"` ke
+   HTML dan baru terlihat setelah React terhidrasi. Teksnya memang ada di HTML
+   (crawler aman), tapi pengunjung berkoneksi lambat melihat halaman kosong.
+
+   Di sini elemen TERLIHAT secara default. Animasi hanya ditambahkan bila:
+     1. browser mendukung scroll-driven animation, dan
+     2. pengguna tidak meminta pengurangan gerak.
+
+   Browser tanpa dukungan (mis. Firefox saat ini) menampilkan isinya apa adanya
+   — kehilangan animasi, bukan kehilangan konten. Tidak ada JavaScript sama
+   sekali di jalur ini.
+
+   Jeda antar-elemen tidak perlu diatur: tiap elemen beranimasi saat DIRINYA
+   memasuki viewport, jadi urutannya muncul dengan sendirinya.
+   ========================================================================== */
+@layer utilities {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal-on-scroll {
+        animation: reveal-on-scroll linear both;
+        animation-timeline: view();
+        /* Selesai saat elemen masuk 55% — supaya sudah terbaca penuh
+           sebelum berhenti di tengah layar. */
+        animation-range: entry 0% entry 55%;
+      }
+    }
+  }
+}
+
+@keyframes reveal-on-scroll {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

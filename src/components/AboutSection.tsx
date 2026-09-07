@@ -1,7 +1,4 @@
-"use client";
-
 import type { ExperienceTag } from "@/types/experience";
-import { motion, useInView } from "framer-motion";
 import {
   Binary,
   Boxes,
@@ -15,7 +12,6 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { useRef } from "react";
 
 /**
  * Ikon per tipe tag. Tipe yang belum terdaftar jatuh ke ikon generik — daftar
@@ -77,53 +73,18 @@ function groupByType(tags: ExperienceTag[]) {
  * menyentuh kode maupun deploy ulang.
  */
 export const AboutSection = ({ tags }: { tags: ExperienceTag[] }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        duration: 0.6,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: [0.16, 1, 0.3, 1] as const,
-      },
-    },
-  };
-
   const skills = groupByType(tags);
 
   return (
     <section
-      ref={ref}
       className="border-thin w-full border-b bg-zinc-950 pt-32 pb-32"
       id="about"
       aria-labelledby="about-heading"
     >
       <div className="container mx-auto px-6">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          className="grid grid-cols-1 gap-16 md:grid-cols-12"
-        >
+        <div className="grid grid-cols-1 gap-16 md:grid-cols-12">
           {/* Section Header */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-col justify-between md:col-span-5"
-          >
+          <div className="reveal-on-scroll flex flex-col justify-between md:col-span-5">
             <h2 id="about-heading" className="section-title">
               About <br />
               (Me)
@@ -131,13 +92,10 @@ export const AboutSection = ({ tags }: { tags: ExperienceTag[] }) => {
             <div className="eyebrow mt-16 hidden md:block">
               [ PROFILE & CAPABILITIES ]
             </div>
-          </motion.div>
+          </div>
 
           {/* Section Content */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-col gap-16 md:col-span-7"
-          >
+          <div className="reveal-on-scroll flex flex-col gap-16 md:col-span-7">
             <p className="text-xl leading-relaxed font-medium md:text-3xl">
               With over 5 years of experience in fullstack development, I build
               web applications that stay maintainable as they grow. I work
@@ -150,10 +108,9 @@ export const AboutSection = ({ tags }: { tags: ExperienceTag[] }) => {
             {skills.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2">
                 {skills.map((skill, index) => (
-                  <motion.div
+                  <div
                     key={skill.type}
-                    variants={itemVariants}
-                    className={`border-thin hover:bg-foreground hover:text-background flex flex-col gap-6 p-8 transition-colors duration-300 ${
+                    className={`reveal-on-scroll border-thin hover:bg-foreground hover:text-background flex flex-col gap-6 p-8 transition-colors duration-300 ${
                       index % 2 !== 0 ? "sm:border-l-0" : ""
                     } ${index > 1 ? "border-t-0" : ""}`}
                   >
@@ -171,12 +128,12 @@ export const AboutSection = ({ tags }: { tags: ExperienceTag[] }) => {
                         {skill.names.join(", ")}
                       </p>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
               </div>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );

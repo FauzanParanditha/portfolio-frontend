@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -45,12 +44,16 @@ export const Navbar = () => {
     { name: "Contact", href: "#contact" },
   ];
 
+  // Sembunyi/muncul saat gulir memakai transisi CSS, bukan framer-motion.
+  // Navbar adalah pemakai terakhir pustaka itu di jalur beranda; melepasnya
+  // mengeluarkan framer-motion sepenuhnya dari bundel halaman publik.
+  // Posisi awal `translate-y-0`: navbar terlihat sejak paint pertama, tidak
+  // lagi meluncur masuk setelah hidrasi.
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: isVisible ? 0 : -110, opacity: isVisible ? 1 : 0.98 }}
-      transition={{ type: "spring", stiffness: 260, damping: 30, mass: 0.7 }}
-      className="fixed top-0 right-0 left-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md will-change-transform"
+    <header
+      className={`fixed top-0 right-0 left-0 z-50 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none ${
+        isVisible ? "translate-y-0" : "-translate-y-full"
+      }`}
     >
       <div className="mx-auto flex w-full max-w-[1400px] items-start justify-between px-5 py-4 text-zinc-400 sm:px-8 md:py-5 lg:px-14">
         <Link
@@ -112,6 +115,6 @@ export const Navbar = () => {
           </div>
         </nav>
       </div>
-    </motion.header>
+    </header>
   );
 };

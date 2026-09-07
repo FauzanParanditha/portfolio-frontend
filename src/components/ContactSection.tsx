@@ -5,37 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import publicClient from "@/lib/axios/public";
-import { motion, useInView } from "framer-motion";
 import { MoveRight } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 export const ContactSection = () => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        duration: 0.6,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: [0.16, 1, 0.3, 1] as const,
-      },
-    },
-  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -129,35 +103,23 @@ export const ContactSection = () => {
 
   return (
     <section
-      ref={ref}
       className="w-full bg-zinc-950 pt-32 pb-32"
       id="contact"
       aria-labelledby="contact-heading"
     >
       <div className="container mx-auto px-6">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          className="flex flex-col gap-16"
-        >
+        <div className="flex flex-col gap-16">
           {/* Section Header */}
-          <motion.div
-            variants={itemVariants}
-            className="border-thin flex flex-col gap-4 border-b pb-8"
-          >
+          <div className="reveal-on-scroll border-thin flex flex-col gap-4 border-b pb-8">
             <div className="eyebrow mb-4">[ INQUIRIES & COLLABORATION ]</div>
             <h2 id="contact-heading" className="section-title">
               Let&apos;s build <br /> something bold.
             </h2>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-8">
             {/* Contact Info */}
-            <motion.div
-              variants={itemVariants}
-              className="flex flex-col gap-12 lg:col-span-4"
-            >
+            <div className="reveal-on-scroll flex flex-col gap-12 lg:col-span-4">
               <p className="body-copy">
                 Whether you need an interactive frontend, a scalable backend, or
                 a complete digital overhaul, I am ready to discuss your next
@@ -195,13 +157,10 @@ export const ContactSection = () => {
                   );
                 })}
               </div>
-            </motion.div>
+            </div>
 
             {/* Contact Form */}
-            <motion.div
-              variants={itemVariants}
-              className="lg:col-span-8 lg:pl-12"
-            >
+            <div className="reveal-on-scroll lg:col-span-8 lg:pl-12">
               <form
                 onSubmit={handleSubmit}
                 className="border-thin flex w-full max-w-2xl flex-col gap-8 border p-8 md:p-12"
@@ -288,9 +247,9 @@ export const ContactSection = () => {
                   </Button>
                 </div>
               </form>
-            </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

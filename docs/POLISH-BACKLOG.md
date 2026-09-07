@@ -53,6 +53,11 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       pun. `public/` turun 20 MB → 280 KB.
 - [x] **8 — Animasi tak berujung.** Ternyata sebagian besar sudah beres sendiri
       sebagai efek samping nomor 1; sisanya kode mati. Lihat catatan di bawah.
+- [x] **9 — Reveal berbasis CSS.** `opacity: 0` inline di HTML: **19 → 0**.
+      Seluruh isi kini terlihat tanpa menunggu JavaScript. About, Experience,
+      dan Projects sekalian jadi komponen server; Navbar lepas dari
+      framer-motion, sehingga **tidak ada satu pun komponen di jalur beranda
+      yang mengimpor framer-motion lagi**.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -93,81 +98,6 @@ sendiri belum disentuh.
 ---
 
 ## Sisa teknis dari langkah 1
-
-### 9. Section di bawah lipatan masih `opacity: 0` inline
-
-`AboutSection`, `ExperienceSection`, `ProjectsSection`, `ContactSection` memakai
-`initial="hidden"` + `useInView` dari framer-motion, sehingga HTML-nya memuat
-`style="opacity:0"`.
-
-**Teksnya ada di HTML** — crawler dan SEO sudah aman, itu kegagalan intinya dan
-sudah beres. Yang tersisa: section-section itu masih blank secara visual sampai
-React terhidrasi.
-
-Perbaikannya: reveal berbasis CSS (`animation-timeline: view()` dengan
-`@supports` yang jatuh ke "selalu terlihat"), sama seperti `rise-in` yang sudah
-dipakai hero. Bisa digabung dengan pekerjaan motion di bawah.
-
-### 8b. Koreksi: item 8 salah sejak awal
-
-Catatan lama di sini berbunyi *"Hero menjalankan TypewriterLoop dan
-TextGenerateEffectLoop bersamaan, selamanya."* **Itu tidak pernah benar** —
-ditulis dari dugaan, tanpa memeriksa kode. `git log -S` membuktikan HeroSection
-tidak pernah mengimpor keduanya.
-
-Kondisi sebenarnya setelah diperiksa:
-
-| Komponen | Status |
-| -------- | ------ |
-| `TypewriterLoop` | Tidak dipakai di mana pun → dihapus |
-| `BackgroundGradient` | Tidak dipakai di mana pun → dihapus |
-| `TextGenerateEffectLoop` | Dipakai HANYA di halaman login. Sudah menghormati `prefers-reduced-motion` dan membersihkan tween-nya sendiri — tidak diubah |
-| `src/app/app.css` | Sisa template Vite (`#root`, `.logo`, `.read-the-docs`, keyframe `logo-spin`), nol selektor terpakai, tapi diimpor di `layout.tsx` sehingga terkirim di SETIAP halaman → dihapus |
-
-Sisa `infinite` di CSS produksi tinggal dua: variabel tema Tailwind untuk
-`animate-spin` (FullScreenLoader) dan `animate-pulse` (skeleton admin).
-Keduanya indikator loading yang memang harus berputar selama memuat.
-
-**Halaman publik kini tidak menjalankan animasi tak berujung apa pun** — itu
-efek samping perombakan hero di nomor 1, bukan hasil pekerjaan terpisah.
-
-### 7b. 20 MB itu masih ada di riwayat git
-
-`git rm` hanya mengeluarkan berkas dari commit berikutnya; blob-nya tetap
-tersimpan di riwayat. Jadi `public/` memang turun 20 MB → 280 KB (dan setiap
-deploy ikut ringan), tapi **`git clone` tetap mengunduh 25 MB** — sekitar 80%
-di antaranya berkas video ini.
-
-Membersihkannya butuh penulisan ulang riwayat (`git filter-repo` atau BFG) lalu
-force-push. Itu MENGUBAH hash semua commit dan merusak salinan siapa pun yang
-sudah meng-clone. Untuk repo perorangan biasanya aman, tapi keputusannya di
-tangan Anda — bukan sesuatu yang saya lakukan tanpa diminta.
-
-### 6b. Host gambar baru harus didaftarkan
-
-Gambar dari host yang tidak terdaftar tetap tampil, tapi **tanpa optimasi** —
-turun anggun, bukan rusak. Kalau sering memakai satu layanan hosting tertentu,
-tambahkan host-nya di `STATIC_HOSTS` (`src/lib/imageHosts.ts`) supaya ikut
-dioptimasi. Cara paling praktis: unggah lewat panel admin, karena host backend
-sudah otomatis terdaftar.
-
-Jangan tergoda memakai wildcard `hostname: "**"`: itu menjadikan optimizer Next
-proxy terbuka yang mau mengambil URL apa pun.
-
-### 4b. Angka "76%" di hero akan basi
-
-Hero menampilkan `76%` dengan label **Handler tests**. Labelnya sengaja spesifik:
-itu cakupan paket `internal/http/handlers` saja. **Agregat seluruh backend hanya
-40,8%** — memasang "76% test coverage" tanpa kualifikasi akan menyesatkan siapa
-pun yang mengeceknya.
-
-Angka ini ditulis manual, jadi akan melenceng seiring bertambahnya kode.
-Periksa ulang dengan `go test -cover ./internal/...` sesekali, atau ganti
-metriknya kalau tidak ingin membuat klaim cakupan sama sekali.
-
-Dua metrik lama dibuang: **"30+ Features"** (tidak bermakna) dan
-**"99% Uptime"** (klaim tentang sistem yang belum tentu Anda kendalikan, dan
-tidak bisa diverifikasi siapa pun).
 
 ### 9b. Tipe tag baru butuh ikon
 

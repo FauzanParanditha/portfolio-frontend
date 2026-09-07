@@ -1,11 +1,7 @@
-"use client";
-
 import { ProjectImage } from "@/components/ProjectImage";
 import { Button } from "@/components/ui/button";
 import type { Project } from "@/types/portfolio";
-import { motion, useInView } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { useRef } from "react";
 
 import Link from "next/link";
 
@@ -19,56 +15,21 @@ import Link from "next/link";
  * isi apa pun di balik permintaan jaringan.
  */
 export const ProjectsSection = ({ projects }: { projects: Project[] }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        duration: 0.6,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: [0.16, 1, 0.3, 1] as const,
-      },
-    },
-  };
-
   return (
     <section
-      ref={ref}
       className="border-thin w-full border-b bg-zinc-950 pt-32 pb-16"
       id="projects"
       aria-labelledby="projects-heading"
     >
       <div className="container mx-auto px-6">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          className="flex flex-col gap-16"
-        >
+        <div className="flex flex-col gap-16">
           {/* Header */}
-          <motion.div
-            variants={itemVariants}
-            className="border-thin flex items-end justify-between border-b pb-8"
-          >
+          <div className="reveal-on-scroll border-thin flex items-end justify-between border-b pb-8">
             <h2 id="projects-heading" className="section-title">
               Selected <br /> Works
             </h2>
             <div className="eyebrow hidden md:block">[ RECENT PROJECTS ]</div>
-          </motion.div>
+          </div>
 
           {projects.length === 0 && (
             <p className="eyebrow">No featured works available.</p>
@@ -76,20 +37,14 @@ export const ProjectsSection = ({ projects }: { projects: Project[] }) => {
 
           {/* Projects Grid */}
           {projects.length > 0 && (
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate={isInView ? "visible" : "hidden"}
-              className="grid grid-cols-1 gap-x-8 gap-y-16 md:grid-cols-2"
-            >
+            <div className="grid grid-cols-1 gap-x-8 gap-y-16 md:grid-cols-2">
               {projects.map((project, index) => {
                 const technologies = project.tags?.map((t) => t.name) ?? [];
 
                 return (
-                  <motion.div
+                  <div
                     key={project.id}
-                    variants={itemVariants}
-                    className="group relative flex flex-col gap-6"
+                    className="reveal-on-scroll group relative flex flex-col gap-6"
                   >
                     {/* Project Image */}
                     <Link
@@ -143,17 +98,14 @@ export const ProjectsSection = ({ projects }: { projects: Project[] }) => {
                         )}
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
-            </motion.div>
+            </div>
           )}
 
           {/* View All Button */}
-          <motion.div
-            variants={itemVariants}
-            className="mt-8 flex justify-center"
-          >
+          <div className="reveal-on-scroll mt-8 flex justify-center">
             <Button
               variant="outline"
               size="lg"
@@ -162,8 +114,8 @@ export const ProjectsSection = ({ projects }: { projects: Project[] }) => {
             >
               <Link href="/projects">Index of All Works</Link>
             </Button>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
     </section>
   );

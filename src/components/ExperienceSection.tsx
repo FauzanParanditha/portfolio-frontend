@@ -1,8 +1,4 @@
-"use client";
-
 import type { Experience } from "@/types/experience";
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
 
 /**
  * Riwayat pengalaman di beranda.
@@ -15,64 +11,28 @@ export const ExperienceSection = ({
 }: {
   experiences: Experience[];
 }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        duration: 0.6,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: [0.16, 1, 0.3, 1] as const,
-      },
-    },
-  };
-
   return (
     <section
-      ref={ref}
       className="border-thin w-full border-b bg-zinc-950 pt-32 pb-32"
       id="experience"
       aria-labelledby="experience-heading"
     >
       <div className="container mx-auto px-6">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate={isInView ? "visible" : "hidden"}
-          className="flex flex-col gap-16"
-        >
+        <div className="flex flex-col gap-16">
           {/* Section Header */}
-          <motion.div
-            variants={itemVariants}
-            className="border-thin flex items-end justify-between border-b pb-8"
-          >
+          <div className="reveal-on-scroll border-thin flex items-end justify-between border-b pb-8">
             <h2 id="experience-heading" className="section-title">
               Experience
             </h2>
             <div className="eyebrow hidden md:block">[ CAREER PATH ]</div>
-          </motion.div>
+          </div>
 
           {/* Experience List */}
           <div className="flex w-full flex-col">
             {experiences.map((exp, index) => (
-              <motion.div
+              <div
                 key={exp.id}
-                variants={itemVariants}
-                className="group border-thin hover:bg-foreground hover:text-background -mx-6 flex flex-col items-start gap-8 border-b px-6 py-12 transition-colors duration-500 md:-mx-12 md:flex-row md:px-12"
+                className="reveal-on-scroll group border-thin hover:bg-foreground hover:text-background -mx-6 flex flex-col items-start gap-8 border-b px-6 py-12 transition-colors duration-500 md:-mx-12 md:flex-row md:px-12"
               >
                 {/* Index / Meta */}
                 <div className="flex flex-col gap-4 md:w-1/4">
@@ -128,10 +88,10 @@ export const ExperienceSection = ({
                     </div>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
