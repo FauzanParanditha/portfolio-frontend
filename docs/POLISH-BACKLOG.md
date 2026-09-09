@@ -61,6 +61,10 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
 - [x] **12 — Motion "WOW".** Overlay hover kartu proyek, timeline lengket di
       Experience, dan parallax cover — **ketiganya murni CSS**, tanpa
       mengembalikan framer-motion ke jalur beranda. Lenis sengaja dilewati.
+- [x] **5 — Target sentuh navigasi ponsel.** Empat tautan `text-xs` berjajar
+      diganti tombol 44×44 + panel berisi tautan setinggi minimal 44 px dan
+      selebar penuh. Panel selalu ada di DOM (disembunyikan atribut `hidden`)
+      supaya `aria-controls` menunjuk elemen yang benar-benar ada.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -78,21 +82,6 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
 > ⚠️ **Butuh tindakan Anda juga:** isi `NEXT_PUBLIC_CONTACT_PHONE` di
 > `.env.local` supaya baris WhatsApp muncul kembali. Nilainya dipakai untuk
 > teks sekaligus tautan `wa.me` (karakter non-angka dibuang otomatis).
-
----
-
-## Prioritas tinggi — masih menyentuh sasaran recruiter
-
-### 5. Perbesar target sentuh navigasi ponsel · ~1–2 jam
-
-`Navbar.tsx` — versi mobile memakai empat tautan `text-xs` berjajar. Target
-sentuhnya jauh di bawah 44 px yang direkomendasikan. Perlu menu yang layak
-disentuh.
-
-Sebagian dari item ini sudah tersentuh saat mengerjakan nomor 3: hero diubah
-dari `h-screen` ke `min-h-svh` supaya bisa tumbuh saat isinya bertambah dan
-tidak melompat ketika bilah alamat browser ponsel muncul-hilang. Navigasinya
-sendiri belum disentuh.
 
 ---
 
