@@ -1,35 +1,15 @@
+import { getProjectBySlug } from "@/lib/server/portfolio";
 import type { Metadata } from "next";
 
-type ProjectDetail = {
-  title?: string;
-  shortDesc?: string;
-  coverImageUrl?: string | null;
-};
-
-type ProjectDetailResponse = { data?: ProjectDetail };
-
 /**
- * Ambil detail project by slug dari backend (server-side).
- * Dibungkus try/catch: bila gagal/404, kembalikan null agar generateMetadata
- * bisa memakai fallback yang sopan tanpa melempar error.
+ * Metadata halaman detail proyek.
+ *
+ * Memakai `getProjectBySlug` yang SAMA dengan halamannya. Ini yang membuat
+ * kedua pemanggilan menyatu jadi satu permintaan lewat cache `fetch` Next —
+ * sebelumnya layout punya fetch sendiri dengan `revalidate: 3600` sementara
+ * halaman mengambil lagi di browser, jadi satu halaman berarti dua permintaan
+ * ke endpoint yang sama.
  */
-async function fetchProject(slug: string): Promise<ProjectDetail | null> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) return null;
-
-  try {
-    const res = await fetch(`${apiUrl}/projects/${slug}`, {
-      // Cache 1 jam; cukup segar untuk metadata tanpa membebani backend.
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return null;
-
-    const json = (await res.json()) as ProjectDetailResponse;
-    return json.data ?? null;
-  } catch {
-    return null;
-  }
-}
 
 export async function generateMetadata({
   params,
@@ -37,7 +17,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const project = await fetchProject(slug);
+  const project = await getProjectBySlug(slug);
 
   // Fallback sopan bila project tidak ditemukan / backend mati.
   if (!project?.title) {
@@ -79,7 +59,8 @@ export async function generateMetadata({
   };
 }
 
-// Layout server hanya meneruskan children — page client tidak diubah.
+// Layout hanya meneruskan children; seluruh isi dirender halamannya, yang kini
+// juga komponen server.
 export default function ProjectDetailLayout({
   children,
 }: {

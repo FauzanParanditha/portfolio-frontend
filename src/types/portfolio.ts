@@ -4,6 +4,11 @@ export interface ProjectTag {
   type: string;
 }
 
+export interface ProjectScreenshot {
+  imageUrl: string;
+  sortOrder: number;
+}
+
 export interface ProjectFeature {
   text: string;
 }
@@ -36,7 +41,12 @@ export interface Project {
   sortOrder: number;
   tags: ProjectTag[];
   features: ProjectFeature[];
-  screenshots: string[]; // kalau nanti di-isi URL
+  // API publik mengembalikan OBJEK, bukan string. Tipe ini sebelumnya
+  // dideklarasikan `string[]` sehingga `src={screenshot}` menghasilkan
+  // "[object Object]" — tidak pernah terlihat karena belum ada proyek
+  // berscreenshot. Bentuknya harus cocok dengan ProjectScreenshotResponse
+  // di backend.
+  screenshots: ProjectScreenshot[];
 }
 
 export interface ApiListMeta {

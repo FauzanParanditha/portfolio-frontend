@@ -1,143 +1,116 @@
-"use client";
-
-import { Button } from "@/components/ui/button";
-import { useProject } from "@/hooks/use-project";
-import { AnimatePresence, motion } from "framer-motion";
 import { GithubIcon } from "@/components/icons/BrandIcons";
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  X,
-} from "lucide-react";
+import { ScreenshotGallery } from "@/components/projects/ScreenshotGallery";
+import { Button } from "@/components/ui/button";
 import { canOptimizeImage } from "@/lib/imageHosts";
+import { getProjectBySlug } from "@/lib/server/portfolio";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { notFound } from "next/navigation";
 
-const ProjectDetailPage = () => {
-  const params = useParams();
-  const router = useRouter();
-  const slugParam = params?.slug;
-  const slug =
-    typeof slugParam === "string"
-      ? slugParam
-      : Array.isArray(slugParam)
-        ? slugParam[0]
-        : "";
+/**
+ * Halaman detail proyek — komponen SERVER.
+ *
+ * Sebelumnya `"use client"` dengan SWR. Akibatnya HTML-nya (16,7 KB) memuat
+ * metadata saja: judul dan og:description benar, tapi deskripsi panjang,
+ * challenge, solution, technical details, dan daftar fitur NOL kemunculan.
+ * Justru bagian itu yang paling menunjukkan cara berpikir sebagai engineer,
+ * dan justru itu yang tidak terbaca crawler.
+ *
+ * Sekaligus menghapus pengambilan data ganda: `layout.tsx` sudah mengambil
+ * proyek di server untuk `generateMetadata`, lalu halaman ini mengambilnya lagi
+ * di browser. Keduanya sekarang memakai `getProjectBySlug`, dan karena URL serta
+ * opsinya sama, cache `fetch` Next menyatukannya jadi satu permintaan.
+ *
+ * Yang tersisa sebagai klien hanya galeri screenshot (lightbox) —
+ * lihat ScreenshotGallery.
+ */
 
-  const { project, isLoading, isError } = useProject(slug);
-  const [selectedImage, setSelectedImage] = useState<number | null>(null);
+// Data proyek jarang berubah; segarkan tiap 5 menit seperti halaman lain.
+export const revalidate = 300;
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="bg-background min-h-screen px-6 py-16">
-        <div className="container mx-auto">
-          <p className="text-muted-foreground">Loading project...</p>
-        </div>
-      </div>
-    );
-  }
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
 
-  // Error / not found
-  if (isError || !project) {
-    return (
-      <div className="bg-background min-h-screen px-6 py-16">
-        <div className="container mx-auto space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2"
-            onClick={() => router.push("/projects")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
-          </Button>
-          <p className="text-red-500">Project not found.</p>
-        </div>
-      </div>
-    );
-  }
+export default async function ProjectDetailPage({ params }: PageProps) {
+  const { slug } = await params;
+  const project = await getProjectBySlug(slug);
 
-  const screenshots = project.screenshots ?? [];
-  const hasScreenshots = screenshots.length > 0;
+  // Slug tak dikenal -> 404 sungguhan, bukan halaman 200 bertulisan
+  // "Project not found". Yang lama membuat mesin pencari mengindeks halaman
+  // kosong sebagai halaman sah.
+  if (!project) notFound();
 
-  const nextImage = () => {
-    if (!hasScreenshots || selectedImage === null) return;
-    setSelectedImage((selectedImage + 1) % screenshots.length);
-  };
-
-  const prevImage = () => {
-    if (!hasScreenshots || selectedImage === null) return;
-    setSelectedImage(
-      (selectedImage - 1 + screenshots.length) % screenshots.length,
-    );
-  };
-
+  // API mengembalikan objek {imageUrl, sortOrder}; galeri hanya butuh URL-nya,
+  // diurutkan sesuai sortOrder.
+  const screenshots = (project.screenshots ?? [])
+    .slice()
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((s) => s.imageUrl)
+    .filter(Boolean);
   const technologies = project.tags?.map((t) => t.name) ?? [];
+  const technicalDetails = Object.entries(
+    project.technicalDetails ?? {},
+  ).filter(([, value]) => value);
+  const features = project.features ?? [];
+  const results = project.results ?? [];
 
   return (
     <div className="bg-background min-h-screen font-sans">
       {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="bg-background/80 sticky top-0 z-40 py-6 backdrop-blur-md"
-      >
+      <header className="bg-background/80 sticky top-0 z-40 py-6 backdrop-blur-md">
         <div className="container mx-auto flex items-center justify-between px-6 lg:px-12">
+          {/* Dulu <Button onClick={router.push()}> — sekarang tautan sungguhan:
+              bisa dibuka di tab baru, di-crawl, dan tidak butuh JavaScript. */}
           <Button
             variant="ghost"
             size="sm"
             className="gap-2 transition-opacity hover:bg-transparent hover:opacity-70"
-            onClick={() => router.push("/projects")}
+            asChild
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
+            <Link href="/projects">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to Projects
+            </Link>
           </Button>
+
           <div className="flex gap-4">
-            {project.repoUrl && (
+            {project.repoUrl ? (
               <a
                 href={project.repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm font-medium tracking-wide opacity-70 transition-opacity hover:opacity-100"
+                className="flex min-h-11 items-center gap-2 text-sm font-medium tracking-wide opacity-70 transition-opacity hover:opacity-100"
               >
-                <GithubIcon className="h-4 w-4" /> Code
+                <GithubIcon className="h-4 w-4" aria-hidden="true" /> Code
               </a>
-            )}
-            {project.demoUrl && (
+            ) : null}
+            {project.demoUrl ? (
               <a
                 href={project.demoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm font-medium tracking-wide opacity-70 transition-opacity hover:opacity-100"
+                className="flex min-h-11 items-center gap-2 text-sm font-medium tracking-wide opacity-70 transition-opacity hover:opacity-100"
               >
-                <ExternalLink className="h-4 w-4" /> Live Demo
+                <ExternalLink className="h-4 w-4" aria-hidden="true" /> Live
+                Demo
               </a>
-            )}
+            ) : null}
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="px-6 py-20 lg:px-12 lg:py-32">
         <div className="container mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex flex-col justify-between gap-12 md:flex-row md:items-end"
-          >
+          <div className="rise-in flex flex-col justify-between gap-12 md:flex-row md:items-end">
             <div className="max-w-3xl">
-              {project.category && (
+              {project.category ? (
                 <span className="text-muted-foreground mb-6 inline-block text-sm tracking-widest uppercase">
                   {project.category}
                 </span>
-              )}
+              ) : null}
               <h1 className="mb-8 text-5xl font-medium tracking-tight md:text-7xl lg:text-8xl">
                 {project.title}
               </h1>
@@ -147,46 +120,37 @@ const ProjectDetailPage = () => {
             </div>
 
             <div className="text-foreground/80 flex flex-col gap-4 text-sm tracking-wide md:min-w-[200px]">
-              {project.timeline && (
+              {project.timeline ? (
                 <div className="border-border/40 flex justify-between border-b pb-2">
                   <span className="text-muted-foreground text-xs uppercase">
                     Timeline
                   </span>
                   <span>{project.timeline}</span>
                 </div>
-              )}
-              {project.role && (
+              ) : null}
+              {project.role ? (
                 <div className="border-border/40 flex justify-between border-b pb-2">
                   <span className="text-muted-foreground text-xs uppercase">
                     Role
                   </span>
                   <span>{project.role}</span>
                 </div>
-              )}
+              ) : null}
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Main Image */}
-      {project.coverImageUrl && (
+      {/* Cover */}
+      {project.coverImageUrl ? (
         <section className="px-6 pb-24 lg:px-12">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="container mx-auto"
-          >
+          <div className="container mx-auto">
             <div className="bg-muted/20 relative aspect-video w-full overflow-hidden md:aspect-21/9">
               {/* Lapisan gambar diperbesar melebihi bingkai lalu digeser
                   mengikuti posisi gulir. Hanya lapisan dekoratif yang bergerak;
-                  judul di atasnya tidak, karena teks ber-parallax menyulitkan
-                  pembacaan dan memicu mabuk gerak. */}
+                  judul tidak, karena teks ber-parallax menyulitkan pembacaan
+                  dan memicu mabuk gerak. */}
               <div className="parallax-slow absolute inset-x-0 -inset-y-[8%]">
-                {/* `unoptimized` dulu dipasang tanpa syarat untuk mencegah error
-                  host non-allowlist — efeknya optimasi mati untuk SEMUA gambar,
-                  termasuk yang host-nya sebenarnya terdaftar. Sekarang
-                  diputuskan per gambar. */}
                 <Image
                   src={project.coverImageUrl}
                   alt={project.title}
@@ -200,271 +164,138 @@ const ProjectDetailPage = () => {
               </div>
             </div>
 
-            {/* Technologies (tags) Minimalist */}
-            {technologies.length > 0 && (
+            {technologies.length > 0 ? (
               <div className="text-muted-foreground mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm tracking-widest uppercase">
                 {technologies.map((tech, index) => (
                   <span key={tech + index}>{tech}</span>
                 ))}
               </div>
-            )}
-          </motion.div>
-        </section>
-      )}
-
-      {/* Case Study */}
-      <section className="bg-muted/10 px-6 py-24 lg:px-12">
-        <div className="container mx-auto max-w-5xl">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-16 text-3xl font-medium tracking-tight md:text-5xl"
-          >
-            Case Study
-          </motion.h2>
-
-          <div className="grid gap-16 md:grid-cols-2">
-            {/* Challenge */}
-            {project.challenge && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                className="prose prose-lg dark:prose-invert"
-              >
-                <h3 className="mb-6 text-xl font-medium">The Challenge</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {project.challenge}
-                </p>
-              </motion.div>
-            )}
-
-            {/* Solution */}
-            {project.solution && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                className="prose prose-lg dark:prose-invert"
-              >
-                <h3 className="mb-6 text-xl font-medium">The Solution</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {project.solution}
-                </p>
-              </motion.div>
-            )}
+            ) : null}
           </div>
+        </section>
+      ) : null}
 
-          {/* Results */}
-          {project.results && project.results.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mt-24"
-            >
-              <h3 className="mb-8 text-2xl font-medium tracking-tight">
-                Key Results
-              </h3>
-              <div className="grid gap-6 md:grid-cols-2">
-                {project.results.map((result, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="border-border/40 flex gap-4 border-t pt-6"
-                  >
-                    <span className="text-muted-foreground text-sm">
-                      0{index + 1}
-                    </span>
-                    <span className="text-lg leading-relaxed">{result}</span>
-                  </motion.div>
-                ))}
+      {/* Case study */}
+      {project.challenge || project.solution || results.length > 0 ? (
+        <section className="bg-muted/10 px-6 py-24 lg:px-12">
+          <div className="container mx-auto max-w-5xl">
+            <h2 className="reveal-on-scroll mb-16 text-3xl font-medium tracking-tight md:text-5xl">
+              Case Study
+            </h2>
+
+            <div className="grid gap-16 md:grid-cols-2">
+              {project.challenge ? (
+                <div className="reveal-on-scroll">
+                  <h3 className="mb-6 text-xl font-medium">The Challenge</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {project.challenge}
+                  </p>
+                </div>
+              ) : null}
+
+              {project.solution ? (
+                <div className="reveal-on-scroll">
+                  <h3 className="mb-6 text-xl font-medium">The Solution</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {project.solution}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
+            {results.length > 0 ? (
+              <div className="mt-24">
+                <h3 className="mb-8 text-2xl font-medium tracking-tight">
+                  Key Results
+                </h3>
+                <div className="grid gap-6 md:grid-cols-2">
+                  {results.map((result, index) => (
+                    <div
+                      key={result + index}
+                      className="reveal-on-scroll border-border/40 flex gap-4 border-t pt-6"
+                    >
+                      <span className="text-muted-foreground text-sm tabular-nums">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="text-lg leading-relaxed">{result}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </motion.div>
-          )}
-        </div>
-      </section>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
-      {/* Screenshot Gallery */}
-      {hasScreenshots && (
+      {/* Galeri — grid dirender di HTML, lightbox-nya yang butuh klien */}
+      {screenshots.length > 0 ? (
         <section className="px-6 py-24 lg:px-12">
           <div className="container mx-auto">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-16 text-center text-3xl font-medium tracking-tight"
-            >
+            <h2 className="reveal-on-scroll mb-16 text-center text-3xl font-medium tracking-tight">
               Gallery
-            </motion.h2>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {screenshots.map((screenshot, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  onClick={() => setSelectedImage(index)}
-                  className="group bg-muted/20 relative aspect-4/3 cursor-pointer overflow-hidden"
-                >
-                  <Image
-                    src={screenshot}
-                    alt={`${project.title} screenshot ${index + 1}`}
-                    className="h-full w-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
-                    fill
-                    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                    unoptimized={!canOptimizeImage(screenshot)}
-                  />
-                  <div className="bg-background/0 group-hover:bg-background/10 absolute inset-0 z-10 transition-colors" />
-                </motion.div>
-              ))}
-            </div>
+            </h2>
+            <ScreenshotGallery
+              screenshots={screenshots}
+              projectTitle={project.title}
+            />
           </div>
         </section>
-      )}
+      ) : null}
 
-      {/* Lightbox */}
-      <AnimatePresence>
-        {hasScreenshots && selectedImage !== null && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="bg-background fixed inset-0 z-50 flex items-center justify-center p-4 md:p-12"
-            onClick={() => setSelectedImage(null)}
-          >
-            <button
-              onClick={() => setSelectedImage(null)}
-              className="text-muted-foreground hover:text-foreground absolute top-6 right-6 z-50 transition-colors"
-            >
-              <X className="text-foreground/50 hover:text-foreground h-8 w-8" />
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                prevImage();
-              }}
-              className="text-foreground/50 hover:text-foreground fixed top-1/2 left-6 z-50 hidden -translate-y-1/2 md:block"
-            >
-              <ChevronLeft className="h-10 w-10" />
-            </button>
-
-            <motion.div
-              className="relative flex h-full w-full items-center justify-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <motion.img
-                key={selectedImage}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                src={screenshots[selectedImage]}
-                alt={`${project.title} screenshot`}
-                className="max-h-full max-w-full object-contain"
-              />
-            </motion.div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                nextImage();
-              }}
-              className="text-foreground/50 hover:text-foreground fixed top-1/2 right-6 z-50 hidden -translate-y-1/2 md:block"
-            >
-              <ChevronRight className="h-10 w-10" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {(project.technicalDetails ||
-        (project.features && project.features.length > 0)) && (
+      {/* Spesifikasi & fitur */}
+      {technicalDetails.length > 0 || features.length > 0 ? (
         <section className="border-border/40 bg-muted/10 border-t border-b px-6 py-24 lg:px-12">
           <div className="container mx-auto max-w-6xl">
             <div className="grid gap-16 lg:grid-cols-2">
-              {/* Technical Details */}
-              {project.technicalDetails && (
+              {technicalDetails.length > 0 ? (
                 <div>
-                  <motion.h2
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="mb-8 text-2xl font-medium tracking-tight"
-                  >
+                  <h2 className="reveal-on-scroll mb-8 text-2xl font-medium tracking-tight">
                     Technical Specs
-                  </motion.h2>
+                  </h2>
                   <div className="flex flex-col">
-                    {Object.entries(project.technicalDetails).map(
-                      ([key, value], index) => (
-                        <motion.div
-                          key={key}
-                          initial={{ opacity: 0, y: 10 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ delay: index * 0.1 }}
-                          className="border-border/40 flex flex-col gap-2 border-b py-4 sm:flex-row sm:gap-8"
-                        >
-                          <span className="text-muted-foreground min-w-[140px] text-xs tracking-widest uppercase">
-                            {key}
-                          </span>
-                          <span className="text-foreground">{value}</span>
-                        </motion.div>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Features */}
-              {project.features && project.features.length > 0 && (
-                <div>
-                  <motion.h2
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="mb-8 text-2xl font-medium tracking-tight"
-                  >
-                    Key Features
-                  </motion.h2>
-                  <div className="flex flex-col gap-4">
-                    {project.features.map((feature, index) => (
-                      <motion.div
-                        key={feature.text + index}
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: index * 0.1 }}
-                        className="flex items-start gap-4"
+                    {technicalDetails.map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="reveal-on-scroll border-border/40 flex flex-col gap-2 border-b py-4 sm:flex-row sm:gap-8"
                       >
-                        <span className="text-muted-foreground mt-1 text-sm opacity-50">
-                          0{index + 1}
+                        <span className="text-muted-foreground min-w-[140px] text-xs tracking-widest uppercase">
+                          {key}
                         </span>
-                        <span className="text-lg">{feature.text}</span>
-                      </motion.div>
+                        <span className="text-foreground">{String(value)}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
-              )}
+              ) : null}
+
+              {features.length > 0 ? (
+                <div>
+                  <h2 className="reveal-on-scroll mb-8 text-2xl font-medium tracking-tight">
+                    Key Features
+                  </h2>
+                  <div className="flex flex-col gap-4">
+                    {features.map((feature, index) => (
+                      <div
+                        key={feature.text + index}
+                        className="reveal-on-scroll flex items-start gap-4"
+                      >
+                        <span className="text-muted-foreground mt-1 text-sm tabular-nums opacity-50">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <span className="text-lg">{feature.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
-      )}
+      ) : null}
 
       {/* CTA */}
       <section className="px-6 py-32 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="container mx-auto max-w-3xl text-center"
-        >
+        <div className="reveal-on-scroll container mx-auto max-w-3xl text-center">
           <h3 className="mb-6 text-4xl font-medium tracking-tight">
             Interested in similar solutions?
           </h3>
@@ -472,20 +303,17 @@ const ProjectDetailPage = () => {
             Let&apos;s discuss how I can help bring your ideas to life.
           </p>
           <div className="flex flex-col justify-center gap-6 sm:flex-row">
-            <Link href="/projects">
-              <Button
-                size="lg"
-                variant="link"
-                className="h-auto p-0 text-lg underline-offset-8"
-              >
-                ← View More Works
-              </Button>
-            </Link>
+            <Button
+              size="lg"
+              variant="link"
+              className="h-auto p-0 text-lg underline-offset-8"
+              asChild
+            >
+              <Link href="/projects">&larr; View More Works</Link>
+            </Button>
           </div>
-        </motion.div>
+        </div>
       </section>
     </div>
   );
-};
-
-export default ProjectDetailPage;
+}

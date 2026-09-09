@@ -157,3 +157,21 @@ export async function getUsedProjectTags(): Promise<string[]> {
 
   return Array.from(names).sort((a, b) => a.localeCompare(b));
 }
+
+/**
+ * Satu proyek berdasarkan slug, atau `null` bila tidak ada.
+ *
+ * Dipakai BERSAMA oleh `generateMetadata` di layout dan halaman detailnya.
+ * Karena keduanya memanggil URL yang sama dengan opsi yang sama, cache `fetch`
+ * bawaan Next menyatukannya menjadi satu permintaan — sebelumnya layout
+ * mengambil di server untuk metadata lalu halaman mengambil lagi di browser.
+ */
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
+  const clean = slug.trim();
+  if (!clean) return null;
+
+  const json = await getJson<{ data: Project }>(
+    `/projects/${encodeURIComponent(clean)}`,
+  );
+  return json?.data ?? null;
+}

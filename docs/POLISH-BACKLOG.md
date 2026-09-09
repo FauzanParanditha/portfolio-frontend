@@ -70,6 +70,11 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       Filter tag kini dikerjakan **database** (param `tag` baru di backend);
       versi lama menyaring satu halaman di browser sehingga memfilter di halaman
       2 dengan tag yang hanya ada di halaman 1 menghasilkan kosong.
+- [x] **15 — `/projects/[slug]` dirender di server.** HTML 16,7 KB (metadata saja)
+      → 50,2 KB berisi seluruh studi kasus. Slug tak dikenal kini **404**, bukan
+      halaman 200 bertulisan "Project not found". Pengambilan data ganda
+      (layout + page) disatukan. Ikut menemukan bug tipe `screenshots` — lihat
+      catatan 15b.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -137,37 +142,21 @@ Dua hook SWR yang ikut jadi kosong sudah dihapus (`use-projects.ts`,
 ditangani `src/lib/server/portfolio.ts`, dan dua jalur akses data ke API yang
 sama adalah beban pemeliharaan, bukan cadangan.
 
-### 15. `/projects/[slug]` — SUDAH DIPERIKSA, memang bermasalah · ~2 jam
+### 15b. Bug yang ikut ketemu: tipe `screenshots` salah
 
-Diverifikasi terhadap server produksi (9 September 2026). Halaman detail
-mengembalikan 16,7 KB, dan isi studi kasusnya **tidak ada di dalamnya**:
+Saat menguji galeri, ternyata API publik mengembalikan `screenshots` sebagai
+**objek** `{imageUrl, sortOrder}`, sementara `src/types/portfolio.ts`
+mendeklarasikannya `string[]`. Kode lama memakai `src={screenshot}` langsung,
+yang akan menghasilkan `[object Object]`.
 
-| Yang dicari di HTML | Ada? |
-| ------------------- | ---- |
-| `<title>` & `og:description` | ✅ dari `layout.tsx` (server) |
-| Judul proyek | ✅ tapi hanya dari tag metadata |
-| Deskripsi panjang | ❌ 0 |
-| Challenge | ❌ 0 |
-| Solution | ❌ 0 |
-| Technical details | ❌ 0 |
-| Daftar fitur | ❌ 0 |
+Tidak pernah terlihat karena satu-satunya proyek di database tidak punya
+screenshot. Sudah diperbaiki: tipe FE disesuaikan dengan
+`ProjectScreenshotResponse` di backend, dan halaman memetakan objek → URL
+sekaligus mengurutkannya sesuai `sortOrder`.
 
-Jadi pratinjau tautan di WhatsApp/LinkedIn **berfungsi**, tapi isi yang
-sebenarnya menunjukkan cara Anda berpikir sebagai engineer — challenge,
-solution, technical details — tidak terbaca crawler dan tidak terlihat sebelum
-JavaScript jalan. Ini bagian portfolio dengan bukti kemampuan paling kuat.
-
-**Ada pengambilan data ganda.** `layout.tsx` sudah `fetch` proyek di server untuk
-`generateMetadata`, lalu `page.tsx` mengambilnya LAGI di browser lewat
-`useProject`. Satu halaman, dua permintaan ke endpoint yang sama.
-
-Pekerjaannya mirip item 13 tapi lebih ringan: dari 491 baris, yang benar-benar
-butuh klien hanya **lightbox screenshot** (`selectedImage`, navigasi
-prev/next/Escape) dan dua tombol `router.push("/projects")` — yang itu bisa
-langsung diganti `<Link>`. Sisanya bisa jadi komponen server.
-
-Rencana: `page.tsx` jadi server component yang mengambil data sekali, lightbox
-diekstrak ke komponen klien tersendiri.
+Pelajarannya: **tipe TypeScript yang ditulis manual bukan jaminan.** Tidak ada
+yang memverifikasi bahwa `types/portfolio.ts` cocok dengan DTO Go. Kalau nanti
+ingin dijamin, hasilkan tipe FE dari `docs/swagger.json`.
 
 ## Dependensi yang sengaja ditahan
 
