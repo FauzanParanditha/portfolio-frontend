@@ -128,16 +128,46 @@ di-crawl, jalan tanpa JavaScript), sehingga komponen shadcn ini tanpa pemakai.
 **Sengaja tidak dihapus** — ia primitif design-system yang wajar dipakai lagi
 untuk tabel admin. Hapus kalau memang tidak.
 
+Diperiksa (9 September 2026): nol pemakai terkonfirmasi. Halaman admin
+`contact-messages` ternyata memakai tombol Sebelumnya/Berikutnya buatan sendiri,
+bukan komponen ini — jadi ia belum pernah dipakai bahkan sebelum item 13.
+
 Dua hook SWR yang ikut jadi kosong sudah dihapus (`use-projects.ts`,
 `use-experiences.ts`): keduanya menduplikasi jalur pengambilan data yang kini
 ditangani `src/lib/server/portfolio.ts`, dan dua jalur akses data ke API yang
 sama adalah beban pemeliharaan, bukan cadangan.
 
-### 15. `/projects/[slug]` belum diperiksa
+### 15. `/projects/[slug]` — SUDAH DIPERIKSA, memang bermasalah · ~2 jam
 
-Halaman detail proyek belum pernah dicek apakah isinya masuk HTML. Ia sudah
-komponen klien karena lightbox screenshot, jadi kemungkinan bermasalah sama
-seperti `/projects` sebelum item 13.
+Diverifikasi terhadap server produksi (9 September 2026). Halaman detail
+mengembalikan 16,7 KB, dan isi studi kasusnya **tidak ada di dalamnya**:
+
+| Yang dicari di HTML | Ada? |
+| ------------------- | ---- |
+| `<title>` & `og:description` | ✅ dari `layout.tsx` (server) |
+| Judul proyek | ✅ tapi hanya dari tag metadata |
+| Deskripsi panjang | ❌ 0 |
+| Challenge | ❌ 0 |
+| Solution | ❌ 0 |
+| Technical details | ❌ 0 |
+| Daftar fitur | ❌ 0 |
+
+Jadi pratinjau tautan di WhatsApp/LinkedIn **berfungsi**, tapi isi yang
+sebenarnya menunjukkan cara Anda berpikir sebagai engineer — challenge,
+solution, technical details — tidak terbaca crawler dan tidak terlihat sebelum
+JavaScript jalan. Ini bagian portfolio dengan bukti kemampuan paling kuat.
+
+**Ada pengambilan data ganda.** `layout.tsx` sudah `fetch` proyek di server untuk
+`generateMetadata`, lalu `page.tsx` mengambilnya LAGI di browser lewat
+`useProject`. Satu halaman, dua permintaan ke endpoint yang sama.
+
+Pekerjaannya mirip item 13 tapi lebih ringan: dari 491 baris, yang benar-benar
+butuh klien hanya **lightbox screenshot** (`selectedImage`, navigasi
+prev/next/Escape) dan dua tombol `router.push("/projects")` — yang itu bisa
+langsung diganti `<Link>`. Sisanya bisa jadi komponen server.
+
+Rencana: `page.tsx` jadi server component yang mengambil data sekali, lightbox
+diekstrak ke komponen klien tersendiri.
 
 ## Dependensi yang sengaja ditahan
 
