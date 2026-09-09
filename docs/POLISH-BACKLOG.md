@@ -65,6 +65,11 @@ Metadata (`title`, `description`, OG image, keyword) diperiksa dan **sudah benar
       diganti tombol 44×44 + panel berisi tautan setinggi minimal 44 px dan
       selebar penuh. Panel selalu ada di DOM (disembunyikan atribut `hidden`)
       supaya `aria-controls` menunjuk elemen yang benar-benar ada.
+- [x] **13 — `/projects` dirender di server.** Kata kunci, filter tag, dan nomor
+      halaman pindah ke URL. HTML 18,5 KB tanpa kartu → 34,3 KB berisi kartu.
+      Filter tag kini dikerjakan **database** (param `tag` baru di backend);
+      versi lama menyaring satu halaman di browser sehingga memfilter di halaman
+      2 dengan tag yang hanya ada di halaman 1 menghasilkan kosong.
 - [x] **Kontak diperbaiki.** Telepon sebelumnya masih placeholder `+62` dengan
       tautan ke `wa.me/62` yang tidak valid, dan "Location" menaut ke situs
       kantor. Kini dari env, dan baris WhatsApp disembunyikan bila kosong.
@@ -116,22 +121,23 @@ matikan lewat `agentRules: false` di `next.config.ts`.
 
 ## Belum dikerjakan
 
-### 13. `/projects` masih dirender di klien · ~2–3 jam
+### 14. `src/components/ui/pagination.tsx` jadi kode mati
 
-Ditemukan saat mengerjakan nomor 12, dan **tidak ada di audit awal** — audit itu
-hanya memeriksa beranda. `src/app/projects/page.tsx` masih `"use client"` dengan
-SWR, sehingga HTML-nya (18,5 KB) **tidak memuat satu pun kartu proyek**. Persis
-masalah yang diperbaiki di beranda pada nomor 1.
+Paginasi `/projects` kini memakai `<Link>` biasa (bisa dibuka di tab baru,
+di-crawl, jalan tanpa JavaScript), sehingga komponen shadcn ini tanpa pemakai.
+**Sengaja tidak dihapus** — ia primitif design-system yang wajar dipakai lagi
+untuk tabel admin. Hapus kalau memang tidak.
 
-Ini penting karena `/projects` adalah halaman tujuan tombol "View projects" di
-hero — kemungkinan halaman kedua yang dibuka recruiter.
+Dua hook SWR yang ikut jadi kosong sudah dihapus (`use-projects.ts`,
+`use-experiences.ts`): keduanya menduplikasi jalur pengambilan data yang kini
+ditangani `src/lib/server/portfolio.ts`, dan dua jalur akses data ke API yang
+sama adalah beban pemeliharaan, bukan cadangan.
 
-Lebih rumit daripada beranda: halaman ini punya pencarian, filter, dan paginasi
-yang benar-benar interaktif. Konversi yang benar berarti memindahkan state itu
-ke URL search params lalu mengambil data di server, bukan sekadar melepas
-`"use client"`.
+### 15. `/projects/[slug]` belum diperiksa
 
-Halaman detail `/projects/[slug]` perlu diperiksa juga — belum dicek.
+Halaman detail proyek belum pernah dicek apakah isinya masuk HTML. Ia sudah
+komponen klien karena lightbox screenshot, jadi kemungkinan bermasalah sama
+seperti `/projects` sebelum item 13.
 
 ## Dependensi yang sengaja ditahan
 

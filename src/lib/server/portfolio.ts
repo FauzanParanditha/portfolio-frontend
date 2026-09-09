@@ -86,3 +86,74 @@ export async function getTags(): Promise<ExperienceTag[]> {
   const json = await getJson<{ data: ExperienceTag[] }>("/tags");
   return json?.data ?? [];
 }
+
+/** Satu halaman hasil daftar proyek, beserta meta paginasinya. */
+export interface ProjectsPage {
+  projects: Project[];
+  total: number;
+  totalPages: number;
+  page: number;
+}
+
+/**
+ * Satu halaman daftar proyek untuk `/projects`.
+ *
+ * Pencarian, filter tag, dan paginasi SEMUANYA dikerjakan backend. Sebelumnya
+ * halaman itu mengambil satu halaman lalu menyaring tag di browser — sehingga
+ * memfilter di halaman 2 dengan tag yang hanya ada di halaman 1 menghasilkan
+ * kosong, dan jumlah halamannya pun salah.
+ */
+export async function getProjectsPage(params: {
+  page?: number;
+  limit?: number;
+  q?: string;
+  tag?: string;
+}): Promise<ProjectsPage> {
+  const page = Math.max(1, params.page ?? 1);
+  const limit = params.limit ?? 6;
+
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (params.q?.trim()) query.set("q", params.q.trim());
+  if (params.tag?.trim()) query.set("tag", params.tag.trim());
+
+  const json = await getJson<ProjectListResponse<Project>>(
+    `/projects?${query.toString()}`,
+  );
+
+  const total = json?.meta?.total ?? 0;
+  return {
+    projects: json?.data ?? [],
+    total,
+    totalPages: json?.meta?.totalPages ?? Math.max(1, Math.ceil(total / limit)),
+    page,
+  };
+}
+
+/**
+ * Nama tag yang BENAR-BENAR dipakai minimal satu proyek, untuk baris chip
+ * filter di `/projects`.
+ *
+ * Sengaja tidak memakai `/tags`: endpoint itu mengembalikan seluruh tag yang
+ * dikelola di panel, termasuk yang belum dipakai proyek mana pun — chip-nya
+ * akan menghasilkan nol hasil dan menyesatkan.
+ *
+ * Diambil dengan satu permintaan berlimit besar. Untuk sebuah portfolio, jumlah
+ * proyeknya kecil sehingga ini lebih murah daripada menambah endpoint baru.
+ */
+export async function getUsedProjectTags(): Promise<string[]> {
+  const json = await getJson<ProjectListResponse<Project>>(
+    "/projects?page=1&limit=100",
+  );
+
+  const names = new Set<string>();
+  for (const project of json?.data ?? []) {
+    for (const tag of project.tags ?? []) {
+      if (tag.name) names.add(tag.name);
+    }
+  }
+
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
