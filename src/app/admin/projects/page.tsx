@@ -15,7 +15,11 @@ import { useAdminProjects } from "@/hooks/use-admin-projects";
 import { UploadButton } from "@/components/admin/UploadButton";
 import { useAdminTags } from "@/hooks/use-admin-tags";
 import { useToast } from "@/hooks/use-toast";
-import { toProjectUpsertPayload } from "@/lib/mapper/project";
+import { handleAxiosError } from "@/lib/handleAxiosError";
+import {
+  projectFieldLabel,
+  toProjectUpsertPayload,
+} from "@/lib/mapper/project";
 import { safeHttpUrl, safeImageSrc } from "@/lib/safeUrl";
 import { Project } from "@/types/project";
 import { motion } from "framer-motion";
@@ -124,12 +128,11 @@ const AdminProjects = () => {
 
       setIsOpen(false);
       resetForm();
-    } catch {
-      toast({
-        title: "Failed",
-        description: "Please try again.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      // Tampilkan detail validasi (422) per field dengan label form, supaya
+      // admin tahu persis field mana yang ditolak — mis. proyek lama yang
+      // URL-nya tidak lagi lolos aturan http/https backend.
+      handleAxiosError(err, { fieldLabel: projectFieldLabel });
     }
   };
 

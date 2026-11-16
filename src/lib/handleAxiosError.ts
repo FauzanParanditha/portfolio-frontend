@@ -8,7 +8,30 @@ type ApiErrorEnvelope = {
   requestId?: string;
 };
 
-export const handleAxiosError = (error: unknown) => {
+export type HandleAxiosErrorOptions = {
+  /**
+   * Ubah kunci `error.details` backend menjadi label yang dikenali pengguna,
+   * mis. `DemoURL` → "Live URL". Tanpa opsi ini kunci ditampilkan apa adanya.
+   */
+  fieldLabel?: (key: string) => string;
+};
+
+/**
+ * Ubah `error.details` (map field → pesan) menjadi satu baris per field:
+ * "Live URL: harus berupa URL ...". Dipisah agar bisa diuji tanpa toast.
+ */
+export const formatErrorDetails = (
+  details: Record<string, unknown>,
+  fieldLabel: (key: string) => string = (k) => k,
+): string =>
+  Object.entries(details)
+    .map(([k, v]) => `${fieldLabel(k)}: ${String(v)}`)
+    .join("\n");
+
+export const handleAxiosError = (
+  error: unknown,
+  options: HandleAxiosErrorOptions = {},
+) => {
   if (axios.isAxiosError<ApiErrorEnvelope>(error)) {
     const res = error.response;
     const data = res?.data;
@@ -19,6 +42,9 @@ export const handleAxiosError = (error: unknown) => {
         401: "Unauthorized",
         403: "Forbidden",
         404: "Not Found",
+        409: "Conflict",
+        422: "Validation Error",
+        429: "Too Many Requests",
         500: "Internal Server Error",
       };
 
@@ -33,9 +59,7 @@ export const handleAxiosError = (error: unknown) => {
         details && typeof details === "object"
           ? [
               message,
-              Object.entries(details)
-                .map(([k, v]) => `${k}: ${v}`)
-                .join(", "),
+              formatErrorDetails(details, options.fieldLabel),
               requestId ? `rid: ${requestId}` : null,
             ]
               .filter(Boolean)
