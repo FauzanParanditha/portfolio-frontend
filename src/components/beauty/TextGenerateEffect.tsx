@@ -1,12 +1,17 @@
 "use client";
 import { cn } from "@/lib/utils";
 import { motion, stagger, useAnimate, useReducedMotion } from "framer-motion";
-import { JSX, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 type TextGenerateEffectLoopProps = {
   words: string;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  /**
+   * Tag pembungkus. Dibatasi ke elemen HTML: `JSX.IntrinsicElements` kini juga
+   * memuat elemen three.js (ditambahkan @react-three/fiber untuk /playground),
+   * yang tidak menerima `className`/children.
+   */
+  as?: keyof HTMLElementTagNameMap;
   colorClass?: string;
   /** Durasi 1 siklus: fade-in → hold → fade-out (detik) */
   cycleDuration?: number; // default 2.4
