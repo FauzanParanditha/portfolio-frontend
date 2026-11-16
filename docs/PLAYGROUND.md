@@ -10,14 +10,14 @@ masuk dari hero & navbar).
 
 ## Cara pakai
 
-| Aksi | Mouse / keyboard | Sentuh |
-|---|---|---|
-| Jalan ke suatu titik | Klik lantai | Ketuk lantai |
-| Buka proyek | Klik rak, atau pilih di daftar "Racks" | Ketuk rak / daftar |
-| Jalan manual | `W A S D` atau panah (relatif kamera) | — |
-| Periksa rak di depan robot | `E` atau tombol "Inspect" | Tombol "Inspect" |
-| Putar kamera | Seret | Seret satu jari |
-| Zoom | Roda mouse | Cubit dua jari |
+| Aksi                       | Mouse / keyboard                       | Sentuh             |
+| -------------------------- | -------------------------------------- | ------------------ |
+| Jalan ke suatu titik       | Klik lantai                            | Ketuk lantai       |
+| Buka proyek                | Klik rak, atau pilih di daftar "Racks" | Ketuk rak / daftar |
+| Jalan manual               | `W A S D` atau panah (relatif kamera)  | —                  |
+| Periksa rak di depan robot | `E` atau tombol "Inspect"              | Tombol "Inspect"   |
+| Putar kamera               | Seret                                  | Seret satu jari    |
+| Zoom                       | Roda mouse                             | Cubit dua jari     |
 
 ## Arsitektur
 
@@ -35,6 +35,7 @@ src/components/playground/
     textures.ts                      Tekstur Canvas 2D (tanpa berkas aset)
 src/lib/playground/                  Logika murni, tanpa three.js/DOM
   grid.ts                            Grid navigasi, A*, penghalusan jalur
+  collision.ts                       Tabrakan lingkaran-vs-kotak (gerak manual)
   layout.ts                          Proyek → stasiun → posisi rak → grid
   sim.ts                             Gerak pemain (rute + WASD + tabrakan)
 ```
@@ -55,6 +56,11 @@ Prinsip yang dijaga:
 
 ## Catatan teknis
 
+- **Dua model halangan, satu sumber.** `layout.obstacles` (kotak rak &
+  properti) adalah sumber kebenaran. Klik-untuk-jalan mencari jalur di grid
+  0,25 m yang diturunkan darinya; gerak manual (WASD) memakai tabrakan
+  lingkaran-vs-kotak yang tepat, sehingga robot meluncur di sepanjang rak dan
+  bisa lewat di celah antar-rak (1,4 m) tanpa tersangkut sudut sel.
 - **Kapasitas:** paling banyak 24 rak berisi. Bila proyek lebih dari itu, rak
   terakhir menjadi "Project archive" yang menautkan ke `/projects`. Ruangan
   minimal dua baris; slot tanpa proyek tampil sebagai rak kosong.

@@ -1,4 +1,5 @@
 import type { Project } from "@/types/portfolio";
+import { type Rect, rectFromCenter } from "./collision";
 import {
   blockBorder,
   blockRect,
@@ -25,17 +26,27 @@ export const RACKS_PER_ROW = 4;
 export const MIN_ROWS = 2;
 
 export const RACK = { width: 1.1, depth: 0.9, height: 2.3 } as const;
-const RACK_SPACING_X = 2.3;
+// Jarak antar-rak dan margin samping dipilih supaya tepi rak jatuh di garis
+// sel grid (kelipatan 0,25 m) dan celah antar-rak cukup lega untuk dilewati.
+const RACK_SPACING_X = 2.5;
 const ROW_SPACING_Z = 3.6;
-const SIDE_MARGIN = 3;
+const SIDE_MARGIN = 2.7;
 const LOBBY_DEPTH = 6;
 const BACK_MARGIN = 2.6;
 
 /** Jarak titik berdiri pemain dari muka rak. */
 const APPROACH_DISTANCE = 0.95;
 /** Radius badan pemain; halangan diperlebar sebesar ini di grid. */
-export const PLAYER_RADIUS = 0.3;
-export const GRID_CELL = 0.5;
+export const PLAYER_RADIUS = 0.28;
+export const GRID_CELL = 0.25;
+/**
+ * Pelebaran halangan di grid. Lebih kecil dari radius pemain karena pembulatan
+ * ke sel sudah menambah hingga setengah sel di tiap sisi; kalau memakai radius
+ * penuh, celah yang secara visual lega jadi tampak tertutup.
+ */
+const GRID_PADDING = PLAYER_RADIUS - GRID_CELL / 2;
+/** Tebal "bantalan" dinding: pemain tidak menempel persis ke dinding. */
+const WALL_MARGIN = 0.12;
 
 /** Subset data proyek yang benar-benar dipakai playground (hemat payload RSC). */
 export type PlaygroundProject = Pick<
@@ -148,15 +159,22 @@ export interface RoomLayout {
   slots: RackSlot[];
   props: RoomProp[];
   spawn: Point;
+  /** Grid kasar untuk pencarian jalur (klik-untuk-jalan). */
   grid: Grid;
+  /** Kotak halangan tepat (rak + properti) untuk tabrakan gerak manual. */
+  obstacles: Rect[];
+  /** Batas dalam ruangan (dinding). */
+  bounds: Rect;
 }
 
 export function buildLayout(stationCount: number): RoomLayout {
   const count = Math.min(Math.max(0, stationCount), MAX_STATIONS);
   const rows = Math.max(MIN_ROWS, Math.ceil(count / RACKS_PER_ROW));
 
-  const width =
-    SIDE_MARGIN * 2 + (RACKS_PER_ROW - 1) * RACK_SPACING_X + RACK.width;
+  // Dibulatkan: 2,7 × 2 + 2,5 × 3 + 1,1 tidak tepat 14 di floating point.
+  const width = Math.round(
+    SIDE_MARGIN * 2 + (RACKS_PER_ROW - 1) * RACK_SPACING_X + RACK.width,
+  );
   // Dibulatkan ke atas ke meter utuh supaya ubin lantai dan sel grid pas.
   const depth = Math.ceil(
     LOBBY_DEPTH + (rows - 1) * ROW_SPACING_Z + RACK.depth + BACK_MARGIN,
@@ -184,7 +202,7 @@ export function buildLayout(stationCount: number): RoomLayout {
     // Sudut kiri-depan: tempat tidur si robot — titik awalnya di sebelahnya.
     { kind: "bed", x: -width / 2 + 1.7, z: depth / 2 - 1.5, w: 1.4, d: 1.1 },
     { kind: "plant", x: width / 2 - 1.1, z: depth / 2 - 1.1, w: 0.7, d: 0.7 },
-    { kind: "plant", x: -width / 2 + 1.1, z: frontRowZ + 0.4, w: 0.7, d: 0.7 },
+    { kind: "plant", x: -width / 2 + 0.8, z: frontRowZ + 0.4, w: 0.7, d: 0.7 },
     { kind: "crates", x: width / 2 - 1.3, z: depth / 2 - 3.1, w: 1.1, d: 1.0 },
     // Unit pendingin menempel dinding kanan, di antara dua baris pertama.
     {
@@ -196,13 +214,31 @@ export function buildLayout(stationCount: number): RoomLayout {
     },
   ];
 
+  const obstacles: Rect[] = [
+    ...slots.map((slot) =>
+      rectFromCenter(slot.x, slot.z, RACK.width, RACK.depth),
+    ),
+    ...props.map((prop) => rectFromCenter(prop.x, prop.z, prop.w, prop.d)),
+  ];
+  const bounds: Rect = {
+    minX: -width / 2 + WALL_MARGIN,
+    maxX: width / 2 - WALL_MARGIN,
+    minZ: -depth / 2 + WALL_MARGIN,
+    maxZ: depth / 2 - WALL_MARGIN,
+  };
+
   const grid = createGrid(width, depth, GRID_CELL);
-  blockBorder(grid, 1);
-  for (const slot of slots) {
-    blockRect(grid, slot.x, slot.z, RACK.width, RACK.depth, PLAYER_RADIUS);
-  }
-  for (const prop of props) {
-    blockRect(grid, prop.x, prop.z, prop.w, prop.d, PLAYER_RADIUS * 0.5);
+  // 2 sel × 0,25 m = 0,5 m dari dinding.
+  blockBorder(grid, 2);
+  for (const rect of obstacles) {
+    blockRect(
+      grid,
+      (rect.minX + rect.maxX) / 2,
+      (rect.minZ + rect.maxZ) / 2,
+      rect.maxX - rect.minX,
+      rect.maxZ - rect.minZ,
+      GRID_PADDING,
+    );
   }
 
   return {
@@ -213,6 +249,8 @@ export function buildLayout(stationCount: number): RoomLayout {
     props,
     spawn: { x: -width / 2 + 3.6, z: depth / 2 - 1.9 },
     grid,
+    obstacles,
+    bounds,
   };
 }
 

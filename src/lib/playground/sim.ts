@@ -1,4 +1,5 @@
-import { findRoute, isWalkableAt, type Grid, type Point } from "./grid";
+import { isCircleFree, type Rect, resolveCircle } from "./collision";
+import { findRoute, type Grid, type Point } from "./grid";
 import { PLAYER_RADIUS } from "./layout";
 
 /**
@@ -34,6 +35,19 @@ export interface Sim {
   /** Titik tujuan untuk penanda di lantai. */
   marker: Point | null;
 }
+
+/**
+ * Yang dibutuhkan simulasi dari tata letak ruangan. `RoomLayout` memenuhinya,
+ * jadi scene cukup meneruskan `layout`.
+ */
+export interface Navigation {
+  grid: Grid;
+  obstacles: readonly Rect[];
+  bounds: Rect;
+}
+
+/** Langkah terpanjang per sub-langkah tabrakan; mencegah menembus halangan. */
+const MAX_COLLISION_STEP = 0.12;
 
 export interface SimInput {
   /** Arah gerak manual (WASD) di ruang dunia; panjang 0..1. */
@@ -136,7 +150,7 @@ function remainingDistance(sim: Sim): number {
  */
 export function stepSim(
   sim: Sim,
-  grid: Grid,
+  nav: Navigation,
   dt: number,
   input: SimInput,
 ): SimEvent | null {
@@ -160,20 +174,42 @@ export function stepSim(
         ? Math.min(desired, sim.speed + ACCELERATION * step)
         : Math.max(desired, sim.speed - DECELERATION * step);
 
+    // Gerak dipecah menjadi sub-langkah pendek, masing-masing diselesaikan
+    // terhadap kotak halangan yang tepat. Lingkaran pemain "meluncur" di
+    // sepanjang rak dan membulat di sudutnya, tanpa tersangkut.
     const dist = sim.speed * step;
-    const nx = sim.x + dirX * dist;
-    const nz = sim.z + dirZ * dist;
-    // Meluncur di sepanjang halangan: coba gerak penuh, lalu per sumbu.
-    if (isWalkableAt(grid, nx, nz)) {
-      sim.x = nx;
-      sim.z = nz;
-    } else if (isWalkableAt(grid, nx, sim.z)) {
-      sim.x = nx;
-    } else if (isWalkableAt(grid, sim.x, nz)) {
-      sim.z = nz;
-    } else {
-      sim.speed = 0;
+    const subSteps = Math.max(1, Math.ceil(dist / MAX_COLLISION_STEP));
+    const fromX = sim.x;
+    const fromZ = sim.z;
+    for (let i = 0; i < subSteps; i++) {
+      const resolved = resolveCircle(
+        sim.x + (dirX * dist) / subSteps,
+        sim.z + (dirZ * dist) / subSteps,
+        PLAYER_RADIUS,
+        nav.obstacles,
+        nav.bounds,
+      );
+      // Celah yang lebih sempit dari badan pemain tidak punya posisi sah;
+      // dalam kasus itu tetap di tempat daripada menembus.
+      if (
+        !isCircleFree(
+          resolved.x,
+          resolved.z,
+          PLAYER_RADIUS,
+          nav.obstacles,
+          nav.bounds,
+          1e-3,
+        )
+      ) {
+        break;
+      }
+      sim.x = resolved.x;
+      sim.z = resolved.z;
     }
+    // Menabrak tegak lurus: laju turun ke laju nyata, supaya animasi lari
+    // tidak terus berputar di tempat.
+    const travelled = Math.hypot(sim.x - fromX, sim.z - fromZ);
+    sim.speed = Math.min(sim.speed, travelled / step + 0.6);
     turnToward(sim, Math.atan2(dirX, dirZ), step);
     return null;
   }

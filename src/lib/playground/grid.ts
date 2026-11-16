@@ -83,10 +83,12 @@ export function blockRect(
   d: number,
   pad = 0,
 ): void {
-  const a = worldToCell(grid, cx - w / 2 - pad, cz - d / 2 - pad);
-  // Kurangi epsilon supaya tepi yang tepat di garis sel tidak ikut menghalangi
-  // sel tetangganya.
-  const b = worldToCell(grid, cx + w / 2 + pad - 1e-6, cz + d / 2 + pad - 1e-6);
+  // Epsilon di kedua sisi: tepi yang jatuh tepat di garis sel (atau meleset
+  // sepersekian akibat pembulatan floating point) tidak boleh ikut menghalangi
+  // sel tetangganya. Tanpa ini, celah antar-rak bisa tertutup total.
+  const eps = 1e-6;
+  const a = worldToCell(grid, cx - w / 2 - pad + eps, cz - d / 2 - pad + eps);
+  const b = worldToCell(grid, cx + w / 2 + pad - eps, cz + d / 2 + pad - eps);
   for (let row = a.row; row <= b.row; row++) {
     for (let col = a.col; col <= b.col; col++) {
       if (inBounds(grid, col, row)) grid.blocked[row * grid.cols + col] = 1;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { distanceToRect } from "./collision";
 import { findRoute, isWalkableAt } from "./grid";
 import {
   buildLayout,
@@ -6,6 +7,8 @@ import {
   MAX_STATIONS,
   MIN_ROWS,
   nearestStationSlot,
+  PLAYER_RADIUS,
+  RACK,
   rackCode,
   RACKS_PER_ROW,
   toPlaygroundProject,
@@ -127,6 +130,49 @@ describe("buildLayout", () => {
       }
     },
   );
+
+  it("celah antar-rak bisa dilalui: di grid maupun secara geometri", () => {
+    const layout = buildLayout(8);
+    for (let row = 0; row < layout.rows; row++) {
+      for (let col = 0; col < RACKS_PER_ROW - 1; col++) {
+        const a = layout.slots[row * RACKS_PER_ROW + col];
+        const b = layout.slots[row * RACKS_PER_ROW + col + 1];
+        const mid = (a.x + b.x) / 2;
+
+        // Geometri: celah lebih lebar dari badan pemain, dengan sisa lega.
+        const gap = b.x - a.x - RACK.width;
+        expect(gap).toBeGreaterThan(PLAYER_RADIUS * 2 + 0.5);
+
+        // Grid: lajur selebar ≥ 0,75 m di tengah celah bisa dipijak,
+        // di sepanjang kedalaman rak.
+        for (const dx of [-0.37, 0, 0.37]) {
+          for (const dz of [-RACK.depth / 2, 0, RACK.depth / 2]) {
+            expect(isWalkableAt(layout.grid, mid + dx, a.z + dz)).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  it("kotak halangan cocok dengan rak & properti, dan titik berdiri bebas darinya", () => {
+    const layout = buildLayout(6);
+    expect(layout.obstacles).toHaveLength(
+      layout.slots.length + layout.props.length,
+    );
+    for (const slot of layout.slots) {
+      for (const rect of layout.obstacles) {
+        expect(
+          distanceToRect(slot.approach.x, slot.approach.z, rect),
+        ).toBeGreaterThanOrEqual(PLAYER_RADIUS);
+      }
+    }
+    const { spawn } = layout;
+    for (const rect of layout.obstacles) {
+      expect(distanceToRect(spawn.x, spawn.z, rect)).toBeGreaterThanOrEqual(
+        PLAYER_RADIUS,
+      );
+    }
+  });
 
   it("properti dekoratif berada di dalam ruangan dan menghalangi jalan", () => {
     const layout = buildLayout(6);

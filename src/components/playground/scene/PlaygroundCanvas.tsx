@@ -231,7 +231,7 @@ function World({
     const moveX = -Math.sin(azimuth) * forward + Math.cos(azimuth) * right;
     const moveZ = -Math.cos(azimuth) * forward - Math.sin(azimuth) * right;
 
-    const event = stepSim(sim, layout.grid, delta, { moveX, moveZ });
+    const event = stepSim(sim, layout, delta, { moveX, moveZ });
     if (
       event?.type === "arrived" &&
       event.slot !== null &&
