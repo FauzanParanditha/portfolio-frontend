@@ -54,6 +54,8 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {
   title?: string;
   hideTitle?: boolean;
+  /** Kelas tambahan untuk lapisan gelap di belakang panel. */
+  overlayClassName?: string;
 }
 
 const SheetContent = React.forwardRef<
@@ -61,11 +63,19 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(
   (
-    { side = "right", className, children, title, hideTitle = true, ...props },
+    {
+      side = "right",
+      className,
+      children,
+      title,
+      hideTitle = true,
+      overlayClassName,
+      ...props
+    },
     ref,
   ) => (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Content
         ref={ref}
         className={cn(sheetVariants({ side }), className)}
