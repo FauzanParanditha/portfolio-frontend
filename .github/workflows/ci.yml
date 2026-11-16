@@ -20,9 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+      # Versi pnpm dibaca dari field "packageManager" di package.json supaya
+      # CI dan lokal identik (overrides di pnpm-workspace.yaml, lihat #18).
+      # Jangan isi `version:` di sini — action-setup menolak bila keduanya ada
+      # dan berbeda. pnpm 12 butuh action-setup >= v6.1.0.
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:

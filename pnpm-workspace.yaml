@@ -1,2 +1,29 @@
+# Setting pnpm untuk repo ini.
+#
+# pnpm 11+ tidak lagi membaca field "pnpm" di package.json, jadi overrides
+# wajib tinggal di berkas ini (issue #18). Versi pnpm dikunci lewat field
+# "packageManager" di package.json agar lokal dan CI memakai pnpm yang sama.
+#
+# Tiap override hanya menaikkan versi MINIMAL dependensi transitif ke rilis yang
+# sudah ditambal advisory-nya. Hapus entri bila parent-nya sudah membawa versi
+# aman dengan sendirinya (cek dengan `pnpm why <paket>`).
 overrides:
-  next@>=15.5.0-canary.0 <15.5.7: '>=15.5.7'
+  # Advisory postcss < 8.5.10 (ditambahkan di 6e4abef). Ditarik next (pin
+  # postcss eksak) dan tooling CSS/vite.
+  postcss@<8.5.10: '>=8.5.10'
+  # Advisory brace-expansion 5.0.0–5.0.5 (ditambahkan di 6e4abef). Ditarik
+  # minimatch lewat tooling eslint (dev).
+  brace-expansion@>=5.0.0 <5.0.6: '>=5.0.6'
+  # Advisory form-data 4.0.0–4.0.5, severity high (ditambahkan di 30046ff).
+  # Ditarik axios (dependensi produksi).
+  form-data@>=4.0.0 <4.0.6: '>=4.0.6'
+  # Advisory js-yaml 4.0.0–4.1.1, severity moderate (ditambahkan di 30046ff).
+  # Ditarik @eslint/eslintrc (dev).
+  js-yaml@>=4.0.0 <=4.1.1: '>=4.2.0'
+
+# Izin lifecycle/build script dependensi (pnpm 12 gagal install bila ada build
+# script yang belum diputuskan). unrs-resolver (dev, via eslint-config-next)
+# hanya menjalankan napi-postinstall sebagai fallback; binding native untuk
+# platform sudah terpasang lewat optionalDependencies, jadi script-nya ditolak.
+allowBuilds:
+  unrs-resolver: false
