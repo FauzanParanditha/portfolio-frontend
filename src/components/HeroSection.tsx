@@ -76,6 +76,15 @@ export const HeroSection = () => {
               </Button>
             ) : null}
 
+            {/* Pintu masuk ke /playground (ruang server 3D). `prefetch={false}`:
+                halaman itu membawa three.js, jadi jangan diunduh sebelum
+                pengunjung benar-benar memintanya. */}
+            <Button asChild size="lg" variant="outline">
+              <Link href="/playground" prefetch={false}>
+                Explore the server room
+              </Link>
+            </Button>
+
             <div className="flex items-center gap-3">
               <a
                 href={GITHUB_URL}

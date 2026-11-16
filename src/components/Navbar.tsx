@@ -51,11 +51,14 @@ export const Navbar = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const links = [
+  // `prefetch: false` untuk /playground: halaman itu membawa three.js, jadi
+  // jangan diunduh hanya karena tautannya terlihat di layar.
+  const links: { name: string; href: string; prefetch?: false }[] = [
     { name: "About", href: "#about" },
     { name: "Experience", href: "#experience" },
     { name: "Projects", href: "#projects" },
     { name: "Contact", href: "#contact" },
+    { name: "Playground", href: "/playground", prefetch: false },
   ];
 
   // Sembunyi/muncul saat gulir memakai transisi CSS, bukan framer-motion.
@@ -90,6 +93,7 @@ export const Navbar = () => {
               <span key={link.name}>
                 <Link
                   href={link.href}
+                  prefetch={link.prefetch}
                   className="rounded-sm transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden"
                 >
                   {link.name}
@@ -146,6 +150,7 @@ export const Navbar = () => {
             <li key={link.name}>
               <Link
                 href={link.href}
+                prefetch={link.prefetch}
                 onClick={() => setMenuOpen(false)}
                 className="flex min-h-11 items-center px-5 text-base text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-hidden focus-visible:ring-inset sm:px-8"
               >
