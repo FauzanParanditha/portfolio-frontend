@@ -62,6 +62,30 @@ describe("buildStations", () => {
     });
   });
 
+  it.each([NaN, -5, Infinity, -Infinity])(
+    "total tak masuk akal (%s) diabaikan: jumlah yang diterima yang dipakai",
+    (total) => {
+      const few = buildStations(projects(3), total);
+      expect(few).toHaveLength(3);
+      expect(few.every((s) => s.kind === "project")).toBe(true);
+
+      const many = buildStations(projects(30), total);
+      expect(many).toHaveLength(MAX_STATIONS);
+      expect(many[many.length - 1]).toMatchObject({
+        kind: "archive",
+        remaining: 30 - (MAX_STATIONS - 1),
+      });
+    },
+  );
+
+  it("total pecahan dibulatkan ke bawah", () => {
+    const stations = buildStations(projects(24), 26.9);
+    expect(stations[stations.length - 1]).toMatchObject({
+      kind: "archive",
+      remaining: 26 - (MAX_STATIONS - 1),
+    });
+  });
+
   it("toPlaygroundProject hanya membawa field yang dipakai", () => {
     const slim = toPlaygroundProject({
       id: "1",
@@ -171,6 +195,25 @@ describe("buildLayout", () => {
       expect(distanceToRect(spawn.x, spawn.z, rect)).toBeGreaterThanOrEqual(
         PLAYER_RADIUS,
       );
+    }
+  });
+
+  it("tidak ada celah sempit antara properti dan dinding (kantong buntu)", () => {
+    for (const count of [1, 8, MAX_STATIONS]) {
+      const layout = buildLayout(count);
+      const { bounds } = layout;
+      // Halangan properti = setelah halangan rak.
+      for (const rect of layout.obstacles.slice(layout.slots.length)) {
+        for (const gap of [
+          rect.minX - bounds.minX,
+          bounds.maxX - rect.maxX,
+          rect.minZ - bounds.minZ,
+          bounds.maxZ - rect.maxZ,
+        ]) {
+          // Menempel dinding (0) atau cukup lebar untuk dilalui di grid.
+          expect(gap === 0 || gap >= 1.2).toBe(true);
+        }
+      }
     }
   });
 

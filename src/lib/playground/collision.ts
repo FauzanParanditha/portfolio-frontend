@@ -138,3 +138,31 @@ export function isCircleFree(
     (rect) => distanceToRect(x, z, rect) >= radius - tolerance,
   );
 }
+
+/**
+ * Apakah ruas garis a→b menembus kotak sejajar-sumbu? (metode "slab").
+ * Dipakai untuk memeriksa apakah sebuah rak menghalangi pandangan ke pemain.
+ */
+export function segmentHitsBox(
+  a: readonly [number, number, number],
+  b: readonly [number, number, number],
+  min: readonly [number, number, number],
+  max: readonly [number, number, number],
+): boolean {
+  let tMin = 0;
+  let tMax = 1;
+  for (let axis = 0; axis < 3; axis++) {
+    const delta = b[axis] - a[axis];
+    if (Math.abs(delta) < 1e-9) {
+      if (a[axis] < min[axis] || a[axis] > max[axis]) return false;
+      continue;
+    }
+    let t1 = (min[axis] - a[axis]) / delta;
+    let t2 = (max[axis] - a[axis]) / delta;
+    if (t1 > t2) [t1, t2] = [t2, t1];
+    tMin = Math.max(tMin, t1);
+    tMax = Math.min(tMax, t2);
+    if (tMin > tMax) return false;
+  }
+  return true;
+}

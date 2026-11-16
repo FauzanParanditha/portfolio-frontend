@@ -4,6 +4,7 @@ import {
   isCircleFree,
   rectFromCenter,
   resolveCircle,
+  segmentHitsBox,
   type Rect,
 } from "./collision";
 
@@ -64,5 +65,33 @@ describe("collision", () => {
     expect(isCircleFree(3, 3, R, [BOX], BOUNDS)).toBe(true);
     expect(isCircleFree(1.2, 0, R, [BOX], BOUNDS)).toBe(false);
     expect(isCircleFree(4.9, 0, R, [BOX], BOUNDS)).toBe(false);
+  });
+});
+
+describe("segmentHitsBox", () => {
+  const min = [-1, 0, -1] as const;
+  const max = [1, 2, 1] as const;
+
+  it("ruas yang menembus kotak terdeteksi, dari arah mana pun", () => {
+    expect(segmentHitsBox([-3, 1, 0], [3, 1, 0], min, max)).toBe(true);
+    expect(segmentHitsBox([0, 5, 0], [0, -5, 0], min, max)).toBe(true);
+    expect(segmentHitsBox([-3, 0.5, -3], [3, 1.5, 3], min, max)).toBe(true);
+  });
+
+  it("ruas yang lewat di atas, di samping, atau berhenti sebelum kotak tidak kena", () => {
+    expect(segmentHitsBox([-3, 3, 0], [3, 3, 0], min, max)).toBe(false);
+    expect(segmentHitsBox([-3, 1, 2], [3, 1, 2], min, max)).toBe(false);
+    expect(segmentHitsBox([-5, 1, 0], [-2, 1, 0], min, max)).toBe(false);
+  });
+
+  it("ruas sejajar sumbu di luar slab tidak kena; titik di dalam kotak kena", () => {
+    expect(segmentHitsBox([2, 1, -3], [2, 1, 3], min, max)).toBe(false);
+    expect(segmentHitsBox([0, 1, 0], [0, 1, 0], min, max)).toBe(true);
+  });
+
+  it("garis pandang miring ke kamera: kena rak di antaranya, bebas bila kamera cukup tinggi", () => {
+    // Pemain di belakang rak (z=-2), kamera di depan (z=6).
+    expect(segmentHitsBox([0, 0.75, -2], [0, 4, 6], min, max)).toBe(true);
+    expect(segmentHitsBox([0, 0.75, -2], [0, 14, 6], min, max)).toBe(false);
   });
 });

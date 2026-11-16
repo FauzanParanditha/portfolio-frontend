@@ -26,8 +26,9 @@ export const RACKS_PER_ROW = 4;
 export const MIN_ROWS = 2;
 
 export const RACK = { width: 1.1, depth: 0.9, height: 2.3 } as const;
-// Jarak antar-rak dan margin samping dipilih supaya tepi rak jatuh di garis
-// sel grid (kelipatan 0,25 m) dan celah antar-rak cukup lega untuk dilewati.
+// Jarak antar-rak dipilih supaya celahnya (1,4 m) cukup lega untuk dilewati,
+// dan supaya tepi rak yang sudah diperlebar di grid jatuh dekat garis sel
+// (kelipatan 0,25 m) — celah di grid jadi seragam 4 sel di semua kolom.
 const RACK_SPACING_X = 2.5;
 const ROW_SPACING_Z = 3.6;
 const SIDE_MARGIN = 2.7;
@@ -47,6 +48,13 @@ export const GRID_CELL = 0.25;
 const GRID_PADDING = PLAYER_RADIUS - GRID_CELL / 2;
 /** Tebal "bantalan" dinding: pemain tidak menempel persis ke dinding. */
 const WALL_MARGIN = 0.12;
+/**
+ * Celah properti-ke-dinding yang lebih sempit dari ini ditutup (kotak halangan
+ * diperpanjang sampai dinding). Celah seperti itu muat untuk gerak manual tetapi
+ * tertutup di grid; kalau dibiarkan, pemain bisa masuk ke "kantong" di balik
+ * properti lalu klik-untuk-jalan dari sana memotong menembus properti itu.
+ */
+const MIN_WALL_GAP = 1.2;
 
 /** Subset data proyek yang benar-benar dipakai playground (hemat payload RSC). */
 export type PlaygroundProject = Pick<
@@ -107,7 +115,11 @@ export function buildStations(
   projects: PlaygroundProject[],
   total = projects.length,
 ): Station[] {
-  const count = Math.max(total, projects.length);
+  // `total` datang dari meta API; nilai yang tidak masuk akal (NaN, negatif,
+  // tak hingga) diabaikan dan jumlah yang benar-benar diterima yang dipakai.
+  const reported =
+    Number.isFinite(total) && total >= 0 ? Math.floor(total) : projects.length;
+  const count = Math.max(reported, projects.length);
   const overflow = count > MAX_STATIONS;
   const shown = projects.slice(0, overflow ? MAX_STATIONS - 1 : MAX_STATIONS);
 
@@ -171,7 +183,7 @@ export function buildLayout(stationCount: number): RoomLayout {
   const count = Math.min(Math.max(0, stationCount), MAX_STATIONS);
   const rows = Math.max(MIN_ROWS, Math.ceil(count / RACKS_PER_ROW));
 
-  // Dibulatkan: 2,7 × 2 + 2,5 × 3 + 1,1 tidak tepat 14 di floating point.
+  // Dibulatkan ke meter utuh (14) supaya ubin lantai dan sel grid pas.
   const width = Math.round(
     SIDE_MARGIN * 2 + (RACKS_PER_ROW - 1) * RACK_SPACING_X + RACK.width,
   );
@@ -199,8 +211,9 @@ export function buildLayout(stationCount: number): RoomLayout {
   }
 
   const props: RoomProp[] = [
-    // Sudut kiri-depan: tempat tidur si robot — titik awalnya di sebelahnya.
-    { kind: "bed", x: -width / 2 + 1.7, z: depth / 2 - 1.5, w: 1.4, d: 1.1 },
+    // Sudut kiri-depan: tempat tidur si robot beserta mangkuknya (tapak
+    // mencakup keduanya) — titik awal pemain ada di sebelahnya.
+    { kind: "bed", x: -width / 2 + 2, z: depth / 2 - 1.5, w: 2, d: 1.1 },
     { kind: "plant", x: width / 2 - 1.1, z: depth / 2 - 1.1, w: 0.7, d: 0.7 },
     { kind: "plant", x: -width / 2 + 0.8, z: frontRowZ + 0.4, w: 0.7, d: 0.7 },
     { kind: "crates", x: width / 2 - 1.3, z: depth / 2 - 3.1, w: 1.1, d: 1.0 },
@@ -214,18 +227,20 @@ export function buildLayout(stationCount: number): RoomLayout {
     },
   ];
 
-  const obstacles: Rect[] = [
-    ...slots.map((slot) =>
-      rectFromCenter(slot.x, slot.z, RACK.width, RACK.depth),
-    ),
-    ...props.map((prop) => rectFromCenter(prop.x, prop.z, prop.w, prop.d)),
-  ];
   const bounds: Rect = {
     minX: -width / 2 + WALL_MARGIN,
     maxX: width / 2 - WALL_MARGIN,
     minZ: -depth / 2 + WALL_MARGIN,
     maxZ: depth / 2 - WALL_MARGIN,
   };
+  const obstacles: Rect[] = [
+    ...slots.map((slot) =>
+      rectFromCenter(slot.x, slot.z, RACK.width, RACK.depth),
+    ),
+    ...props.map((prop) =>
+      sealWallGaps(rectFromCenter(prop.x, prop.z, prop.w, prop.d), bounds),
+    ),
+  ];
 
   const grid = createGrid(width, depth, GRID_CELL);
   // 2 sel × 0,25 m = 0,5 m dari dinding.
@@ -251,6 +266,16 @@ export function buildLayout(stationCount: number): RoomLayout {
     grid,
     obstacles,
     bounds,
+  };
+}
+
+/** Perpanjang kotak sampai dinding di sisi yang celahnya terlalu sempit. */
+function sealWallGaps(rect: Rect, bounds: Rect): Rect {
+  return {
+    minX: rect.minX - bounds.minX < MIN_WALL_GAP ? bounds.minX : rect.minX,
+    maxX: bounds.maxX - rect.maxX < MIN_WALL_GAP ? bounds.maxX : rect.maxX,
+    minZ: rect.minZ - bounds.minZ < MIN_WALL_GAP ? bounds.minZ : rect.minZ,
+    maxZ: bounds.maxZ - rect.maxZ < MIN_WALL_GAP ? bounds.maxZ : rect.maxZ,
   };
 }
 

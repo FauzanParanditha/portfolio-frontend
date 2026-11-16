@@ -48,6 +48,13 @@ export interface Navigation {
 
 /** Langkah terpanjang per sub-langkah tabrakan; mencegah menembus halangan. */
 const MAX_COLLISION_STEP = 0.12;
+/**
+ * Lingkaran kedua di depan badan, mewakili kepala. Tanpa ini pemain bisa
+ * menempelkan badannya ke rak sementara kepalanya (yang menjulur jauh di depan
+ * pusat badan) masuk menembus rak.
+ */
+export const NOSE_OFFSET = 0.6;
+export const NOSE_RADIUS = 0.22;
 
 export interface SimInput {
   /** Arah gerak manual (WASD) di ruang dunia; panjang 0..1. */
@@ -145,6 +152,78 @@ function remainingDistance(sim: Sim): number {
 }
 
 /**
+ * Geser pemain sejauh `dist` ke arah (dirX, dirZ) dengan tabrakan tepat.
+ * Mengembalikan jarak yang benar-benar ditempuh.
+ *
+ * Gerak dipecah menjadi sub-langkah pendek. Di tiap sub-langkah, lingkaran
+ * badan didorong keluar dari kotak halangan, lalu lingkaran "hidung" di depan
+ * (searah hadap) diperiksa dan koreksinya diteruskan ke badan. Hasilnya pemain
+ * meluncur di sepanjang rak, membulat di sudut, dan kepalanya tidak menembus.
+ */
+function moveWithCollision(
+  sim: Sim,
+  nav: Navigation,
+  dirX: number,
+  dirZ: number,
+  dist: number,
+): number {
+  if (dist <= 0) return 0;
+  const subSteps = Math.max(1, Math.ceil(dist / MAX_COLLISION_STEP));
+  const fromX = sim.x;
+  const fromZ = sim.z;
+  const forwardX = Math.sin(sim.heading);
+  const forwardZ = Math.cos(sim.heading);
+
+  for (let i = 0; i < subSteps; i++) {
+    let body = resolveCircle(
+      sim.x + (dirX * dist) / subSteps,
+      sim.z + (dirZ * dist) / subSteps,
+      PLAYER_RADIUS,
+      nav.obstacles,
+      nav.bounds,
+    );
+
+    // Hidung: bila menembus, geser badan sebesar koreksi hidungnya.
+    const noseX = body.x + forwardX * NOSE_OFFSET;
+    const noseZ = body.z + forwardZ * NOSE_OFFSET;
+    const nose = resolveCircle(
+      noseX,
+      noseZ,
+      NOSE_RADIUS,
+      nav.obstacles,
+      nav.bounds,
+    );
+    if (nose.x !== noseX || nose.z !== noseZ) {
+      body = resolveCircle(
+        body.x + (nose.x - noseX),
+        body.z + (nose.z - noseZ),
+        PLAYER_RADIUS,
+        nav.obstacles,
+        nav.bounds,
+      );
+    }
+
+    // Celah yang lebih sempit dari badan pemain tidak punya posisi sah;
+    // dalam kasus itu tetap di tempat daripada menembus.
+    if (
+      !isCircleFree(
+        body.x,
+        body.z,
+        PLAYER_RADIUS,
+        nav.obstacles,
+        nav.bounds,
+        1e-3,
+      )
+    ) {
+      break;
+    }
+    sim.x = body.x;
+    sim.z = body.z;
+  }
+  return Math.hypot(sim.x - fromX, sim.z - fromZ);
+}
+
+/**
  * Majukan simulasi sebesar `dt` detik. Mengembalikan peristiwa `arrived` tepat
  * pada frame pemain mencapai ujung rutenya; selain itu `null`.
  */
@@ -174,41 +253,9 @@ export function stepSim(
         ? Math.min(desired, sim.speed + ACCELERATION * step)
         : Math.max(desired, sim.speed - DECELERATION * step);
 
-    // Gerak dipecah menjadi sub-langkah pendek, masing-masing diselesaikan
-    // terhadap kotak halangan yang tepat. Lingkaran pemain "meluncur" di
-    // sepanjang rak dan membulat di sudutnya, tanpa tersangkut.
-    const dist = sim.speed * step;
-    const subSteps = Math.max(1, Math.ceil(dist / MAX_COLLISION_STEP));
-    const fromX = sim.x;
-    const fromZ = sim.z;
-    for (let i = 0; i < subSteps; i++) {
-      const resolved = resolveCircle(
-        sim.x + (dirX * dist) / subSteps,
-        sim.z + (dirZ * dist) / subSteps,
-        PLAYER_RADIUS,
-        nav.obstacles,
-        nav.bounds,
-      );
-      // Celah yang lebih sempit dari badan pemain tidak punya posisi sah;
-      // dalam kasus itu tetap di tempat daripada menembus.
-      if (
-        !isCircleFree(
-          resolved.x,
-          resolved.z,
-          PLAYER_RADIUS,
-          nav.obstacles,
-          nav.bounds,
-          1e-3,
-        )
-      ) {
-        break;
-      }
-      sim.x = resolved.x;
-      sim.z = resolved.z;
-    }
+    const travelled = moveWithCollision(sim, nav, dirX, dirZ, sim.speed * step);
     // Menabrak tegak lurus: laju turun ke laju nyata, supaya animasi lari
     // tidak terus berputar di tempat.
-    const travelled = Math.hypot(sim.x - fromX, sim.z - fromZ);
     sim.speed = Math.min(sim.speed, travelled / step + 0.6);
     turnToward(sim, Math.atan2(dirX, dirZ), step);
     return null;
@@ -260,8 +307,19 @@ export function stepSim(
     return null;
   }
 
-  // ── Diam. ──
-  sim.speed = Math.max(0, sim.speed - DECELERATION * step);
+  // ── Diam. Sisa laju dihabiskan dengan meluncur sebentar searah hadap,
+  // supaya kaki tidak melangkah di tempat setelah tombol dilepas. ──
+  if (sim.speed > 0) {
+    sim.speed = Math.max(0, sim.speed - DECELERATION * step);
+    const travelled = moveWithCollision(
+      sim,
+      nav,
+      Math.sin(sim.heading),
+      Math.cos(sim.heading),
+      sim.speed * step,
+    );
+    sim.speed = Math.min(sim.speed, travelled / step + 0.6);
+  }
   if (sim.faceHeading !== null) {
     turnToward(sim, sim.faceHeading, step);
     if (Math.abs(angleDelta(sim.heading, sim.faceHeading)) < 0.01) {
