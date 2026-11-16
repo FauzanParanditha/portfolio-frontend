@@ -15,7 +15,12 @@ import { useAdminProjects } from "@/hooks/use-admin-projects";
 import { UploadButton } from "@/components/admin/UploadButton";
 import { useAdminTags } from "@/hooks/use-admin-tags";
 import { useToast } from "@/hooks/use-toast";
-import { toProjectUpsertPayload } from "@/lib/mapper/project";
+import { handleAxiosError } from "@/lib/handleAxiosError";
+import {
+  projectFieldLabel,
+  toProjectUpsertPayload,
+} from "@/lib/mapper/project";
+import { safeHttpUrl, safeImageSrc } from "@/lib/safeUrl";
 import { Project } from "@/types/project";
 import { motion } from "framer-motion";
 import { GithubIcon } from "@/components/icons/BrandIcons";
@@ -123,12 +128,11 @@ const AdminProjects = () => {
 
       setIsOpen(false);
       resetForm();
-    } catch {
-      toast({
-        title: "Failed",
-        description: "Please try again.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      // Tampilkan detail validasi (422) per field dengan label form, supaya
+      // admin tahu persis field mana yang ditolak — mis. proyek lama yang
+      // URL-nya tidak lagi lolos aturan http/https backend.
+      handleAxiosError(err, { fieldLabel: projectFieldLabel });
     }
   };
 
@@ -556,109 +560,118 @@ const AdminProjects = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project, index) => (
-            <motion.div
-              key={project.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="border-border bg-card overflow-hidden rounded-xl border bg-white shadow-xs"
-            >
-              <div className="bg-muted relative aspect-video">
-                {/* URL cover berasal dari input bebas (host sembarang), jadi
-                    pakai unoptimized agar tak terikat allowlist next.config. */}
-                {project.coverImageUrl ? (
-                  <Image
-                    src={project.coverImageUrl}
-                    alt={project.title}
-                    fill
-                    unoptimized
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
-                    Tanpa gambar
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h3 className="mb-1 font-semibold text-black">
-                  {project.title}
-                </h3>
-                <p className="text-muted-foreground mb-3 line-clamp-2 text-sm">
-                  {project.shortDesc}
-                </p>
-                <div className="mb-4 flex flex-wrap gap-1">
-                  {(project.tags?.length
-                    ? project.tags.map((t) => t.name)
-                    : project.features.map((f) => f.text)
-                  )
-                    .slice(0, 3)
-                    .map((label) => (
-                      <span
-                        key={label}
-                        className="bg-muted rounded px-2 py-1 text-xs"
-                      >
-                        {label}
-                      </span>
-                    ))}
+          {projects.map((project, index) => {
+            // Data lama bisa berisi `javascript:`/`data:` (validator backend
+            // dulu longgar) — bahkan di panel admin, link berbahaya tetap bisa
+            // diklik admin. Yang tidak aman diperlakukan seperti kosong.
+            const coverImageUrl = safeImageSrc(project.coverImageUrl);
+            const demoUrl = safeHttpUrl(project.demoUrl);
+            const repoUrl = safeHttpUrl(project.repoUrl);
 
-                  {(project.tags?.length
-                    ? project.tags.length
-                    : project.features.length) > 3 && (
-                    <span className="bg-muted rounded px-2 py-1 text-xs">
-                      +
-                      {(project.tags?.length
-                        ? project.tags.length
-                        : project.features.length) - 3}
-                    </span>
+            return (
+              <motion.div
+                key={project.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="border-border bg-card overflow-hidden rounded-xl border bg-white shadow-xs"
+              >
+                <div className="bg-muted relative aspect-video">
+                  {/* URL cover berasal dari input bebas (host sembarang), jadi
+                    pakai unoptimized agar tak terikat allowlist next.config. */}
+                  {coverImageUrl ? (
+                    <Image
+                      src={coverImageUrl}
+                      alt={project.title}
+                      fill
+                      unoptimized
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground flex h-full w-full items-center justify-center text-xs">
+                      Tanpa gambar
+                    </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex gap-2">
-                    {project.demoUrl && (
-                      <a
-                        href={project.demoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-black"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    )}
-                    {project.repoUrl && (
-                      <a
-                        href={project.repoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-black"
-                      >
-                        <GithubIcon className="h-4 w-4" />
-                      </a>
+                <div className="p-4">
+                  <h3 className="mb-1 font-semibold text-black">
+                    {project.title}
+                  </h3>
+                  <p className="text-muted-foreground mb-3 line-clamp-2 text-sm">
+                    {project.shortDesc}
+                  </p>
+                  <div className="mb-4 flex flex-wrap gap-1">
+                    {(project.tags?.length
+                      ? project.tags.map((t) => t.name)
+                      : project.features.map((f) => f.text)
+                    )
+                      .slice(0, 3)
+                      .map((label) => (
+                        <span
+                          key={label}
+                          className="bg-muted rounded px-2 py-1 text-xs"
+                        >
+                          {label}
+                        </span>
+                      ))}
+
+                    {(project.tags?.length
+                      ? project.tags.length
+                      : project.features.length) > 3 && (
+                      <span className="bg-muted rounded px-2 py-1 text-xs">
+                        +
+                        {(project.tags?.length
+                          ? project.tags.length
+                          : project.features.length) - 3}
+                      </span>
                     )}
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => openEditDialog(project)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => deleteProject(project.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      {demoUrl && (
+                        <a
+                          href={demoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-black"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                      {repoUrl && (
+                        <a
+                          href={repoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground hover:text-black"
+                        >
+                          <GithubIcon className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEditDialog(project)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => deleteProject(project.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
 
         {projects.length === 0 && (

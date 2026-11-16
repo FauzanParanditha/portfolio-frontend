@@ -128,7 +128,9 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    className={cn("text-sm opacity-90", className)}
+    // `whitespace-pre-line`: deskripsi multi-baris (mis. detail validasi per
+    // field dari handleAxiosError) tampil satu baris per field.
+    className={cn("text-sm whitespace-pre-line opacity-90", className)}
     {...props}
   />
 ));

@@ -2,6 +2,7 @@ import { GithubIcon } from "@/components/icons/BrandIcons";
 import { ScreenshotGallery } from "@/components/projects/ScreenshotGallery";
 import { Button } from "@/components/ui/button";
 import { canOptimizeImage } from "@/lib/imageHosts";
+import { safeHttpUrl, safeImageSrc } from "@/lib/safeUrl";
 import { getProjectBySlug } from "@/lib/server/portfolio";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Image from "next/image";
@@ -42,13 +43,21 @@ export default async function ProjectDetailPage({ params }: PageProps) {
   // kosong sebagai halaman sah.
   if (!project) notFound();
 
+  // URL di bawah diisi bebas lewat panel admin dan data lama bisa berisi
+  // `javascript:`/`data:` (validator backend dulu longgar). Saring dulu: yang
+  // tidak aman diperlakukan sama seperti kosong — tombol/gambarnya tidak
+  // dirender sama sekali.
+  const repoUrl = safeHttpUrl(project.repoUrl);
+  const demoUrl = safeHttpUrl(project.demoUrl);
+  const coverImageUrl = safeImageSrc(project.coverImageUrl);
+
   // API mengembalikan objek {imageUrl, sortOrder}; galeri hanya butuh URL-nya,
   // diurutkan sesuai sortOrder.
   const screenshots = (project.screenshots ?? [])
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((s) => s.imageUrl)
-    .filter(Boolean);
+    .map((s) => safeImageSrc(s.imageUrl))
+    .filter((url): url is string => url !== null);
   const technologies = project.tags?.map((t) => t.name) ?? [];
   const technicalDetails = Object.entries(
     project.technicalDetails ?? {},
@@ -76,9 +85,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           </Button>
 
           <div className="flex gap-4">
-            {project.repoUrl ? (
+            {repoUrl ? (
               <a
-                href={project.repoUrl}
+                href={repoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex min-h-11 items-center gap-2 text-sm font-medium tracking-wide opacity-70 transition-opacity hover:opacity-100"
@@ -86,9 +95,9 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                 <GithubIcon className="h-4 w-4" aria-hidden="true" /> Code
               </a>
             ) : null}
-            {project.demoUrl ? (
+            {demoUrl ? (
               <a
-                href={project.demoUrl}
+                href={demoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex min-h-11 items-center gap-2 text-sm font-medium tracking-wide opacity-70 transition-opacity hover:opacity-100"
@@ -142,7 +151,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       </section>
 
       {/* Cover */}
-      {project.coverImageUrl ? (
+      {coverImageUrl ? (
         <section className="px-6 pb-24 lg:px-12">
           <div className="container mx-auto">
             <div className="bg-muted/20 relative aspect-video w-full overflow-hidden md:aspect-21/9">
@@ -152,14 +161,14 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                   dan memicu mabuk gerak. */}
               <div className="parallax-slow absolute inset-x-0 -inset-y-[8%]">
                 <Image
-                  src={project.coverImageUrl}
+                  src={coverImageUrl}
                   alt={project.title}
                   className="h-full w-full object-cover"
                   width={1920}
                   height={1080}
                   sizes="100vw"
                   priority
-                  unoptimized={!canOptimizeImage(project.coverImageUrl)}
+                  unoptimized={!canOptimizeImage(coverImageUrl)}
                 />
               </div>
             </div>

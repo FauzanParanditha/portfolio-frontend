@@ -1,7 +1,14 @@
 import { toast } from "@/hooks/use-toast";
 import axios, { AxiosError, AxiosResponse } from "axios";
 
-type ApiErrorResponse = { message?: string };
+// Envelope error backend: { error: { message, code, details }, requestId }.
+// `message` di tingkat atas dipertahankan sebagai cadangan untuk respons lama
+// atau proxy yang tidak memakai envelope.
+type ApiErrorResponse = {
+  error?: { message?: string; code?: string; details?: unknown };
+  message?: string;
+  requestId?: string;
+};
 
 const publicClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL, // SESUAIKAN dengan backend portfolio
@@ -21,8 +28,19 @@ publicClient.interceptors.response.use(
     }
 
     const status = error.response?.status;
+
+    // 429 (rate limit) dan 422 (validasi) ditangani pemanggil dengan pesan
+    // yang lebih jelas: form kontak menampilkan kapan bisa mencoba lagi atau
+    // field mana yang salah, dan form auth memakai handleAxiosError(). Toast
+    // generik di sini hanya akan menumpuk/menimpa pesan itu.
+    if (status === 429 || status === 422) {
+      return Promise.reject(error);
+    }
+    const data = error.response?.data;
+    // `||`, bukan `??`: pesan string kosong juga jatuh ke teks bawaan.
     const msg =
-      error.response?.data?.message ||
+      data?.error?.message ||
+      data?.message ||
       (status === 404
         ? "Data tidak ditemukan"
         : status === 500

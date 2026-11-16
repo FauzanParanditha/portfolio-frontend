@@ -1,3 +1,4 @@
+import { safeImageSrc } from "@/lib/safeUrl";
 import { getProjectBySlug } from "@/lib/server/portfolio";
 import type { Metadata } from "next";
 
@@ -33,10 +34,12 @@ export async function generateMetadata({
     project.shortDesc?.trim() ||
     "Detail project dari portofolio Fauzan Paranditha — fullstack programmer.";
 
-  // Pakai cover project bila ada; jika tidak, biarkan undefined agar
-  // openGraph.images mewarisi OG image default dari root layout.
-  const images = project.coverImageUrl
-    ? [{ url: project.coverImageUrl, alt: project.title }]
+  // Pakai cover project bila ada DAN aman (http/https atau path relatif); jika
+  // tidak, biarkan undefined agar openGraph.images mewarisi OG image default
+  // dari root layout.
+  const coverImageUrl = safeImageSrc(project.coverImageUrl);
+  const images = coverImageUrl
+    ? [{ url: coverImageUrl, alt: project.title }]
     : undefined;
 
   return {
