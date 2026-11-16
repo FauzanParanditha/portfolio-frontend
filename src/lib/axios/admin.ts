@@ -1,7 +1,14 @@
 import { toast } from "@/hooks/use-toast";
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
-type ApiErrorResponse = { message?: string };
+// Envelope error backend: { error: { message, code, details }, requestId }.
+// `message` di tingkat atas dipertahankan sebagai cadangan untuk respons lama
+// atau proxy yang tidak memakai envelope.
+type ApiErrorResponse = {
+  error?: { message?: string; code?: string; details?: unknown };
+  message?: string;
+  requestId?: string;
+};
 
 // Auth admin memakai HttpOnly cookie `access_token` yang di-set backend.
 // JS TIDAK membaca/menulis token — browser mengirim cookie otomatis lewat
@@ -83,7 +90,9 @@ adminClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const msg = error.response?.data?.message ?? "Server Error";
+    const data = error.response?.data;
+    // `||`, bukan `??`: pesan string kosong juga jatuh ke teks bawaan.
+    const msg = data?.error?.message || data?.message || "Server Error";
     if (status && status !== 401) {
       toast({ title: `Error ${status}`, description: msg, variant: "warning" });
     }
