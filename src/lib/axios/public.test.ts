@@ -41,6 +41,25 @@ describe("interceptor publicClient", () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 
+  it("422: tidak memunculkan toast (detail per field ditangani pemanggil) tapi tetap reject", async () => {
+    await expect(
+      publicClient.post(
+        "/contact-messages",
+        {},
+        {
+          adapter: failWith(422, {
+            error: {
+              message: "validasi gagal",
+              code: "UNPROCESSABLE_ENTITY",
+              details: { Name: "maksimal 100 karakter" },
+            },
+          }),
+        },
+      ),
+    ).rejects.toMatchObject({ response: { status: 422 } });
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
   it("membaca pesan dari envelope backend { error: { message } }", async () => {
     await expect(
       publicClient.get("/projects/x", {

@@ -29,10 +29,11 @@ publicClient.interceptors.response.use(
 
     const status = error.response?.status;
 
-    // 429 (rate limit) ditangani pemanggil dengan pesan yang lebih jelas,
-    // mis. form kontak menampilkan kapan bisa mencoba lagi. Toast generik di
-    // sini hanya akan menumpuk/menimpa pesan itu.
-    if (status === 429) {
+    // 429 (rate limit) dan 422 (validasi) ditangani pemanggil dengan pesan
+    // yang lebih jelas: form kontak menampilkan kapan bisa mencoba lagi atau
+    // field mana yang salah, dan form auth memakai handleAxiosError(). Toast
+    // generik di sini hanya akan menumpuk/menimpa pesan itu.
+    if (status === 429 || status === 422) {
       return Promise.reject(error);
     }
     const data = error.response?.data;
