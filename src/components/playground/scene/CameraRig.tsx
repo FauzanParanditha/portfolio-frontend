@@ -1,5 +1,6 @@
 "use client";
 
+import { segmentHitsBox } from "@/lib/playground/collision";
 import { RACK, type RoomLayout } from "@/lib/playground/layout";
 import type { Sim } from "@/lib/playground/sim";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -11,12 +12,18 @@ export interface Orbit {
   azimuth: number;
   elevation: number;
   distance: number;
+  /**
+   * Gestur terakhir adalah seretan/cubitan kamera. Dibaca oleh penangan klik
+   * lantai & rak supaya seretan tidak ikut dianggap "klik untuk jalan".
+   */
+  dragged: boolean;
 }
 
 export const DEFAULT_ORBIT: Orbit = {
   azimuth: 0.38,
   elevation: 0.7,
   distance: 14,
+  dragged: false,
 };
 
 // Kamera selalu berada di sisi selatan ruangan: papan nama rak tetap terbaca
@@ -34,34 +41,6 @@ const DRAG_START = 5;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-/**
- * Apakah ruas garis a→b menembus kotak sejajar-sumbu? (metode "slab").
- * Dipakai untuk memeriksa apakah sebuah rak menghalangi pandangan ke pemain.
- */
-export function segmentHitsBox(
-  a: readonly [number, number, number],
-  b: readonly [number, number, number],
-  min: readonly [number, number, number],
-  max: readonly [number, number, number],
-): boolean {
-  let tMin = 0;
-  let tMax = 1;
-  for (let axis = 0; axis < 3; axis++) {
-    const delta = b[axis] - a[axis];
-    if (Math.abs(delta) < 1e-9) {
-      if (a[axis] < min[axis] || a[axis] > max[axis]) return false;
-      continue;
-    }
-    let t1 = (min[axis] - a[axis]) / delta;
-    let t2 = (max[axis] - a[axis]) / delta;
-    if (t1 > t2) [t1, t2] = [t2, t1];
-    tMin = Math.max(tMin, t1);
-    tMax = Math.min(tMax, t2);
-    if (tMin > tMax) return false;
-  }
-  return true;
 }
 
 /** Posisi kamera untuk orbit tertentu di sekitar `center`. */
@@ -119,10 +98,15 @@ export function CameraRig({
     let pinchDistance = 0;
 
     const onDown = (event: PointerEvent) => {
+      // Hanya tombol utama mouse. Klik kanan membuka menu konteks dan sering
+      // tidak mengirim `pointerup`, sehingga pointernya tertinggal.
+      if (event.pointerType === "mouse" && event.button !== 0) return;
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       travelled = 0;
       dragging = false;
+      orbitRef.current.dragged = false;
       if (pointers.size === 2) {
+        orbitRef.current.dragged = true;
         const [a, b] = [...pointers.values()];
         pinchDistance = Math.hypot(a.x - b.x, a.y - b.y);
       }
@@ -131,6 +115,12 @@ export function CameraRig({
     const onMove = (event: PointerEvent) => {
       const previous = pointers.get(event.pointerId);
       if (!previous) return;
+      // Mouse bergerak tanpa tombol ditekan = `pointerup`-nya terlewat.
+      if (event.pointerType === "mouse" && event.buttons === 0) {
+        pointers.delete(event.pointerId);
+        dragging = false;
+        return;
+      }
       const dx = event.clientX - previous.x;
       const dy = event.clientY - previous.y;
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -154,6 +144,7 @@ export function CameraRig({
       travelled += Math.abs(dx) + Math.abs(dy);
       if (!dragging && travelled < DRAG_START) return;
       dragging = true;
+      orbit.dragged = true;
       orbit.azimuth = clamp(
         orbit.azimuth - dx * 0.004,
         -AZIMUTH_LIMIT,
@@ -261,8 +252,9 @@ export function CameraRig({
     }
     clearElevation = Math.min(clearElevation, avoidLimit);
     // Naik-turun karena halangan dibuat lebih lambat daripada seretan pengguna,
-    // supaya tidak terasa "tersentak" tiap melewati celah antar-rak.
-    const elevationEase = snap ? 1 : 1 - Math.exp(-3.5 * dt);
+    // supaya tidak terasa "tersentak" tiap melewati celah antar-rak. Tetap
+    // diredam juga saat gerak dikurangi: lompatan elevasi justru lebih mengganggu.
+    const elevationEase = first ? 1 : 1 - Math.exp(-3.5 * dt);
     orbit.elevation += (clearElevation - orbit.elevation) * elevationEase;
 
     const [x, y, z] = orbitPosition(

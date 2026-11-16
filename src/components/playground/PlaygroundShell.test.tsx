@@ -101,6 +101,35 @@ describe("PlaygroundShell (tanpa WebGL)", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("setelah panel ditutup, fokus kembali ke tautan rak yang membukanya", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1), project(2)]} total={2} />);
+    const link = screen.getByRole("link", { name: /Project 2/ });
+    await user.click(link);
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(link).toHaveFocus();
+  });
+
+  it("tombol tutup panel punya area sentuh 44 px dan tidak ikut tergulir", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await user.click(screen.getByRole("link", { name: /Project 1/ }));
+    const dialog = await screen.findByRole("dialog");
+
+    const close = within(dialog).getByRole("button", { name: /close/i });
+    expect(close.className).toMatch(/\bh-11\b/);
+    expect(close.className).toMatch(/\bw-11\b/);
+    // Panelnya sendiri tidak menggulir; isinya yang menggulir.
+    expect(dialog.className).toMatch(/overflow-hidden/);
+    expect(dialog.querySelector(".overflow-y-auto")).not.toBeNull();
+
+    await user.click(close);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
   it("URL berbahaya dari data API tidak pernah menjadi tautan", async () => {
     const user = userEvent.setup();
     render(

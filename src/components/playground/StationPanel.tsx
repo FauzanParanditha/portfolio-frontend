@@ -23,6 +23,12 @@ interface StationPanelProps {
   station: Station | null;
   slotIndex: number | null;
   onClose: () => void;
+  /**
+   * Dipanggil setelah panel tertutup, saat Radix hendak mengembalikan fokus.
+   * Panel ini tidak punya `Trigger`, jadi induk yang memutuskan fokus kembali
+   * ke mana (tanpa ini fokus jatuh ke <body>).
+   */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 const actionClass =
@@ -38,6 +44,7 @@ export function StationPanel({
   station,
   slotIndex,
   onClose,
+  onCloseAutoFocus,
 }: StationPanelProps) {
   const code = slotIndex === null ? "" : rackCode(slotIndex);
 
@@ -50,27 +57,35 @@ export function StationPanel({
     >
       <SheetContent
         side="right"
+        onCloseAutoFocus={onCloseAutoFocus}
         // Lapisan lebih tipis dari bawaan: ruangan tetap terlihat di belakang.
         overlayClassName="bg-black/45"
-        className="flex w-full flex-col gap-0 overflow-y-auto border-zinc-800 bg-zinc-950 p-0 text-zinc-100 sm:max-w-md"
+        // Tombol tutup berlatar supaya terbaca di atas gambar cover apa pun.
+        closeClassName="z-10 rounded-full bg-zinc-950/75 text-white opacity-100 backdrop-blur-sm hover:bg-zinc-800 focus-visible:ring-cyan-400"
+        // Panelnya sendiri tidak menggulir — isinya yang menggulir — sehingga
+        // tombol tutup selalu terlihat. Di ponsel panel selebar layar: tidak
+        // ada overlay untuk diketuk, jadi tombol itu satu-satunya jalan keluar.
+        className="flex w-full flex-col gap-0 overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-zinc-100 sm:max-w-md"
       >
-        {station?.kind === "project" ? (
-          <ProjectBody station={station} code={code} />
-        ) : station?.kind === "archive" ? (
-          <ArchiveBody remaining={station.remaining} code={code} />
-        ) : (
-          // Radix mewajibkan judul selama konten terpasang (animasi tutup).
-          <SheetTitle className="sr-only">Rack details</SheetTitle>
-        )}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {station?.kind === "project" ? (
+            <ProjectBody station={station} code={code} />
+          ) : station?.kind === "archive" ? (
+            <ArchiveBody remaining={station.remaining} code={code} />
+          ) : (
+            // Radix mewajibkan judul selama konten terpasang (animasi tutup).
+            <SheetTitle className="sr-only">Rack details</SheetTitle>
+          )}
 
-        <div className="mt-auto border-t border-zinc-800 p-6">
-          <Link
-            href="/"
-            className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm text-zinc-400 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back to the regular site
-          </Link>
+          <div className="mt-auto border-t border-zinc-800 p-6">
+            <Link
+              href="/"
+              className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm text-zinc-400 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to the regular site
+            </Link>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

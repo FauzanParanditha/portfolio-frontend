@@ -43,9 +43,13 @@ src/lib/playground/                  Logika murni, tanpa three.js/DOM
 Prinsip yang dijaga:
 
 - **Semua yang bisa dibaca/diklik adalah DOM.** Daftar rak berisi tautan asli
-  ke `/projects/[slug]` dan sudah ada di HTML dari server. Tanpa WebGL, tanpa
-  JavaScript, atau dengan pembaca layar, semua proyek tetap terjangkau. Kanvas
-  hanyalah lapisan visual (`aria-hidden`).
+  ke `/projects/[slug]` dan sudah ada di HTML dari server. Tanpa WebGL atau
+  dengan pembaca layar, semua proyek tetap terjangkau; tanpa JavaScript,
+  blok `<noscript>` menampilkan daftar itu langsung (juga di layar kecil).
+  Kanvas hanyalah lapisan visual (`aria-hidden`).
+- **Fokus & pengumuman.** Memilih rak mengumumkan "Walking to rack …" lewat
+  wilayah `aria-live`; setelah panel ditutup fokus kembali ke tautan rak (atau
+  tombol "Inspect" bila daftarnya tersembunyi).
 - **Logika terpisah dari gambar.** `src/lib/playground` tidak mengimpor
   three.js, jadi pathfinding, tata letak, dan gerak diuji langsung di Vitest.
   Scene hanya membaca hasilnya.
@@ -59,8 +63,13 @@ Prinsip yang dijaga:
 - **Dua model halangan, satu sumber.** `layout.obstacles` (kotak rak &
   properti) adalah sumber kebenaran. Klik-untuk-jalan mencari jalur di grid
   0,25 m yang diturunkan darinya; gerak manual (WASD) memakai tabrakan
-  lingkaran-vs-kotak yang tepat, sehingga robot meluncur di sepanjang rak dan
-  bisa lewat di celah antar-rak (1,4 m) tanpa tersangkut sudut sel.
+  lingkaran-vs-kotak yang tepat — satu lingkaran badan dan satu lingkaran
+  "hidung" di depannya — sehingga robot meluncur di sepanjang rak, lewat di
+  celah antar-rak (1,4 m), dan kepalanya tidak menembus rak.
+- **Tidak ada kantong buntu.** Celah properti-ke-dinding yang lebih sempit
+  dari 1,2 m ditutup (kotak halangannya diperpanjang sampai dinding). Celah
+  seperti itu muat untuk gerak manual tetapi tertutup di grid, sehingga rute
+  dari dalamnya bisa memotong menembus properti.
 - **Kapasitas:** paling banyak 24 rak berisi. Bila proyek lebih dari itu, rak
   terakhir menjadi "Project archive" yang menautkan ke `/projects`. Ruangan
   minimal dua baris; slot tanpa proyek tampil sebagai rak kosong.
@@ -69,7 +78,8 @@ Prinsip yang dijaga:
   gerak-gerik diam dimatikan.
 - **Performa:** rak, LED, dan pendar lantai memakai instancing. Render berhenti
   (`frameloop="demand"`) saat panel terbuka atau tab tersembunyi. Resolusi
-  turun otomatis bila FPS jatuh; bayangan dimatikan di perangkat sentuh /
+  turun otomatis bila FPS jatuh (batasnya disimpan di state dan diteruskan
+  lewat prop `dpr`, karena `<Canvas>` menerapkan ulang prop itu tiap render); bayangan dimatikan di perangkat sentuh /
   ber-core sedikit.
 - **Ukuran:** chunk 3D ± 245 KB gzip, hanya diunduh di `/playground`. Tautan
   dari hero & navbar memakai `prefetch={false}`.

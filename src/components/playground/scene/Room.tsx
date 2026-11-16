@@ -212,8 +212,10 @@ function Prop({ prop, seed }: { prop: RoomProp; seed: number }) {
 
 /** Tempat tidur si robot, plus mangkuk berisi mur & baut. */
 function DogBed({ x, z }: { x: number; z: number }) {
+  // (x,z) = pusat tapak halangan, yang mencakup tempat tidur DAN mangkuknya.
+  // Tempat tidur di separuh kiri, mangkuk di separuh kanan.
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x - 0.3, 0, z]}>
       <mesh position-y={0.07} castShadow receiveShadow>
         <cylinderGeometry args={[0.62, 0.66, 0.14, 20]} />
         <meshStandardMaterial color="#7a4a2e" roughness={0.95} />

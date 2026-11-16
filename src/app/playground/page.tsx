@@ -15,11 +15,17 @@ import type { Metadata } from "next";
 // Sama dengan beranda: data proyek jarang berubah.
 export const revalidate = 300;
 
+const title = "Server Room";
+const description =
+  "Walk a robot dog through a 3D server room where every rack is one of my projects.";
+
 export const metadata: Metadata = {
-  title: "Server Room",
-  description:
-    "Walk a robot dog through a 3D server room where every rack is one of my projects.",
+  title,
+  description,
   alternates: { canonical: "/playground" },
+  // Tanpa ini pratinjau tautan /playground mewarisi judul & URL beranda.
+  openGraph: { title, description, url: "/playground" },
+  twitter: { title, description },
 };
 
 export default async function PlaygroundPage() {
@@ -32,8 +38,10 @@ export default async function PlaygroundPage() {
   return (
     <main>
       <PlaygroundShell
-        projects={projects.map(toPlaygroundProject)}
-        total={total}
+        // Proyek ke-25 hanya dipakai untuk mendeteksi "ada sisanya"; yang
+        // dikirim ke browser cukup sebanyak rak.
+        projects={projects.slice(0, MAX_STATIONS).map(toPlaygroundProject)}
+        total={Math.max(total, projects.length)}
       />
     </main>
   );

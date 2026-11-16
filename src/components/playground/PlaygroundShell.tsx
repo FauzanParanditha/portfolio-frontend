@@ -16,9 +16,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react";
+import { isPageTarget, isTypingTarget } from "./input";
 import type { WalkCommand } from "./scene/PlaygroundCanvas";
 import { StationPanel } from "./StationPanel";
 
@@ -32,6 +34,16 @@ interface PlaygroundShellProps {
   /** Jumlah proyek di backend; bisa lebih besar dari `projects.length`. */
   total: number;
 }
+
+const NOSCRIPT_CSS = `
+#playground-loading { display: none !important; }
+@media (max-width: 767px) {
+  #rack-list {
+    display: flex !important;
+    inset: 6rem 1rem auto 1rem;
+    max-height: calc(100svh - 8rem);
+  }
+}`;
 
 const focusRing =
   "focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden";
@@ -133,6 +145,14 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [nearSlot, setNearSlot] = useState<number | null>(null);
   const [listOpen, setListOpen] = useState(false);
+  // Diumumkan ke pembaca layar: memilih rak tidak langsung membuka panel —
+  // robot berjalan dulu — jadi tanpa ini aktivasi tautan terasa "tidak ada
+  // yang terjadi".
+  const [announcement, setAnnouncement] = useState("");
+
+  const linkRefs = useRef(new Map<number, HTMLAnchorElement>());
+  const inspectRef = useRef<HTMLButtonElement | null>(null);
+  const listToggleRef = useRef<HTMLButtonElement | null>(null);
 
   const sceneAvailable = webgl && !sceneFailed;
   const sceneActive = sceneAvailable && ready;
@@ -140,6 +160,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   const openPanel = useCallback((slot: number) => {
     setPanelSlot(slot);
     setPanelOpen(true);
+    setAnnouncement("");
   }, []);
   const handleReady = useCallback(() => setReady(true), []);
   const handleSceneError = useCallback(() => setSceneFailed(true), []);
@@ -170,6 +191,10 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
     setListOpen(false);
     if (sceneActive) {
       setCommand((previous) => ({ slot, nonce: (previous?.nonce ?? 0) + 1 }));
+      const station = stations[layout.slots[slot]?.station ?? -1];
+      if (station && !reducedMotion) {
+        setAnnouncement(`Walking to rack ${rackCode(slot)}, ${station.label}.`);
+      }
     } else {
       // Tanpa scene, tidak ada yang perlu "berjalan" — langsung buka panel.
       openPanel(slot);
@@ -182,14 +207,11 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || event.metaKey || event.ctrlKey || event.altKey)
         return;
-      const onBody =
-        event.target === document.body ||
-        event.target === document.documentElement;
       // Enter pada tautan/tombol yang sedang fokus tetap milik elemen itu.
       if (
         event.code === "KeyE"
-          ? !isTyping(event.target)
-          : event.code === "Enter" && onBody
+          ? !isTypingTarget(event.target)
+          : event.code === "Enter" && isPageTarget(event.target)
       ) {
         event.preventDefault();
         openPanel(nearSlot);
@@ -200,6 +222,24 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   }, [nearSlot, panelOpen, openPanel]);
 
   const stationSlots = layout.slots.filter((slot) => slot.station !== null);
+
+  // Setelah panel tertutup, kembalikan fokus ke tempat yang masuk akal:
+  // tautan rak yang baru dibuka (bila daftarnya terlihat), kalau tidak tombol
+  // "Inspect", kalau tidak tombol pembuka daftar.
+  const restoreFocus = (event: Event) => {
+    const listVisible =
+      !sceneAvailable ||
+      listOpen ||
+      (window.matchMedia?.("(min-width: 768px)").matches ?? false);
+    const link =
+      panelSlot !== null && listVisible
+        ? linkRefs.current.get(panelSlot)
+        : undefined;
+    const target = link ?? inspectRef.current ?? listToggleRef.current;
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+  };
 
   return (
     <div className="relative h-svh w-full overflow-hidden bg-zinc-950 font-sans text-zinc-100">
@@ -224,11 +264,12 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
       {/* Layar muat: sampai scene benar-benar terpasang. */}
       {sceneAvailable && !ready && (
         <div
+          id="playground-loading"
           role="status"
           className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-zinc-950"
         >
           <div className="h-px w-40 overflow-hidden bg-zinc-800">
-            <div className="h-full w-1/3 animate-pulse bg-cyan-400" />
+            <div className="h-full w-1/3 animate-pulse bg-cyan-400 motion-reduce:animate-none" />
           </div>
           <p className="font-mono text-xs tracking-widest text-zinc-400 uppercase">
             Booting server room…
@@ -322,6 +363,10 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
               return (
                 <li key={station.id}>
                   <a
+                    ref={(node) => {
+                      if (node) linkRefs.current.set(slot.index, node);
+                      else linkRefs.current.delete(slot.index);
+                    }}
                     href={station.href}
                     onClick={(event) => handleStationClick(event, slot.index)}
                     aria-current={selected ? "true" : undefined}
@@ -352,6 +397,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-3 p-4 sm:p-6">
           {sceneActive && nearStation && !panelOpen && nearSlot !== null && (
             <button
+              ref={inspectRef}
               type="button"
               onClick={() => openPanel(nearSlot)}
               className={`pointer-events-auto inline-flex min-h-11 max-w-full items-center gap-3 rounded-full bg-white px-5 text-xs font-medium tracking-widest text-zinc-950 uppercase shadow-lg transition-colors hover:bg-cyan-300 ${focusRing}`}
@@ -365,6 +411,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
 
           <div className="flex w-full items-end justify-between gap-3">
             <button
+              ref={listToggleRef}
               type="button"
               onClick={() => setListOpen((open) => !open)}
               aria-expanded={listOpen}
@@ -391,15 +438,18 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
         station={panelStation}
         slotIndex={panelSlot}
         onClose={() => setPanelOpen(false)}
+        onCloseAutoFocus={restoreFocus}
       />
-    </div>
-  );
-}
 
-function isTyping(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable ||
-    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
+      <p aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
+
+      {/* Tanpa JavaScript tidak ada yang bisa membuka daftar rak di layar kecil
+          maupun menyingkirkan layar muat — tampilkan daftarnya langsung. */}
+      <noscript>
+        <style>{NOSCRIPT_CSS}</style>
+      </noscript>
+    </div>
   );
 }

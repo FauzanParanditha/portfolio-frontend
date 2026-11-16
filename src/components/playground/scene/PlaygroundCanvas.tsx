@@ -23,6 +23,7 @@ import {
 } from "@react-three/fiber";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { AdditiveBlending, type Mesh } from "three";
+import { CLICK_DRAG_TOLERANCE, isPageTarget, isTypingTarget } from "../input";
 import { CameraRig, DEFAULT_ORBIT, type Orbit } from "./CameraRig";
 import { Racks } from "./Racks";
 import { RobotDog } from "./RobotDog";
@@ -49,7 +50,6 @@ export interface PlaygroundCanvasProps {
   onReady: () => void;
 }
 
-const CLICK_DRAG_TOLERANCE = 6;
 const MOVE_KEYS: Record<string, readonly [number, number]> = {
   // [maju, kanan]
   KeyW: [1, 0],
@@ -62,14 +62,6 @@ const MOVE_KEYS: Record<string, readonly [number, number]> = {
   ArrowLeft: [0, -1],
 };
 
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable ||
-    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-  );
-}
-
 /** Perangkat yang kemungkinan lemah: lewati bayangan real-time. */
 function detectLowPower(): boolean {
   if (typeof window === "undefined") return false;
@@ -80,12 +72,16 @@ function detectLowPower(): boolean {
 
 export default function PlaygroundCanvas(props: PlaygroundCanvasProps) {
   const [lowPower] = useState(detectLowPower);
+  // Batas atas resolusi render. Disimpan di state — bukan dipanggil langsung
+  // lewat `setDpr` — karena <Canvas> menerapkan ulang prop `dpr` tiap kali ia
+  // render; penurunan yang tidak tercermin di prop akan dibatalkan.
+  const [maxDpr, setMaxDpr] = useState(lowPower ? 1.5 : 2);
 
   return (
     <Canvas
       // "percentage" = PCFShadowMap (penyaringan lembut bawaan three).
       shadows={lowPower ? false : "percentage"}
-      dpr={[1, lowPower ? 1.5 : 2]}
+      dpr={[1, maxDpr]}
       frameloop={props.paused ? "demand" : "always"}
       camera={{ fov: 38, near: 0.5, far: 140, position: [5, 9, 16] }}
       gl={{
@@ -99,7 +95,12 @@ export default function PlaygroundCanvas(props: PlaygroundCanvasProps) {
     >
       <color attach="background" args={[PALETTE.background]} />
       <fog attach="fog" args={[PALETTE.background, 24, 62]} />
-      <World {...props} shadows={!lowPower} />
+      <World
+        {...props}
+        shadows={!lowPower}
+        maxDpr={maxDpr}
+        onLowerResolution={setMaxDpr}
+      />
     </Canvas>
   );
 }
@@ -114,7 +115,13 @@ function World({
   onArrive,
   onNearChange,
   onReady,
-}: PlaygroundCanvasProps & { shadows: boolean }) {
+  maxDpr,
+  onLowerResolution,
+}: PlaygroundCanvasProps & {
+  shadows: boolean;
+  maxDpr: number;
+  onLowerResolution: (dpr: number) => void;
+}) {
   const gl = useThree((state) => state.gl);
 
   // Keadaan simulasi hidup di ref: dimutasi tiap frame tanpa memicu render.
@@ -161,8 +168,12 @@ function World({
 
   // Perintah dari daftar DOM: jalan ke rak (atau langsung pindah bila
   // pengguna meminta gerak dikurangi).
+  // Tiap perintah hanya dijalankan sekali: efek ini juga terpicu saat `layout`
+  // atau `reducedMotion` berubah, dan perintah lama tidak boleh terulang.
+  const handledNonce = useRef<number | null>(null);
   useEffect(() => {
-    if (!command) return;
+    if (!command || handledNonce.current === command.nonce) return;
+    handledNonce.current = command.nonce;
     const slot = layout.slots[command.slot];
     const sim = simRef.current;
     if (!sim || !slot || slot.station === null) return;
@@ -179,19 +190,28 @@ function World({
   }, [command, layout, reducedMotion]);
 
   // Keyboard: WASD / panah, relatif terhadap arah kamera.
+  const pausedRef = useRef(paused);
+  useEffect(() => {
+    pausedRef.current = paused;
+    if (paused) keysRef.current.clear();
+  }, [paused]);
+
   useEffect(() => {
     const keys = keysRef.current;
     const onKeyDown = (event: KeyboardEvent) => {
+      // Tombol pengubah: lepaskan semua tombol gerak. macOS tidak mengirim
+      // `keyup` untuk tombol lain selama Cmd ditahan, jadi tanpa ini pemain
+      // bisa "tersangkut" berjalan.
+      if (event.metaKey || event.ctrlKey || event.altKey) {
+        keys.clear();
+        return;
+      }
       if (!(event.code in MOVE_KEYS)) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTypingTarget(event.target)) return;
+      // Panel terbuka: biarkan tombol sepenuhnya milik dialog.
+      if (pausedRef.current || isTypingTarget(event.target)) return;
       // Panah biasanya menggulir halaman / memindah fokus daftar; di sini
-      // dipakai untuk berjalan selama fokus tidak berada di kontrol lain.
-      if (
-        event.code.startsWith("Arrow") &&
-        event.target instanceof HTMLElement &&
-        event.target !== document.body
-      ) {
+      // dipakai untuk berjalan hanya selama fokus tidak berada di kontrol lain.
+      if (event.code.startsWith("Arrow") && !isPageTarget(event.target)) {
         return;
       }
       event.preventDefault();
@@ -210,10 +230,6 @@ function World({
       keys.clear();
     };
   }, []);
-
-  useEffect(() => {
-    if (paused) keysRef.current.clear();
-  }, [paused]);
 
   useFrame((_, delta) => {
     const sim = simRef.current;
@@ -252,6 +268,8 @@ function World({
   const handleFloorClick = (event: ThreeEvent<MouseEvent>) => {
     const sim = simRef.current;
     if (paused || !sim || event.delta > CLICK_DRAG_TOLERANCE) return;
+    // Seret-lalu-kembali ke titik awal tetap seretan kamera, bukan klik.
+    if (orbitRef.current.dragged) return;
     setDestination(sim, layout.grid, {
       x: event.point.x,
       z: event.point.z,
@@ -259,7 +277,7 @@ function World({
   };
 
   const handleRackSelect = (slotIndex: number) => {
-    if (paused) return;
+    if (paused || orbitRef.current.dragged) return;
     const slot = layout.slots[slotIndex];
     const sim = simRef.current;
     if (!slot || !sim) return;
@@ -290,7 +308,7 @@ function World({
       />
       <RobotDog simRef={simRef} reducedMotion={reducedMotion} />
       <DestinationMarker simRef={simRef} layout={layout} />
-      <AdaptiveResolution />
+      <AdaptiveResolution maxDpr={maxDpr} onLower={onLowerResolution} />
     </>
   );
 }
@@ -336,11 +354,16 @@ function DestinationMarker({
  * Turunkan resolusi render bila frame rate jatuh. Hanya menurun — tidak naik
  * lagi — supaya tidak berosilasi di perangkat yang pas-pasan.
  */
-function AdaptiveResolution() {
-  const setDpr = useThree((state) => state.setDpr);
+function AdaptiveResolution({
+  maxDpr,
+  onLower,
+}: {
+  maxDpr: number;
+  onLower: (dpr: number) => void;
+}) {
   const stats = useRef({ frames: 0, elapsed: 0, cooldown: 2 });
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     const s = stats.current;
     // Lewati frame "lompat" (tab baru aktif) agar tidak salah menilai.
     if (delta > 0.25) return;
@@ -355,9 +378,8 @@ function AdaptiveResolution() {
     const fps = s.frames / s.elapsed;
     s.frames = 0;
     s.elapsed = 0;
-    const dpr = state.viewport.dpr;
-    if (fps < 42 && dpr > 1) {
-      setDpr(Math.max(1, dpr - 0.5));
+    if (fps < 42 && maxDpr > 1) {
+      onLower(Math.max(1, maxDpr - 0.5));
       s.cooldown = 2;
     }
   });

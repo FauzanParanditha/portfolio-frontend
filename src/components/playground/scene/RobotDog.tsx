@@ -51,7 +51,15 @@ export function RobotDog({ simRef, reducedMotion }: RobotDogProps) {
   const hipRefs = useRef<Array<Group | null>>([]);
   const kneeRefs = useRef<Array<Group | null>>([]);
 
-  const anim = useRef({ phase: 0, blend: 0, stoppedAt: 0, wasMoving: false });
+  // `time` diakumulasi sendiri: jam bawaan R3F di-reset ke nol tiap `frameloop`
+  // berganti (panel dibuka/ditutup), yang akan mengacaukan `stoppedAt`.
+  const anim = useRef({
+    time: 0,
+    phase: 0,
+    blend: 0,
+    stoppedAt: -Infinity,
+    wasMoving: false,
+  });
 
   const geo = useMemo(
     () => ({
@@ -103,15 +111,16 @@ export function RobotDog({ simRef, reducedMotion }: RobotDogProps) {
     [geo, mat],
   );
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     const sim = simRef.current;
     const root = rootRef.current;
     const body = bodyRef.current;
     if (!sim || !root || !body) return;
 
-    const time = state.clock.elapsedTime;
     const a = anim.current;
     const dt = Math.min(delta, 0.1);
+    a.time += dt;
+    const time = a.time;
 
     root.position.set(sim.x, 0, sim.z);
     root.rotation.y = sim.heading;
@@ -126,7 +135,7 @@ export function RobotDog({ simRef, reducedMotion }: RobotDogProps) {
     if (a.wasMoving && !moving) a.stoppedAt = time;
     a.wasMoving = moving;
     // Sesaat setelah berhenti di depan rak, ekornya mengibas semangat.
-    const excited = !moving && time - a.stoppedAt < 2.6 && a.stoppedAt > 0;
+    const excited = !moving && time - a.stoppedAt < 2.6;
     const idle = reducedMotion ? 0 : 1 - blend;
 
     // ── Kaki ──

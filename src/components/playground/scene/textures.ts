@@ -166,6 +166,9 @@ export function createRackFrontTexture(active: boolean): CanvasTexture {
   return toTexture(canvas);
 }
 
+/** Jauh lebih panjang dari yang muat di papan nama (± 20 karakter). */
+export const MAX_NAMEPLATE_CHARS = 80;
+
 /** Papan nama di atas rak: kode rak + judul proyek. */
 export function createNameplateTexture(
   code: string,
@@ -199,7 +202,13 @@ export function createNameplateTexture(
   ctx.fillStyle = PALETTE.text;
   ctx.font = `600 40px ${UI_FONT}`;
   const maxWidth = width - dividerX - 44;
-  let text = title;
+  // Dipotong dulu sebelum diukur: loop di bawah memanggil `measureText` sekali
+  // per karakter yang dibuang, jadi judul yang sangat panjang tidak boleh
+  // sampai ke sana apa adanya.
+  let text =
+    title.length > MAX_NAMEPLATE_CHARS
+      ? title.slice(0, MAX_NAMEPLATE_CHARS)
+      : title;
   if (ctx.measureText(text).width > maxWidth) {
     while (text.length > 1 && ctx.measureText(`${text}…`).width > maxWidth) {
       text = text.slice(0, -1);
