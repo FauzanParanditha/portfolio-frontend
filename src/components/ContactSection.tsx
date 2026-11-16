@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import publicClient from "@/lib/axios/public";
+import { getRetryAfterSeconds } from "@/lib/retryAfter";
+import axios from "axios";
 import { MoveRight } from "lucide-react";
 import { useState } from "react";
 
@@ -53,6 +55,22 @@ export const ContactSection = () => {
 
       form.reset();
     } catch (error) {
+      // Backend membatasi form kontak 5 pesan/menit per IP. Beri tahu
+      // pengunjung kapan bisa mencoba lagi, bukan pesan "gagal" generik.
+      // Interceptor publicClient sengaja tidak memunculkan toast untuk 429,
+      // jadi ini satu-satunya pesan yang tampil.
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        const seconds = getRetryAfterSeconds(error);
+        toast({
+          title: "Too many messages.",
+          description: seconds
+            ? `Please try again in ${seconds} second${seconds === 1 ? "" : "s"}.`
+            : "Please try again in a minute.",
+          variant: "warning",
+        });
+        return;
+      }
+
       toast({
         title: "Transmission Failed.",
         description: "An error occurred. Please try again later.",

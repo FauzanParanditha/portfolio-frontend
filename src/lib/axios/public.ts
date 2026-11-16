@@ -21,6 +21,13 @@ publicClient.interceptors.response.use(
     }
 
     const status = error.response?.status;
+
+    // 429 (rate limit) ditangani pemanggil dengan pesan yang lebih jelas,
+    // mis. form kontak menampilkan kapan bisa mencoba lagi. Toast generik di
+    // sini hanya akan menumpuk/menimpa pesan itu.
+    if (status === 429) {
+      return Promise.reject(error);
+    }
     const msg =
       error.response?.data?.message ||
       (status === 404
