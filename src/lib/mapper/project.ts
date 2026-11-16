@@ -83,16 +83,26 @@ const PROJECT_FIELD_LABELS: Record<string, string> = {
   features: "Features",
 };
 
+// Hanya kunci milik tabel sendiri: tanpa `Object.hasOwn`, kunci dari backend
+// seperti `constructor` atau `__proto__` akan membaca properti prototype dan
+// menghasilkan label aneh (mis. "function Object() { [native code] }").
+const lookupProjectLabel = (key: string): string | undefined => {
+  const k = key.toLowerCase();
+  return Object.hasOwn(PROJECT_FIELD_LABELS, k)
+    ? PROJECT_FIELD_LABELS[k]
+    : undefined;
+};
+
 export function projectFieldLabel(key: string): string {
   // Item array, mis. `Screenshots[1]` → "Screenshots URLs (line 2)". Indeks
   // backend sama dengan baris non-kosong ke-N di textarea, karena baris kosong
   // dibuang baik oleh editor maupun mapper sebelum dikirim.
   const indexed = /^(\w+)\[(\d+)\]$/.exec(key);
   if (indexed) {
-    const base = PROJECT_FIELD_LABELS[indexed[1].toLowerCase()];
+    const base = lookupProjectLabel(indexed[1]);
     if (base) return `${base} (line ${Number(indexed[2]) + 1})`;
     return key;
   }
 
-  return PROJECT_FIELD_LABELS[key.toLowerCase()] ?? key;
+  return lookupProjectLabel(key) ?? key;
 }

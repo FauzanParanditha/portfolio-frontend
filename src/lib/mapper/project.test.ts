@@ -116,4 +116,16 @@ describe("projectFieldLabel", () => {
     expect(projectFieldLabel("Unknown")).toBe("Unknown");
     expect(projectFieldLabel("Unknown[3]")).toBe("Unknown[3]");
   });
+
+  it.each([
+    "constructor",
+    "__proto__",
+    "toString",
+    "hasOwnProperty",
+    "Constructor",
+    "constructor[0]",
+    "__proto__[1]",
+  ])("kunci prototype %s tidak membaca Object.prototype", (key) => {
+    expect(projectFieldLabel(key)).toBe(key);
+  });
 });
