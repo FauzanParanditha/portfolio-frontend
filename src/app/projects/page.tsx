@@ -3,6 +3,7 @@ import { ProjectImage } from "@/components/ProjectImage";
 import { GithubIcon } from "@/components/icons/BrandIcons";
 import { ProjectSearch } from "@/components/projects/ProjectSearch";
 import { Button } from "@/components/ui/button";
+import { safeHttpUrl } from "@/lib/safeUrl";
 import { getProjectsPage, getUsedProjectTags } from "@/lib/server/portfolio";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
@@ -149,84 +150,91 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-16 md:grid-cols-2 lg:gap-24">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="reveal-on-scroll group flex flex-col gap-6"
-                >
-                  <Link
-                    href={`/projects/${project.slug}`}
-                    className="bg-muted/20 relative block aspect-4/3 overflow-hidden"
+              {projects.map((project) => {
+                // URL dari data API bisa berisi skema berbahaya (data lama);
+                // yang tidak aman diperlakukan seperti kosong.
+                const repoUrl = safeHttpUrl(project.repoUrl);
+                const demoUrl = safeHttpUrl(project.demoUrl);
+
+                return (
+                  <div
+                    key={project.id}
+                    className="reveal-on-scroll group flex flex-col gap-6"
                   >
-                    <ProjectImage
-                      src={project.coverImageUrl}
-                      alt={project.title}
-                      sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-                      className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105 motion-reduce:transition-none"
-                    />
-                    <ProjectCardOverlay />
-                  </Link>
+                    <Link
+                      href={`/projects/${project.slug}`}
+                      className="bg-muted/20 relative block aspect-4/3 overflow-hidden"
+                    >
+                      <ProjectImage
+                        src={project.coverImageUrl}
+                        alt={project.title}
+                        sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                        className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105 motion-reduce:transition-none"
+                      />
+                      <ProjectCardOverlay />
+                    </Link>
 
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <Link
-                          href={`/projects/${project.slug}`}
-                          className="transition-opacity group-hover:opacity-80"
-                        >
-                          <h3 className="text-2xl font-medium tracking-tight">
-                            {project.title}
-                          </h3>
-                        </Link>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <Link
+                            href={`/projects/${project.slug}`}
+                            className="transition-opacity group-hover:opacity-80"
+                          >
+                            <h3 className="text-2xl font-medium tracking-tight">
+                              {project.title}
+                            </h3>
+                          </Link>
 
-                        {project.tags.length > 0 ? (
-                          <p className="text-muted-foreground mt-1 text-sm">
-                            {project.tags.map((t) => t.name).join(" • ")}
-                          </p>
-                        ) : null}
-                      </div>
+                          {project.tags.length > 0 ? (
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {project.tags.map((t) => t.name).join(" • ")}
+                            </p>
+                          ) : null}
+                        </div>
 
-                      {/* Tautan cepat. `focus-within` pada kartu ikut
+                        {/* Tautan cepat. `focus-within` pada kartu ikut
                           memunculkannya, supaya pengguna keyboard tidak
                           menemukan tautan yang tak terlihat. */}
-                      <div className="flex gap-4 opacity-0 transition-opacity duration-300 group-focus-within:opacity-100 group-hover:opacity-100">
-                        {project.repoUrl ? (
-                          <a
-                            href={project.repoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground flex h-11 w-11 items-center justify-center"
-                            aria-label={`Kode sumber ${project.title}`}
-                          >
-                            <GithubIcon
-                              className="h-5 w-5"
-                              aria-hidden="true"
-                            />
-                          </a>
-                        ) : null}
-                        {project.demoUrl ? (
-                          <a
-                            href={project.demoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground hover:text-foreground flex h-11 w-11 items-center justify-center"
-                            aria-label={`Demo ${project.title}`}
-                          >
-                            <ExternalLink
-                              className="h-5 w-5"
-                              aria-hidden="true"
-                            />
-                          </a>
-                        ) : null}
+                        <div className="flex gap-4 opacity-0 transition-opacity duration-300 group-focus-within:opacity-100 group-hover:opacity-100">
+                          {repoUrl ? (
+                            <a
+                              href={repoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-foreground flex h-11 w-11 items-center justify-center"
+                              aria-label={`Kode sumber ${project.title}`}
+                            >
+                              <GithubIcon
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                              />
+                            </a>
+                          ) : null}
+                          {demoUrl ? (
+                            <a
+                              href={demoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-foreground flex h-11 w-11 items-center justify-center"
+                              aria-label={`Demo ${project.title}`}
+                            >
+                              <ExternalLink
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                              />
+                            </a>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
 
-                    <p className="text-muted-foreground line-clamp-2 max-w-md text-base opacity-80">
-                      {project.shortDesc}
-                    </p>
+                      <p className="text-muted-foreground line-clamp-2 max-w-md text-base opacity-80">
+                        {project.shortDesc}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

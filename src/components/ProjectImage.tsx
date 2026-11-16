@@ -1,9 +1,13 @@
 import fallbackImage from "@/assets/project-taskmanager.jpg";
 import { canOptimizeImage } from "@/lib/imageHosts";
+import { safeImageSrc } from "@/lib/safeUrl";
 import Image from "next/image";
 
 interface ProjectImageProps {
-  /** URL cover dari database. Boleh kosong — akan jatuh ke gambar cadangan. */
+  /**
+   * URL cover dari database. Boleh kosong atau tidak aman (skema selain
+   * http/https, mis. `javascript:`/`data:`) — keduanya jatuh ke gambar cadangan.
+   */
   src?: string | null;
   alt: string;
   /** Kelas untuk elemen <img> hasil render. */
@@ -39,7 +43,9 @@ export function ProjectImage({
   sizes,
   priority,
 }: ProjectImageProps) {
-  const url = src?.trim();
+  // `canOptimizeImage` hanya memutuskan optimasi; host asing tetap dirender
+  // lewat `unoptimized`. Jadi skema berbahaya harus disaring di sini dulu.
+  const url = safeImageSrc(src);
 
   // Impor statis: dioptimasi Next tanpa perlu remotePattern apa pun.
   if (!url) {
