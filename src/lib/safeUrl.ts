@@ -63,7 +63,7 @@ export function safeHttpUrl(value: unknown): string | null {
  *
  * Lebih longgar dari `safeHttpUrl` dalam satu hal: path root-relative
  * (`/uploads/x.png`) juga diterima. Backend menyimpan URL unggahan sebagai
- * `PUBLIC_BASE_URL + /uploads/...`, dan bila base URL dikosongkan (deploy
+ * `APP_PUBLIC_URL + /uploads/...`, dan bila base URL dikosongkan (deploy
  * satu-origin di balik reverse proxy) hasilnya berupa path relatif — gambar itu
  * milik origin sendiri dan aman.
  *

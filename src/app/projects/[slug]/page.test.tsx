@@ -99,9 +99,8 @@ describe("Halaman detail proyek — penyaringan URL", () => {
       const hrefs = Array.from(container.querySelectorAll("a")).map(
         (a) => a.getAttribute("href") ?? "",
       );
-      expect(
-        hrefs.some((h) => !h.startsWith("/") && !h.startsWith("http")),
-      ).toBe(false);
+      // Regex, bukan `startsWith("http")`: prefiks saja meloloskan `httpx:`.
+      expect(hrefs.every((h) => /^(\/|https?:\/\/)/.test(h))).toBe(true);
     },
   );
 
