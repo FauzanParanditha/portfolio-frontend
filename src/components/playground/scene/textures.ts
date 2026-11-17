@@ -205,10 +205,11 @@ export function createNameplateTexture(
   // Dipotong dulu sebelum diukur: loop di bawah memanggil `measureText` sekali
   // per karakter yang dibuang, jadi judul yang sangat panjang tidak boleh
   // sampai ke sana apa adanya.
+  // `String(...)`: data API yang cacat (judul bukan string) tidak boleh
+  // menjatuhkan seluruh scene.
+  const raw = String(title ?? "");
   let text =
-    title.length > MAX_NAMEPLATE_CHARS
-      ? title.slice(0, MAX_NAMEPLATE_CHARS)
-      : title;
+    raw.length > MAX_NAMEPLATE_CHARS ? raw.slice(0, MAX_NAMEPLATE_CHARS) : raw;
   if (ctx.measureText(text).width > maxWidth) {
     while (text.length > 1 && ctx.measureText(`${text}…`).width > maxWidth) {
       text = text.slice(0, -1);

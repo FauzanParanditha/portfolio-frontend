@@ -60,8 +60,9 @@ export function StationPanel({
         onCloseAutoFocus={onCloseAutoFocus}
         // Lapisan lebih tipis dari bawaan: ruangan tetap terlihat di belakang.
         overlayClassName="bg-black/45"
-        // Tombol tutup berlatar supaya terbaca di atas gambar cover apa pun.
-        closeClassName="z-10 rounded-full bg-zinc-950/75 text-white opacity-100 backdrop-blur-sm hover:bg-zinc-800 focus-visible:ring-cyan-400"
+        // Tombol tutup: area sentuh 44×44 px dan berlatar, supaya mudah
+        // diketuk dan terbaca di atas gambar cover apa pun.
+        closeClassName="top-1.5 right-1.5 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-zinc-950/75 text-white opacity-100 backdrop-blur-sm hover:bg-zinc-800 focus-visible:ring-cyan-400 focus-visible:ring-offset-0"
         // Panelnya sendiri tidak menggulir — isinya yang menggulir — sehingga
         // tombol tutup selalu terlihat. Di ponsel panel selebar layar: tidak
         // ada overlay untuk diketuk, jadi tombol itu satu-satunya jalan keluar.

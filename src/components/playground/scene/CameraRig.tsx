@@ -4,6 +4,7 @@ import { segmentHitsBox } from "@/lib/playground/collision";
 import { RACK, type RoomLayout } from "@/lib/playground/layout";
 import type { Sim } from "@/lib/playground/sim";
 import { useFrame, useThree } from "@react-three/fiber";
+import { CLICK_DRAG_TOLERANCE } from "../input";
 import { type RefObject, useEffect, useRef } from "react";
 import { Vector3 } from "three";
 
@@ -37,7 +38,6 @@ const DISTANCE_MIN = 6;
 const DISTANCE_MAX = 20;
 /** Titik pandang digeser sedikit ke arah rak (−Z), di depan pemain. */
 const LOOK_AHEAD = 1.7;
-const DRAG_START = 5;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -94,7 +94,8 @@ export function CameraRig({
     const element = gl.domElement;
     const pointers = new Map<number, { x: number; y: number }>();
     let dragging = false;
-    let travelled = 0;
+    let pressX = 0;
+    let pressY = 0;
     let pinchDistance = 0;
 
     const onDown = (event: PointerEvent) => {
@@ -102,7 +103,8 @@ export function CameraRig({
       // tidak mengirim `pointerup`, sehingga pointernya tertinggal.
       if (event.pointerType === "mouse" && event.button !== 0) return;
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-      travelled = 0;
+      pressX = event.clientX;
+      pressY = event.clientY;
       dragging = false;
       orbitRef.current.dragged = false;
       if (pointers.size === 2) {
@@ -141,8 +143,16 @@ export function CameraRig({
         return;
       }
 
-      travelled += Math.abs(dx) + Math.abs(dy);
-      if (!dragging && travelled < DRAG_START) return;
+      // Seretan dimulai begitu pointer menyimpang dari titik tekan melebihi
+      // toleransi klik — ukuran yang sama dengan yang dipakai penangan klik,
+      // jadi ketukan yang sedikit bergoyang tetap terhitung klik.
+      if (
+        !dragging &&
+        Math.hypot(event.clientX - pressX, event.clientY - pressY) <=
+          CLICK_DRAG_TOLERANCE
+      ) {
+        return;
+      }
       dragging = true;
       orbit.dragged = true;
       orbit.azimuth = clamp(

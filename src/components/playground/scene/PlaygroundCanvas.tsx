@@ -23,7 +23,11 @@ import {
 } from "@react-three/fiber";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { AdditiveBlending, type Mesh } from "three";
-import { CLICK_DRAG_TOLERANCE, isPageTarget, isTypingTarget } from "../input";
+import {
+  allowsArrowMovement,
+  CLICK_DRAG_TOLERANCE,
+  isTypingTarget,
+} from "../input";
 import { CameraRig, DEFAULT_ORBIT, type Orbit } from "./CameraRig";
 import { Racks } from "./Racks";
 import { RobotDog } from "./RobotDog";
@@ -75,7 +79,11 @@ export default function PlaygroundCanvas(props: PlaygroundCanvasProps) {
   // Batas atas resolusi render. Disimpan di state — bukan dipanggil langsung
   // lewat `setDpr` — karena <Canvas> menerapkan ulang prop `dpr` tiap kali ia
   // render; penurunan yang tidak tercermin di prop akan dibatalkan.
-  const [maxDpr, setMaxDpr] = useState(lowPower ? 1.5 : 2);
+  const [maxDpr, setMaxDpr] = useState(() =>
+    // Tidak lebih tinggi dari layar itu sendiri: di layar DPR 1, menurunkan
+    // batas dari 2 ke 1,5 tidak mengubah apa pun dan hanya membuang waktu ukur.
+    Math.max(1, Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2)),
+  );
 
   return (
     <Canvas
@@ -206,12 +214,15 @@ function World({
         keys.clear();
         return;
       }
-      if (!(event.code in MOVE_KEYS)) return;
+      if (!Object.hasOwn(MOVE_KEYS, event.code)) return;
       // Panel terbuka: biarkan tombol sepenuhnya milik dialog.
       if (pausedRef.current || isTypingTarget(event.target)) return;
       // Panah biasanya menggulir halaman / memindah fokus daftar; di sini
       // dipakai untuk berjalan hanya selama fokus tidak berada di kontrol lain.
-      if (event.code.startsWith("Arrow") && !isPageTarget(event.target)) {
+      if (
+        event.code.startsWith("Arrow") &&
+        !allowsArrowMovement(event.target)
+      ) {
         return;
       }
       event.preventDefault();

@@ -15,6 +15,7 @@ import {
   type InstancedMesh,
   Object3D,
 } from "three";
+import { CLICK_DRAG_TOLERANCE } from "../input";
 import {
   createGlowTexture,
   createNameplateTexture,
@@ -24,8 +25,6 @@ import {
 } from "./textures";
 
 const LEDS_PER_RACK = 6;
-/** Seret melebihi ini (px) dianggap memutar kamera, bukan klik. */
-const CLICK_DRAG_TOLERANCE = 6;
 
 // Objek kerja bersama untuk menyusun matriks/warna instans.
 const scratch = new Object3D();

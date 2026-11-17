@@ -36,7 +36,7 @@ interface PlaygroundShellProps {
 }
 
 const NOSCRIPT_CSS = `
-#playground-loading { display: none !important; }
+#playground-loading, [data-requires-js] { display: none !important; }
 @media (max-width: 767px) {
   #rack-list {
     display: flex !important;
@@ -153,6 +153,8 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   const linkRefs = useRef(new Map<number, HTMLAnchorElement>());
   const inspectRef = useRef<HTMLButtonElement | null>(null);
   const listToggleRef = useRef<HTMLButtonElement | null>(null);
+  // Dari mana panel terakhir dibuka; menentukan ke mana fokus dikembalikan.
+  const panelOrigin = useRef<"list" | "inspect" | "scene">("scene");
 
   const sceneAvailable = webgl && !sceneFailed;
   const sceneActive = sceneAvailable && ready;
@@ -189,6 +191,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
     }
     event.preventDefault();
     setListOpen(false);
+    panelOrigin.current = "list";
     if (sceneActive) {
       setCommand((previous) => ({ slot, nonce: (previous?.nonce ?? 0) + 1 }));
       const station = stations[layout.slots[slot]?.station ?? -1];
@@ -214,6 +217,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
           : event.code === "Enter" && isPageTarget(event.target)
       ) {
         event.preventDefault();
+        panelOrigin.current = "scene";
         openPanel(nearSlot);
       }
     };
@@ -223,16 +227,24 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
 
   const stationSlots = layout.slots.filter((slot) => slot.station !== null);
 
-  // Setelah panel tertutup, kembalikan fokus ke tempat yang masuk akal:
-  // tautan rak yang baru dibuka (bila daftarnya terlihat), kalau tidak tombol
-  // "Inspect", kalau tidak tombol pembuka daftar.
+  // Setelah panel tertutup, kembalikan fokus ke pemicunya:
+  // - dari daftar → tautan rak itu (atau tombol Inspect bila daftarnya
+  //   sedang tersembunyi, mis. di ponsel);
+  // - dari tombol Inspect → tombol itu;
+  // - dari scene (klik rak, tombol E) → tidak ada kontrol pemicu. Fokus
+  //   dibiarkan kembali ke halaman, supaya tombol panah tetap menggerakkan
+  //   robot dan pengguna tidak "terlempar" ke dalam daftar.
   const restoreFocus = (event: Event) => {
+    const origin = panelOrigin.current;
+    panelOrigin.current = "scene";
+    if (origin === "scene") return;
+
     const listVisible =
       !sceneAvailable ||
       listOpen ||
       (window.matchMedia?.("(min-width: 768px)").matches ?? false);
     const link =
-      panelSlot !== null && listVisible
+      origin === "list" && panelSlot !== null && listVisible
         ? linkRefs.current.get(panelSlot)
         : undefined;
     const target = link ?? inspectRef.current ?? listToggleRef.current;
@@ -399,7 +411,10 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
             <button
               ref={inspectRef}
               type="button"
-              onClick={() => openPanel(nearSlot)}
+              onClick={() => {
+                panelOrigin.current = "inspect";
+                openPanel(nearSlot);
+              }}
               className={`pointer-events-auto inline-flex min-h-11 max-w-full items-center gap-3 rounded-full bg-white px-5 text-xs font-medium tracking-widest text-zinc-950 uppercase shadow-lg transition-colors hover:bg-cyan-300 ${focusRing}`}
             >
               <span className="truncate">Inspect {nearStation.label}</span>
@@ -416,17 +431,24 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
               onClick={() => setListOpen((open) => !open)}
               aria-expanded={listOpen}
               aria-controls="rack-list"
+              data-requires-js
               className={`pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-950/80 px-4 text-xs font-medium tracking-widest text-zinc-200 uppercase backdrop-blur-md md:hidden ${focusRing}`}
             >
               <List className="h-4 w-4" aria-hidden="true" />
               Racks
             </button>
 
-            <p className="mx-auto hidden rounded-full border border-zinc-800 bg-zinc-950/80 px-4 py-2 text-center text-xs text-zinc-400 backdrop-blur-md md:block">
+            <p
+              data-requires-js
+              className="mx-auto hidden rounded-full border border-zinc-800 bg-zinc-950/80 px-4 py-2 text-center text-xs text-zinc-400 backdrop-blur-md md:block"
+            >
               Click the floor to walk · Click a rack to inspect · Drag to look
               around · Scroll to zoom · WASD to move
             </p>
-            <p className="rounded-full border border-zinc-800 bg-zinc-950/80 px-4 py-2 text-right text-xs text-zinc-400 backdrop-blur-md md:hidden">
+            <p
+              data-requires-js
+              className="rounded-full border border-zinc-800 bg-zinc-950/80 px-4 py-2 text-right text-xs text-zinc-400 backdrop-blur-md md:hidden"
+            >
               Tap to walk · Drag to look
             </p>
           </div>

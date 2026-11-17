@@ -24,8 +24,24 @@ export const metadata: Metadata = {
   description,
   alternates: { canonical: "/playground" },
   // Tanpa ini pratinjau tautan /playground mewarisi judul & URL beranda.
-  openGraph: { title, description, url: "/playground" },
-  twitter: { title, description },
+  // Metadata digabung dangkal: `openGraph`/`twitter` di sini MENGGANTI milik
+  // root layout seluruhnya, jadi field yang ingin dipertahankan diulang.
+  openGraph: {
+    type: "website",
+    siteName: "Paranditha",
+    locale: "id_ID",
+    title,
+    description,
+    url: "/playground",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: title }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    creator: "@paranditha",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default async function PlaygroundPage() {
@@ -41,7 +57,13 @@ export default async function PlaygroundPage() {
         // Proyek ke-25 hanya dipakai untuk mendeteksi "ada sisanya"; yang
         // dikirim ke browser cukup sebanyak rak.
         projects={projects.slice(0, MAX_STATIONS).map(toPlaygroundProject)}
-        total={Math.max(total, projects.length)}
+        // `total` dari meta API bisa cacat (bukan angka); jangan sampai NaN
+        // menghilangkan rak arsip.
+        total={
+          Number.isFinite(total)
+            ? Math.max(total, projects.length)
+            : projects.length
+        }
       />
     </main>
   );

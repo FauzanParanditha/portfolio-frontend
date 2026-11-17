@@ -1,6 +1,7 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlaygroundCanvasProps } from "@/components/playground/scene/PlaygroundCanvas";
@@ -50,6 +51,16 @@ function project(n: number): PlaygroundProject {
   };
 }
 
+/** Pura-pura layar selebar desktop (breakpoint `md` cocok). */
+function desktop() {
+  vi.stubGlobal("matchMedia", (query: string): Partial<MediaQueryList> => ({
+    matches: query.includes("min-width: 768px"),
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
 describe("PlaygroundShell (scene aktif)", () => {
   beforeEach(() => {
     scene.props = null;
@@ -59,7 +70,10 @@ describe("PlaygroundShell (scene aktif)", () => {
       getExtension: () => null,
     } as never);
   });
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
   it("memilih rak mengirim perintah jalan; panel baru terbuka saat robot tiba", async () => {
     const user = userEvent.setup();
@@ -142,7 +156,7 @@ describe("PlaygroundShell (scene aktif)", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
-  it("setelah panel ditutup, fokus kembali ke tombol Inspect (bukan hilang ke body)", async () => {
+  it("panel dibuka dari tombol Inspect → fokus kembali ke tombol itu", async () => {
     const user = userEvent.setup();
     render(<PlaygroundShell projects={[project(1)]} total={1} />);
     await screen.findByTestId("scene");
@@ -153,7 +167,68 @@ describe("PlaygroundShell (scene aktif)", () => {
     await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    // jsdom tidak punya matchMedia → daftar dianggap tersembunyi (ponsel).
     expect(screen.getByRole("button", { name: /inspect/i })).toHaveFocus();
+  });
+
+  it("panel dibuka dari scene (tombol E) → fokus kembali ke halaman, tidak dilempar ke daftar", async () => {
+    const user = userEvent.setup();
+    desktop();
+    render(<PlaygroundShell projects={[project(1), project(2)]} total={2} />);
+    await screen.findByTestId("scene");
+
+    act(() => scene.props?.onNearChange(1));
+    await user.keyboard("e");
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // Bukan tautan rak dan bukan tombol Inspect: tombol panah harus tetap
+    // menggerakkan robot setelah panel ditutup.
+    expect(screen.getByRole("link", { name: /Project 2/ })).not.toHaveFocus();
+    expect(screen.getByRole("button", { name: /inspect/i })).not.toHaveFocus();
+  });
+
+  it("desktop: panel dibuka dari daftar → fokus kembali ke tautan rak itu", async () => {
+    const user = userEvent.setup();
+    desktop();
+    render(<PlaygroundShell projects={[project(1), project(2)]} total={2} />);
+    await screen.findByTestId("scene");
+
+    const link = screen.getByRole("link", { name: /Project 2/ });
+    await user.click(link);
+    act(() => scene.props?.onArrive(1));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(link).toHaveFocus();
+  });
+
+  it("ponsel: daftar tersembunyi → fokus kembali ke tombol Inspect, bukan tautan yang tak terlihat", async () => {
+    const user = userEvent.setup();
+    // Tanpa `desktop()`: matchMedia tidak cocok dengan breakpoint md.
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await screen.findByTestId("scene");
+
+    await user.click(screen.getByRole("link", { name: /Project 1/ }));
+    act(() => {
+      scene.props?.onNearChange(0);
+      scene.props?.onArrive(0);
+    });
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("button", { name: /inspect/i })).toHaveFocus();
+  });
+
+  it("HTML dari server memuat gaya <noscript> yang menampilkan daftar dan menyembunyikan kontrol khusus-JS", () => {
+    const html = renderToString(
+      <PlaygroundShell projects={[project(1)]} total={1} />,
+    );
+    expect(html).toContain("<noscript>");
+    expect(html).toMatch(/#rack-list\s*\{[^}]*display:\s*flex\s*!important/);
+    expect(html).toMatch(/\[data-requires-js\][^{]*\{\s*display:\s*none/);
+    expect(html).toContain('href="/projects/project-1"');
+    // Tombol pembuka daftar dan petunjuk kontrol ditandai sebagai khusus-JS.
+    expect(html.match(/data-requires-js/g)?.length).toBeGreaterThanOrEqual(3);
   });
 });

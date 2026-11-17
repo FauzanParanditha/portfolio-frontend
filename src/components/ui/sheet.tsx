@@ -98,12 +98,14 @@ const SheetContent = React.forwardRef<
         ) : null}
 
         {children}
-        {/* Area sentuh 44×44 px (ikonnya tetap 16 px) dan cincin fokus yang
-            benar-benar terlihat — tombol ini menerima fokus awal saat panel
-            terbuka, dan di layar sentuh bisa jadi satu-satunya cara menutup. */}
+        {/* Cincin fokus yang benar-benar terlihat (`ring-current` mengikuti
+            warna teks, jadi kontras di latar terang maupun gelap): tombol ini
+            menerima fokus awal saat panel terbuka. Ukuran & posisi sengaja
+            dibiarkan seperti semula; pemakai yang butuh area sentuh lebih
+            besar mengaturnya lewat `closeClassName`. */}
         <SheetPrimitive.Close
           className={cn(
-            "focus-visible:ring-ring absolute top-1.5 right-1.5 flex h-11 w-11 items-center justify-center rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:outline-hidden disabled:pointer-events-none",
+            "absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none",
             closeClassName,
           )}
         >

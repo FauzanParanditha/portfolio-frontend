@@ -48,8 +48,10 @@ Prinsip yang dijaga:
   blok `<noscript>` menampilkan daftar itu langsung (juga di layar kecil).
   Kanvas hanyalah lapisan visual (`aria-hidden`).
 - **Fokus & pengumuman.** Memilih rak mengumumkan "Walking to rack …" lewat
-  wilayah `aria-live`; setelah panel ditutup fokus kembali ke tautan rak (atau
-  tombol "Inspect" bila daftarnya tersembunyi).
+  wilayah `aria-live`. Setelah panel ditutup fokus kembali ke pemicunya:
+  tautan rak (bila dibuka dari daftar), tombol "Inspect", atau halaman itu
+  sendiri bila dibuka dari scene — supaya tombol panah tetap menggerakkan
+  robot.
 - **Logika terpisah dari gambar.** `src/lib/playground` tidak mengimpor
   three.js, jadi pathfinding, tata letak, dan gerak diuji langsung di Vitest.
   Scene hanya membaca hasilnya.
@@ -63,9 +65,16 @@ Prinsip yang dijaga:
 - **Dua model halangan, satu sumber.** `layout.obstacles` (kotak rak &
   properti) adalah sumber kebenaran. Klik-untuk-jalan mencari jalur di grid
   0,25 m yang diturunkan darinya; gerak manual (WASD) memakai tabrakan
-  lingkaran-vs-kotak yang tepat — satu lingkaran badan dan satu lingkaran
-  "hidung" di depannya — sehingga robot meluncur di sepanjang rak, lewat di
-  celah antar-rak (1,4 m), dan kepalanya tidak menembus rak.
+  lingkaran-vs-kotak yang tepat, sehingga robot meluncur di sepanjang rak dan
+  lewat di celah antar-rak (1,4 m).
+- **Kepala tidak menembus rak.** Selain lingkaran badan ada lingkaran "hidung"
+  di depannya. Tiga aturan menjaganya tanpa pernah melempar pemain:
+  1. koreksi hidung per sub-langkah dibatasi sepanjang sub-langkah itu, dan
+     perpindahan total tidak pernah melebihi laju jalan;
+  2. putaran yang akan mengayunkan kepala ke dalam halangan dikurangi atau
+     dibatalkan (robot mundur keluar dari celah sempit tanpa berputar);
+  3. klik-untuk-jalan ke titik lantai berhenti sedikit lebih awal bila kepala
+     akan masuk ke rak/dinding di depannya.
 - **Tidak ada kantong buntu.** Celah properti-ke-dinding yang lebih sempit
   dari 1,2 m ditutup (kotak halangannya diperpanjang sampai dinding). Celah
   seperti itu muat untuk gerak manual tetapi tertutup di grid, sehingga rute

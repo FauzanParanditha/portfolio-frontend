@@ -44,6 +44,16 @@ describe("createNameplateTexture", () => {
     expect(title.length).toBeLessThan(40);
   });
 
+  it("judul yang bukan string (data API cacat) tidak melempar galat", () => {
+    const { drawn } = fakeContext();
+    for (const bad of [null, undefined, 42, { a: 1 }]) {
+      expect(() =>
+        createNameplateTexture("R01", bad as never, "project").dispose(),
+      ).not.toThrow();
+    }
+    expect(drawn).toContain("42");
+  });
+
   it("judul raksasa tidak membuat pengukuran teks meledak", () => {
     const { measureText } = fakeContext();
     createNameplateTexture("R01", "A".repeat(100_000), "project").dispose();
