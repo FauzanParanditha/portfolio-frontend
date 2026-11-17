@@ -81,11 +81,18 @@ export function resolveCircle(
         // yang masih menyisakan tempat di dalam batas ruangan. Tanpa syarat
         // itu, kotak yang menempel dinding membuat pemain terpental bolak-balik
         // antara "keluar dari kotak" dan "kembali ke dalam batas".
+        // Koordinat silang dijepit ke batas ruangan lebih dulu: titik yang
+        // sedikit di luar batas (mis. lingkaran "hidung" yang menjulur ke
+        // dinding) tidak boleh membuat sisi keluar terdekat ditolak — kalau
+        // itu terjadi, satu-satunya yang lolos adalah sisi JAUH kotak dan
+        // pemain terlempar ke seberangnya.
+        const inX = clamp(px, bounds.minX + radius, bounds.maxX - radius);
+        const inZ = clamp(pz, bounds.minZ + radius, bounds.maxZ - radius);
         const exits: Array<[number, number, number]> = [
-          [px - rect.minX, rect.minX - radius, pz],
-          [rect.maxX - px, rect.maxX + radius, pz],
-          [pz - rect.minZ, px, rect.minZ - radius],
-          [rect.maxZ - pz, px, rect.maxZ + radius],
+          [px - rect.minX, rect.minX - radius, inZ],
+          [rect.maxX - px, rect.maxX + radius, inZ],
+          [pz - rect.minZ, inX, rect.minZ - radius],
+          [rect.maxZ - pz, inX, rect.maxZ + radius],
         ];
         let best: [number, number, number] | null = null;
         for (const exit of exits) {
@@ -115,6 +122,39 @@ export function resolveCircle(
   }
 
   return { x: px, z: pz };
+}
+
+/**
+ * Seberapa dalam lingkaran di (x,z) menembus halangan atau batas ruangan,
+ * dalam meter. 0 = bebas.
+ */
+export function penetrationDepth(
+  x: number,
+  z: number,
+  radius: number,
+  obstacles: readonly Rect[],
+  bounds: Rect,
+): number {
+  let depth = Math.max(
+    0,
+    bounds.minX + radius - x,
+    x - (bounds.maxX - radius),
+    bounds.minZ + radius - z,
+    z - (bounds.maxZ - radius),
+  );
+  for (const rect of obstacles) {
+    const distance = distanceToRect(x, z, rect);
+    // Pusat di dalam kotak: kedalaman terus bertambah seiring jarak ke sisi
+    // terdekat, tidak mentok di `radius`. Pemanggil membandingkan "makin dalam
+    // atau tidak", jadi nilainya harus monoton.
+    const inside =
+      distance > 0
+        ? radius - distance
+        : radius +
+          Math.min(x - rect.minX, rect.maxX - x, z - rect.minZ, rect.maxZ - z);
+    if (inside > depth) depth = inside;
+  }
+  return depth;
 }
 
 /** Apakah lingkaran di (x,z) bebas dari semua halangan dan di dalam batas? */

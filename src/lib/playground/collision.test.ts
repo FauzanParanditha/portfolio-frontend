@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   distanceToRect,
   isCircleFree,
+  penetrationDepth,
   rectFromCenter,
   resolveCircle,
   segmentHitsBox,
@@ -65,6 +66,42 @@ describe("collision", () => {
     expect(isCircleFree(3, 3, R, [BOX], BOUNDS)).toBe(true);
     expect(isCircleFree(1.2, 0, R, [BOX], BOUNDS)).toBe(false);
     expect(isCircleFree(4.9, 0, R, [BOX], BOUNDS)).toBe(false);
+  });
+});
+
+describe("regresi: titik di luar batas tidak boleh terlempar ke sisi jauh kotak", () => {
+  // Kotak menempel dinding kiri & depan (seperti tempat tidur yang celahnya
+  // ditutup). Titik berada di dalam kotak DAN lebih dekat ke dinding daripada
+  // radiusnya — persis posisi lingkaran "hidung" yang menjulur ke pojok.
+  const corner: Rect = { minX: -5, maxX: -2, minZ: 3, maxZ: 5 };
+
+  it("keluar lewat sisi terdekat yang ada ruangnya, bukan menyeberang kotak", () => {
+    const p = resolveCircle(-4.9, 3.1, 0.22, [corner], BOUNDS);
+    // Sisi terdekat = minZ (0,1 m). Sisi jauh (maxX) berjarak 2,9 m.
+    expect(p.z).toBeCloseTo(3 - 0.22);
+    expect(p.x).toBeCloseTo(-5 + 0.22);
+    expect(Math.hypot(p.x - -4.9, p.z - 3.1)).toBeLessThan(0.5);
+  });
+});
+
+describe("penetrationDepth", () => {
+  it("nol saat bebas, sebesar tumpang-tindih saat menyentuh", () => {
+    expect(penetrationDepth(3, 3, R, [BOX], BOUNDS)).toBe(0);
+    expect(penetrationDepth(1.2, 0, R, [BOX], BOUNDS)).toBeCloseTo(0.1);
+  });
+
+  it("terus bertambah di dalam kotak (monoton), tidak mentok di radius", () => {
+    const edge = penetrationDepth(1, 0, R, [BOX], BOUNDS);
+    const inside = penetrationDepth(0.8, 0, R, [BOX], BOUNDS);
+    const deeper = penetrationDepth(0.5, 0, R, [BOX], BOUNDS);
+    expect(edge).toBeCloseTo(R);
+    expect(inside).toBeCloseTo(R + 0.2);
+    expect(deeper).toBeGreaterThan(inside);
+  });
+
+  it("menghitung tembus dinding ruangan", () => {
+    expect(penetrationDepth(4.9, 0, R, [], BOUNDS)).toBeCloseTo(0.2);
+    expect(penetrationDepth(0, -5.5, R, [], BOUNDS)).toBeCloseTo(0.8);
   });
 });
 
