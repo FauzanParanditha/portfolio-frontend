@@ -327,24 +327,27 @@ describe("sim: celah antar-rak (regresi: dulu tertutup total)", () => {
 });
 
 describe("sim: ketahanan gerak manual", () => {
-  it("fuzz: input acak dengan dt campuran — tidak menembus, tidak terlempar, kepala tidak masuk halangan", () => {
+  it("fuzz: input acak dengan dt campuran — tidak menembus, tidak terlempar, kepala tidak tertahan di dalam halangan", () => {
     const random = seededRandom(12345);
-    for (const count of [1, 8, 24]) {
+    for (const count of [0, 1, 8, 24]) {
       const layout = buildLayout(count);
       const sim = createSim(layout.spawn);
-      let input = { moveX: 0, moveZ: 0 };
+      let input = IDLE;
+      let idleFor = 0;
+      let headInside = 0;
       for (let frame = 0; frame < 12000; frame++) {
         if (frame % 25 === 0) {
           const angle = random() * Math.PI * 2;
           input =
-            random() < 0.15
-              ? { moveX: 0, moveZ: 0 }
+            random() < 0.2
+              ? IDLE
               : { moveX: Math.sin(angle), moveZ: Math.cos(angle) };
         }
         const dt = [1 / 144, 1 / 60, 1 / 30, 0.1][Math.floor(random() * 4)];
         const beforeX = sim.x;
         const beforeZ = sim.z;
         stepSim(sim, layout, dt, input);
+        idleFor = input === IDLE ? idleFor + dt : 0;
 
         const where = `frame ${frame}, ${count} rak, (${sim.x.toFixed(3)}, ${sim.z.toFixed(3)})`;
         if (!isFree(layout, sim.x, sim.z)) {
@@ -356,13 +359,72 @@ describe("sim: ketahanan gerak manual", () => {
         if (moved > MAX_SPEED * dt + 0.005) {
           throw new Error(`terlempar ${moved.toFixed(3)} m: ${where}`);
         }
-        if (noseDepth(layout, sim) > 0.02) {
+        // Kepala boleh masuk sekejap saat berbelok di dekat halangan, tetapi
+        // tidak boleh tertahan di sana…
+        headInside = noseDepth(layout, sim) > 0.05 ? headInside + dt : 0;
+        if (headInside > 0.8) {
           throw new Error(
-            `kepala masuk ${noseDepth(layout, sim).toFixed(3)} m: ${where}`,
+            `kepala tertahan di dalam halangan ${headInside.toFixed(2)} dtk: ${where}`,
           );
+        }
+        // …dan setelah diam sebentar harus sudah bebas sepenuhnya.
+        if (idleFor > 1 && noseDepth(layout, sim) > 0.02) {
+          throw new Error(`diam tetapi kepala masih di dalam: ${where}`);
         }
       }
     }
+  });
+
+  it("arah hadap selalu mengikuti arah gerak, juga saat menyusuri dinding (regresi: hadap membeku)", () => {
+    const layout = buildLayout(8);
+    // Repro: serong ke dinding depan (S+A), lalu geser sejajar dinding (D).
+    const sim = createSim({ x: 2, z: 5 }, Math.PI);
+    for (let i = 0; i < 90; i++) {
+      stepSim(sim, layout, DT, { moveX: -0.707, moveZ: 0.707 });
+    }
+    for (let i = 0; i < 120; i++) {
+      stepSim(sim, layout, DT, { moveX: 1, moveZ: 0 });
+    }
+    expect(Math.abs(angleDelta(sim.heading, Math.PI / 2))).toBeLessThan(0.1);
+
+    // Umum: dari pose hasil gerak acak, menahan satu arah 2 dtk selalu
+    // berakhir menghadap arah itu.
+    const random = seededRandom(4242);
+    for (let run = 0; run < 300; run++) {
+      const before = random() * Math.PI * 2;
+      for (let i = 0; i < 30 + Math.floor(random() * 60); i++) {
+        stepSim(sim, layout, DT, {
+          moveX: Math.sin(before),
+          moveZ: Math.cos(before),
+        });
+      }
+      const angle = random() * Math.PI * 2;
+      for (let i = 0; i < 120; i++) {
+        stepSim(sim, layout, DT, {
+          moveX: Math.sin(angle),
+          moveZ: Math.cos(angle),
+        });
+      }
+      expect(
+        Math.abs(angleDelta(sim.heading, angle)),
+        `hadap meleset setelah menahan arah ${angle.toFixed(2)} di (${sim.x.toFixed(2)}, ${sim.z.toFixed(2)})`,
+      ).toBeLessThan(0.1);
+    }
+  });
+
+  it("menahan tombol ke arah dinding setelah menyusurinya: kepala keluar dari dinding, tidak tertahan", () => {
+    const layout = buildLayout(4);
+    // Menyusuri dinding depan ke kanan sampai badan menempel dinding…
+    const sim = createSim({ x: 0, z: layout.bounds.maxZ - 1 }, Math.PI / 2);
+    for (let i = 0; i < 90; i++) {
+      stepSim(sim, layout, DT, { moveX: 0.5, moveZ: 1 });
+    }
+    // …lalu menekan lurus ke dinding.
+    for (let i = 0; i < 90; i++) {
+      stepSim(sim, layout, DT, { moveX: 0, moveZ: 1 });
+    }
+    expect(noseDepth(layout, sim)).toBeLessThan(0.02);
+    expect(Math.abs(angleDelta(sim.heading, 0))).toBeLessThan(0.1);
   });
 
   it("tidak pernah buntu: dari pose bebas mana pun selalu ada arah yang bisa ditempuh", () => {
@@ -378,6 +440,15 @@ describe("sim: ketahanan gerak manual", () => {
         probes++;
         // Arah hadap acak: kepala boleh saja sedang berada di dalam halangan.
         const heading = random() * Math.PI * 2;
+
+        // Dibiarkan diam: mundur dari halangan lalu benar-benar berhenti
+        // (tidak "lari di tempat" tanpa akhir).
+        const resting = createSim({ x, z }, heading);
+        for (let frame = 0; frame < 240; frame++) {
+          stepSim(resting, layout, DT, IDLE);
+        }
+        expect(isMoving(resting)).toBe(false);
+
         let best = 0;
         for (let d = 0; d < 16 && best < 0.3; d++) {
           const sim = createSim({ x, z }, heading);
@@ -497,8 +568,102 @@ describe("rute dari posisi mana pun yang bisa dicapai gerak manual", () => {
   });
 });
 
-describe("peralihan klik-untuk-jalan → WASD (regresi: pemain terlempar)", () => {
-  it("repro: tiba di pojok antara tempat tidur dan dinding, lalu menekan tombol — tidak terlempar", () => {
+describe("klik-untuk-jalan ke titik lantai", () => {
+  it("selalu sampai tepat di titik yang diklik, juga dari pose menyinggung dinding (regresi: klik termakan)", () => {
+    const layout = buildLayout(8);
+    // Repro: serong ke dinding depan, diam, lalu klik 1 m ke samping.
+    const sim = createSim({ x: 2, z: 5 }, Math.PI);
+    for (let i = 0; i < 90; i++) {
+      stepSim(sim, layout, DT, { moveX: -0.707, moveZ: 0.707 });
+    }
+    for (let i = 0; i < 60; i++) stepSim(sim, layout, DT, IDLE);
+
+    for (const dz of [0.02, -0.02]) {
+      const target = { x: sim.x + 1, z: sim.z + dz };
+      expect(setDestination(sim, layout.grid, target)).toBe(true);
+      const end = sim.route[sim.route.length - 1];
+      const { event } = runUntilEvent(sim, layout);
+      expect(event).toEqual({ type: "arrived", slot: null });
+      expect(Math.hypot(sim.x - end.x, sim.z - end.z)).toBeLessThan(1e-6);
+      for (let i = 0; i < 60; i++) stepSim(sim, layout, DT, IDLE);
+    }
+  });
+
+  it("acak: selalu tiba di ujung rute, lalu kepala disingkirkan dengan mundur selangkah — tanpa lompatan", () => {
+    const random = seededRandom(2468);
+    for (const count of [1, 8, 24]) {
+      const layout = buildLayout(count);
+      const { bounds } = layout;
+      const sim = createSim(layout.spawn);
+      for (let run = 0; run < 250; run++) {
+        // Pose awal dari gerak manual, supaya termasuk pose menyinggung halangan.
+        const wander = random() * Math.PI * 2;
+        for (let i = 0; i < 40; i++) {
+          stepSim(sim, layout, DT, {
+            moveX: Math.sin(wander),
+            moveZ: Math.cos(wander),
+          });
+        }
+        for (let i = 0; i < 40; i++) stepSim(sim, layout, DT, IDLE);
+
+        // Separuh klik dekat (0,3–1,5 m), separuh di mana saja.
+        const angle = random() * Math.PI * 2;
+        const reach = 0.3 + random() * 1.2;
+        const to =
+          random() < 0.5
+            ? {
+                x: sim.x + Math.sin(angle) * reach,
+                z: sim.z + Math.cos(angle) * reach,
+              }
+            : {
+                x: bounds.minX + random() * (bounds.maxX - bounds.minX),
+                z: bounds.minZ + random() * (bounds.maxZ - bounds.minZ),
+              };
+        const label = `klik (${to.x.toFixed(2)}, ${to.z.toFixed(2)}), ${count} rak`;
+        expect(setDestination(sim, layout.grid, to), label).toBe(true);
+        const end = sim.route[sim.route.length - 1];
+
+        const { event } = runUntilEvent(sim, layout, 60);
+        expect(event, label).toEqual({ type: "arrived", slot: null });
+        expect(Math.hypot(sim.x - end.x, sim.z - end.z), label).toBeLessThan(
+          1e-6,
+        );
+
+        // Dua detik diam: kepala sudah bebas, pemain sudah berhenti, dan
+        // mundurnya tidak jauh dari titik yang diklik.
+        for (let i = 0; i < 120; i++) {
+          const beforeX = sim.x;
+          const beforeZ = sim.z;
+          stepSim(sim, layout, DT, IDLE);
+          expect(
+            Math.hypot(sim.x - beforeX, sim.z - beforeZ),
+            label,
+          ).toBeLessThanOrEqual(MAX_SPEED * DT + 0.005);
+        }
+        expect(noseDepth(layout, sim), label).toBeLessThan(0.02);
+        expect(isMoving(sim), label).toBe(false);
+        expect(Math.hypot(sim.x - end.x, sim.z - end.z), label).toBeLessThan(
+          0.8,
+        );
+        expect(isFree(layout, sim.x, sim.z), label).toBe(true);
+
+        // Frame WASD pertama setelah itu tidak melompat.
+        const key = random() * Math.PI * 2;
+        const beforeX = sim.x;
+        const beforeZ = sim.z;
+        stepSim(sim, layout, DT, {
+          moveX: Math.sin(key),
+          moveZ: Math.cos(key),
+        });
+        expect(
+          Math.hypot(sim.x - beforeX, sim.z - beforeZ),
+          label,
+        ).toBeLessThan(0.1);
+      }
+    }
+  });
+
+  it("tiba di pojok dekat tempat tidur lalu langsung menekan tombol: tidak terlempar (regresi)", () => {
     const layout = buildLayout(8);
     for (const key of [
       { moveX: 0, moveZ: -1 },
@@ -510,79 +675,36 @@ describe("peralihan klik-untuk-jalan → WASD (regresi: pemain terlempar)", () =
       expect(setDestination(sim, layout.grid, { x: -6.4, z: 4.63 })).toBe(true);
       const { event } = runUntilEvent(sim, layout);
       expect(event).toEqual({ type: "arrived", slot: null });
-      // Berhenti sebelum kepala masuk ke tempat tidur/dinding.
-      expect(noseDepth(layout, sim)).toBeLessThan(0.02);
-
-      const beforeX = sim.x;
-      const beforeZ = sim.z;
-      stepSim(sim, layout, DT, key);
-      expect(Math.hypot(sim.x - beforeX, sim.z - beforeZ)).toBeLessThan(0.1);
-    }
-  });
-
-  it("kepala sudah jauh di dalam rak saat gerak dimulai: keluar bertahap, tidak terlempar", () => {
-    const layout = buildLayout(4);
-    const slot = layout.slots[1];
-    // Badan sah tepat di depan muka rak, menghadap rak → hidung ±0,3 m di dalam.
-    const start = { x: slot.x, z: slot.z + RACK.depth / 2 + 0.3 };
-    for (const key of [
-      { moveX: 0, moveZ: -1 },
-      { moveX: 0, moveZ: 1 },
-      { moveX: 1, moveZ: 0 },
-      { moveX: -1, moveZ: 0 },
-    ]) {
-      const sim = createSim(start, Math.PI);
-      expect(isFree(layout, sim.x, sim.z)).toBe(true);
-      expect(noseDepth(layout, sim)).toBeGreaterThan(0.3);
-
-      for (let frame = 0; frame < 120; frame++) {
+      // Tombol ditekan tepat setelah tiba, sebelum sempat mundur.
+      for (let frame = 0; frame < 30; frame++) {
         const beforeX = sim.x;
         const beforeZ = sim.z;
         stepSim(sim, layout, DT, key);
-        expect(
-          Math.hypot(sim.x - beforeX, sim.z - beforeZ),
-        ).toBeLessThanOrEqual(MAX_SPEED * DT + 0.005);
-        expect(isFree(layout, sim.x, sim.z)).toBe(true);
+        expect(Math.hypot(sim.x - beforeX, sim.z - beforeZ)).toBeLessThan(0.1);
       }
     }
   });
+});
 
-  it("acak: setelah tiba di titik lantai mana pun, frame WASD pertama tidak melompat", () => {
-    const random = seededRandom(2468);
-    for (const count of [1, 8, 24]) {
-      const layout = buildLayout(count);
-      const { bounds } = layout;
-      let deepNose = 0;
-      const runs = 250;
-      for (let run = 0; run < runs; run++) {
-        const start =
-          layout.slots[Math.floor(random() * layout.slots.length)].approach;
-        const sim = createSim(start);
-        const to = {
-          x: bounds.minX + random() * (bounds.maxX - bounds.minX),
-          z: bounds.minZ + random() * (bounds.maxZ - bounds.minZ),
-        };
-        expect(setDestination(sim, layout.grid, to)).toBe(true);
-        const { event } = runUntilEvent(sim, layout, 60);
-        expect(event).not.toBeNull();
-        for (let i = 0; i < 20; i++) stepSim(sim, layout, DT, IDLE);
-        if (noseDepth(layout, sim) > 0.05) deepNose++;
-
-        const angle = random() * Math.PI * 2;
-        const beforeX = sim.x;
-        const beforeZ = sim.z;
-        stepSim(sim, layout, DT, {
-          moveX: Math.sin(angle),
-          moveZ: Math.cos(angle),
-        });
-        const jump = Math.hypot(sim.x - beforeX, sim.z - beforeZ);
-        expect(
-          jump,
-          `lompat ${jump.toFixed(3)} m setelah klik (${to.x.toFixed(2)}, ${to.z.toFixed(2)}), ${count} rak`,
-        ).toBeLessThan(0.1);
-      }
-      // Tiba dengan kepala di dalam halangan harus langka (dulu ±26%).
-      expect(deepNose / runs).toBeLessThan(0.02);
+describe("klik-untuk-jalan ke rak", () => {
+  it("setiap rak tercapai tepat di titik berdirinya, menghadap rak, tanpa bergeser sesudahnya", () => {
+    const layout = buildLayout(24);
+    const random = seededRandom(1357);
+    for (const slot of layout.slots) {
+      const from = layout.slots[Math.floor(random() * layout.slots.length)];
+      const sim = createSim(from.approach, random() * Math.PI * 2);
+      expect(setDestination(sim, layout.grid, slot.approach, slot.index)).toBe(
+        true,
+      );
+      const { event } = runUntilEvent(sim, layout, 90);
+      expect(event).toEqual({ type: "arrived", slot: slot.index });
+      for (let i = 0; i < 120; i++) stepSim(sim, layout, DT, IDLE);
+      expect(sim.x).toBe(slot.approach.x);
+      expect(sim.z).toBe(slot.approach.z);
+      expect(Math.abs(angleDelta(sim.heading, FACE_RACK_HEADING))).toBeLessThan(
+        0.02,
+      );
+      expect(isMoving(sim)).toBe(false);
     }
   });
 });

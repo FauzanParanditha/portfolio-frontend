@@ -203,6 +203,23 @@ describe("PlaygroundShell (scene aktif)", () => {
     expect(link).toHaveFocus();
   });
 
+  it("perintah daftar dibatalkan, lalu rak LAIN dicapai lewat scene → fokus tidak dilempar ke daftar", async () => {
+    const user = userEvent.setup();
+    desktop();
+    render(<PlaygroundShell projects={[project(1), project(2)]} total={2} />);
+    await screen.findByTestId("scene");
+
+    // Minta rak 1 dari daftar, tetapi robot malah tiba di rak 2 (mis. pengguna
+    // membatalkan dengan WASD lalu mengeklik rak 2 di scene).
+    await user.click(screen.getByRole("link", { name: /Project 1/ }));
+    act(() => scene.props?.onArrive(1));
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("link", { name: /Project 1/ })).not.toHaveFocus();
+    expect(screen.getByRole("link", { name: /Project 2/ })).not.toHaveFocus();
+  });
+
   it("ponsel: daftar tersembunyi → fokus kembali ke tombol Inspect, bukan tautan yang tak terlihat", async () => {
     const user = userEvent.setup();
     // Tanpa `desktop()`: matchMedia tidak cocok dengan breakpoint md.

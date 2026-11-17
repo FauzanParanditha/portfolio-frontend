@@ -155,6 +155,8 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   const listToggleRef = useRef<HTMLButtonElement | null>(null);
   // Dari mana panel terakhir dibuka; menentukan ke mana fokus dikembalikan.
   const panelOrigin = useRef<"list" | "inspect" | "scene">("scene");
+  // Rak yang sedang dituju atas perintah dari daftar (belum tiba).
+  const pendingListSlot = useRef<number | null>(null);
 
   const sceneAvailable = webgl && !sceneFailed;
   const sceneActive = sceneAvailable && ready;
@@ -164,6 +166,17 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
     setPanelOpen(true);
     setAnnouncement("");
   }, []);
+  // Robot tiba di depan rak. Bila bukan rak yang diminta dari daftar (mis.
+  // perintah daftar dibatalkan dengan WASD lalu rak lain diklik di scene),
+  // asal panelnya adalah scene — fokus tidak boleh dilempar ke daftar.
+  const handleArrive = useCallback(
+    (slot: number) => {
+      if (pendingListSlot.current !== slot) panelOrigin.current = "scene";
+      pendingListSlot.current = null;
+      openPanel(slot);
+    },
+    [openPanel],
+  );
   const handleReady = useCallback(() => setReady(true), []);
   const handleSceneError = useCallback(() => setSceneFailed(true), []);
 
@@ -193,6 +206,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
     setListOpen(false);
     panelOrigin.current = "list";
     if (sceneActive) {
+      pendingListSlot.current = slot;
       setCommand((previous) => ({ slot, nonce: (previous?.nonce ?? 0) + 1 }));
       const station = stations[layout.slots[slot]?.station ?? -1];
       if (station && !reducedMotion) {
@@ -265,7 +279,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
               command={command}
               paused={panelOpen || hidden}
               reducedMotion={reducedMotion}
-              onArrive={openPanel}
+              onArrive={handleArrive}
               onNearChange={setNearSlot}
               onReady={handleReady}
             />

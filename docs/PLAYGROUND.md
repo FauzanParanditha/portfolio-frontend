@@ -67,14 +67,25 @@ Prinsip yang dijaga:
   0,25 m yang diturunkan darinya; gerak manual (WASD) memakai tabrakan
   lingkaran-vs-kotak yang tepat, sehingga robot meluncur di sepanjang rak dan
   lewat di celah antar-rak (1,4 m).
-- **Kepala tidak menembus rak.** Selain lingkaran badan ada lingkaran "hidung"
-  di depannya. Tiga aturan menjaganya tanpa pernah melempar pemain:
-  1. koreksi hidung per sub-langkah dibatasi sepanjang sub-langkah itu, dan
-     perpindahan total tidak pernah melebihi laju jalan;
-  2. putaran yang akan mengayunkan kepala ke dalam halangan dikurangi atau
-     dibatalkan (robot mundur keluar dari celah sempit tanpa berputar);
-  3. klik-untuk-jalan ke titik lantai berhenti sedikit lebih awal bila kepala
-     akan masuk ke rak/dinding di depannya.
+- **Kepala tidak tertahan di dalam rak.** Selain lingkaran badan ada lingkaran
+  "hidung" di depannya. Aturannya sengaja sederhana — dua percobaan yang lebih
+  ketat (melarang putaran ke arah halangan, dan menghentikan rute lebih awal)
+  dicoba lalu dibuang karena membuat arah hadap membeku dan klik "termakan":
+  1. **Saat bergerak (WASD):** bagian gerak yang mendorong kepala makin dalam
+     dibuang, lalu badan digeser mundur paling banyak sejauh langkah itu
+     sendiri. Menabrak rak lurus dari depan berhenti dengan hidung di muka rak.
+  2. **Saat diam:** bila kepala (atau badan) masih menindih halangan — mis.
+     baru tiba lewat klik di dekat dinding — robot mundur selangkah (≤ ±0,65 m)
+     sampai bebas.
+  3. **Arah hadap dan rute tidak pernah dibatasi.** Robot selalu menghadap
+     arah geraknya dan selalu sampai tepat di titik yang diklik.
+
+  Konsekuensinya: kepala boleh masuk ke halangan **sekejap** (≤ ±0,4 dtk) saat
+  berbelok di dekat dinding atau tepat saat tiba, sebelum dikoreksi. Tabrakan
+  tidak pernah memindahkan pemain lebih cepat dari laju jalannya, kecuali
+  dorongan keluar-halangan beberapa sentimeter pada frame WASD pertama
+  setelah rute (rute diikuti di grid, bukan di geometri tepat).
+
 - **Tidak ada kantong buntu.** Celah properti-ke-dinding yang lebih sempit
   dari 1,2 m ditutup (kotak halangannya diperpanjang sampai dinding). Celah
   seperti itu muat untuk gerak manual tetapi tertutup di grid, sehingga rute

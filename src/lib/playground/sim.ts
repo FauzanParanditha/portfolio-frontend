@@ -39,9 +39,14 @@ export interface Sim {
   faceHeading: number | null;
   /** Titik tujuan untuk penanda di lantai. */
   marker: Point | null;
-  /** Arah gerak manual terakhir (satuan); dipakai untuk meluncur saat berhenti. */
+  /** Arah gerak terakhir (satuan); dipakai untuk meluncur saat berhenti. */
   moveDirX: number;
   moveDirZ: number;
+  /**
+   * Upaya mundur dari halangan sudah mentok di pose ini; jangan dicoba lagi
+   * sampai pemain bergerak (mencegah "lari di tempat" tanpa akhir).
+   */
+  settleBlocked: boolean;
 }
 
 /**
@@ -63,8 +68,10 @@ const MAX_COLLISION_STEP = 0.12;
  */
 export const NOSE_OFFSET = 0.6;
 export const NOSE_RADIUS = 0.22;
-/** Jarak ke tujuan saat pemeriksaan "kepala akan menabrak" mulai berlaku. */
-const NOSE_STOP_RANGE = NOSE_OFFSET + NOSE_RADIUS + 0.4;
+/** Laju mundur saat pemain diam dengan kepala di dalam halangan. */
+const SETTLE_SPEED = 1.5;
+/** Tembusan hidung sekecil ini dibiarkan (hindari gerak mikro tanpa henti). */
+const SETTLE_TOLERANCE = 0.01;
 
 export interface SimInput {
   /** Arah gerak manual (WASD) di ruang dunia; panjang 0..1. */
@@ -90,6 +97,7 @@ export function createSim(spawn: Point, heading = FACE_RACK_HEADING): Sim {
     marker: null,
     moveDirX: 0,
     moveDirZ: 0,
+    settleBlocked: false,
   };
 }
 
@@ -123,6 +131,7 @@ export function setDestination(
   sim.routeIndex = 1;
   sim.targetSlot = slot;
   sim.faceHeading = null;
+  sim.settleBlocked = false;
   sim.marker = route[route.length - 1];
   return true;
 }
@@ -135,6 +144,7 @@ export function teleport(sim: Sim, to: Point, heading: number): void {
   sim.heading = heading;
   sim.speed = 0;
   sim.faceHeading = null;
+  sim.settleBlocked = false;
 }
 
 export function isMoving(sim: Sim): boolean {
@@ -146,45 +156,15 @@ export function angleDelta(from: number, to: number): number {
   return Math.atan2(Math.sin(to - from), Math.cos(to - from));
 }
 
-/** Kedalaman lingkaran "hidung" menembus halangan, untuk pose tertentu. */
-function noseDepth(
-  nav: Navigation,
-  x: number,
-  z: number,
-  heading: number,
-): number {
-  return penetrationDepth(
-    x + Math.sin(heading) * NOSE_OFFSET,
-    z + Math.cos(heading) * NOSE_OFFSET,
-    NOSE_RADIUS,
-    nav.obstacles,
-    nav.bounds,
-  );
-}
-
 /**
- * Putar menuju `target`, tetapi jangan sampai mengayunkan kepala ke dalam
- * halangan. Putaran yang memperdalam tembusan hidung dikurangi (setengah,
- * seperempat) atau dibatalkan; pemain lalu bergerak tanpa berputar — seperti
- * anjing yang mundur keluar dari celah sempit.
+ * Putar menuju `target`. Putaran sengaja TIDAK dibatasi oleh halangan: arah
+ * hadap harus selalu mengikuti arah gerak. Bila putaran membuat kepala masuk
+ * ke rak/dinding, itu dikoreksi dengan menggeser badan (saat bergerak) atau
+ * mundur selangkah (saat diam) — bukan dengan membekukan arah hadap.
  */
-function turnToward(
-  sim: Sim,
-  nav: Navigation,
-  target: number,
-  dt: number,
-): void {
-  const delta =
+function turnToward(sim: Sim, target: number, dt: number): void {
+  sim.heading +=
     angleDelta(sim.heading, target) * (1 - Math.exp(-TURN_RATE * dt));
-  if (delta === 0) return;
-  const current = noseDepth(nav, sim.x, sim.z, sim.heading);
-  for (const fraction of [1, 0.5, 0.25]) {
-    const heading = sim.heading + delta * fraction;
-    if (noseDepth(nav, sim.x, sim.z, heading) <= current + 1e-4) {
-      sim.heading = heading;
-      return;
-    }
-  }
 }
 
 function remainingDistance(sim: Sim): number {
@@ -206,14 +186,17 @@ function remainingDistance(sim: Sim): number {
  * Gerak dipecah menjadi sub-langkah pendek. Di tiap sub-langkah:
  * 1. lingkaran badan didorong keluar dari kotak halangan (meluncur di
  *    sepanjang rak, membulat di sudut);
- * 2. bila lingkaran "hidung" di depan menembus, badan digeser mundur — tetapi
- *    PALING BANYAK sejauh sub-langkah itu sendiri;
+ * 2. bila lingkaran "hidung" di depan menembus, bagian gerak yang mendorongnya
+ *    makin dalam dibuang, lalu badan digeser mundur — tetapi PALING BANYAK
+ *    sejauh sub-langkah itu sendiri;
  * 3. perpindahan total sub-langkah dibatasi sepanjang sub-langkah.
  *
  * Batas di (2) dan (3) penting: hidung bisa saja sudah berada jauh di dalam
- * halangan saat gerak manual dimulai (mis. baru tiba lewat rute). Koreksi
- * penuh sekaligus akan melempar pemain beberapa meter dalam satu frame; dengan
- * batas ini ia paling cepat bergerak secepat langkahnya sendiri.
+ * halangan saat gerak manual dimulai (mis. baru tiba lewat rute, atau baru
+ * berputar di dekat dinding). Koreksi penuh sekaligus akan melempar pemain
+ * beberapa meter dalam satu frame; dengan batas ini ia bergerak paling cepat
+ * secepat langkahnya sendiri (ditambah dorongan keluar-halangan sepersekian
+ * sentimeter bila badannya sendiri sedang menindih geometri setelah rute).
  */
 function moveWithCollision(
   sim: Sim,
@@ -234,9 +217,36 @@ function moveWithCollision(
   for (let i = 0; i < subSteps; i++) {
     const startX = sim.x;
     const startZ = sim.z;
+    let moveX = dirX * stepLength;
+    let moveZ = dirZ * stepLength;
+
+    // Kepala sudah di dalam halangan sebelum melangkah: buang bagian gerak
+    // yang mendorongnya makin dalam. Tanpa ini, menahan tombol ke arah dinding
+    // tepat mengimbangi koreksi hidung dan kepala tertahan di dalam dinding
+    // selama tombol ditahan.
+    const headX = startX + forwardX * NOSE_OFFSET;
+    const headZ = startZ + forwardZ * NOSE_OFFSET;
+    const headFree = resolveCircle(
+      headX,
+      headZ,
+      NOSE_RADIUS,
+      obstacles,
+      bounds,
+    );
+    const outX = headFree.x - headX;
+    const outZ = headFree.z - headZ;
+    const out = Math.hypot(outX, outZ);
+    if (out > 1e-9) {
+      const inward = (moveX * outX + moveZ * outZ) / out;
+      if (inward < 0) {
+        moveX -= (inward * outX) / out;
+        moveZ -= (inward * outZ) / out;
+      }
+    }
+
     let body = resolveCircle(
-      startX + dirX * stepLength,
-      startZ + dirZ * stepLength,
+      startX + moveX,
+      startZ + moveZ,
       PLAYER_RADIUS,
       obstacles,
       bounds,
@@ -307,6 +317,7 @@ export function stepSim(
   if (manualMagnitude > 0.01) {
     clearRoute(sim);
     sim.faceHeading = null;
+    sim.settleBlocked = false;
 
     const dirX = input.moveX / manualMagnitude;
     const dirZ = input.moveZ / manualMagnitude;
@@ -322,7 +333,7 @@ export function stepSim(
     // Menabrak tegak lurus: laju turun ke laju nyata, supaya animasi lari
     // tidak terus berputar di tempat.
     sim.speed = Math.min(sim.speed, travelled / step + 0.6);
-    turnToward(sim, nav, Math.atan2(dirX, dirZ), step);
+    turnToward(sim, Math.atan2(dirX, dirZ), step);
     return null;
   }
 
@@ -347,41 +358,18 @@ export function stepSim(
       const dz = target.z - sim.z;
       const dist = Math.hypot(dx, dz);
 
-      // Meter terakhir menuju titik lantai (bukan rak): berhenti sebelum kepala
-      // masuk ke rak/dinding di depannya. Diperiksa di semua ruas dalam jarak
-      // itu, bukan hanya ruas terakhir — dekat dinding rute sering berupa
-      // banyak ruas pendek. Titik berdiri rak dijamin lega,
-      // jadi tujuan rak tidak pernah dipotong.
-      if (
-        sim.targetSlot === null &&
-        remaining <= NOSE_STOP_RANGE &&
-        dist > 1e-4
-      ) {
-        const reach = Math.min(budget, dist);
-        const nextX = sim.x + (dx / dist) * reach;
-        const nextZ = sim.z + (dz / dist) * reach;
-        const travelHeading = Math.atan2(dx, dz);
-        const worsens = (heading: number) =>
-          noseDepth(nav, nextX, nextZ, heading) >
-          Math.max(1e-3, noseDepth(nav, sim.x, sim.z, heading));
-        if (worsens(travelHeading) || worsens(sim.heading)) {
-          sim.routeIndex = sim.route.length;
-          break;
-        }
-      }
-
       if (dist <= WAYPOINT_EPSILON || dist <= budget) {
         sim.x = target.x;
         sim.z = target.z;
         budget -= dist;
         sim.routeIndex++;
-        if (dist > 1e-4) turnToward(sim, nav, Math.atan2(dx, dz), step);
+        if (dist > 1e-4) turnToward(sim, Math.atan2(dx, dz), step);
         continue;
       }
 
       sim.x += (dx / dist) * budget;
       sim.z += (dz / dist) * budget;
-      turnToward(sim, nav, Math.atan2(dx, dz), step);
+      turnToward(sim, Math.atan2(dx, dz), step);
       budget = 0;
     }
 
@@ -395,22 +383,76 @@ export function stepSim(
     return null;
   }
 
-  // ── Diam. Sisa laju dihabiskan dengan meluncur sebentar searah GERAK
-  // terakhir (bukan arah hadap, yang bisa masih setengah berputar), supaya
-  // kaki tidak melangkah di tempat setelah tombol dilepas. ──
+  // ── Diam. ──
+  //
+  // Rute dicari di grid kasar dan diikuti tanpa tabrakan tepat, jadi pemain
+  // bisa tiba dengan badan sedikit menindih halangan, atau dengan kepala di
+  // dalam rak/dinding (juga setelah berputar di dekat dinding). Saat diam,
+  // ia mundur selangkah menjauhi halangan itu. Rute dan arah hadap tidak
+  // diganggu: pemain selalu sampai ke titik yang diklik, baru merapikan diri.
+  if (!sim.settleBlocked) {
+    const { obstacles, bounds } = nav;
+    let pushX = 0;
+    let pushZ = 0;
+    // Badan lebih dulu; kalau badan sudah bebas, baru kepala.
+    const body = resolveCircle(sim.x, sim.z, PLAYER_RADIUS, obstacles, bounds);
+    if (Math.hypot(body.x - sim.x, body.z - sim.z) > 1e-3) {
+      pushX = body.x - sim.x;
+      pushZ = body.z - sim.z;
+    } else {
+      const noseX = sim.x + Math.sin(sim.heading) * NOSE_OFFSET;
+      const noseZ = sim.z + Math.cos(sim.heading) * NOSE_OFFSET;
+      if (
+        penetrationDepth(noseX, noseZ, NOSE_RADIUS, obstacles, bounds) >
+        SETTLE_TOLERANCE
+      ) {
+        const nose = resolveCircle(
+          noseX,
+          noseZ,
+          NOSE_RADIUS,
+          obstacles,
+          bounds,
+        );
+        pushX = nose.x - noseX;
+        pushZ = nose.z - noseZ;
+      }
+    }
+    const push = Math.hypot(pushX, pushZ);
+    if (push > 1e-6) {
+      sim.moveDirX = pushX / push;
+      sim.moveDirZ = pushZ / push;
+      // Tidak lebih cepat dari yang dibutuhkan untuk menutup sisa jaraknya
+      // dalam satu frame (supaya tidak melewati titik bebas lalu berayun).
+      sim.speed = Math.max(
+        sim.speed,
+        Math.min(SETTLE_SPEED, push / step) + DECELERATION * step,
+      );
+    }
+  }
+
+  // Sisa laju dihabiskan dengan meluncur sebentar searah GERAK terakhir
+  // (bukan arah hadap, yang bisa masih setengah berputar), supaya kaki tidak
+  // melangkah di tempat setelah tombol dilepas.
   if (sim.speed > 0) {
     sim.speed = Math.max(0, sim.speed - DECELERATION * step);
+    const wanted = sim.speed * step;
     const travelled = moveWithCollision(
       sim,
       nav,
       sim.moveDirX,
       sim.moveDirZ,
-      sim.speed * step,
+      wanted,
     );
-    sim.speed = Math.min(sim.speed, travelled / step + 0.6);
+    // Sama sekali tidak bisa bergerak: berhenti mencoba di pose ini.
+    if (wanted > 1e-4 && travelled < 1e-4) {
+      sim.speed = 0;
+      sim.settleBlocked = true;
+    } else {
+      sim.speed = Math.min(sim.speed, travelled / step + 0.6);
+    }
   }
   if (sim.faceHeading !== null) {
-    turnToward(sim, nav, sim.faceHeading, step);
+    turnToward(sim, sim.faceHeading, step);
     if (Math.abs(angleDelta(sim.heading, sim.faceHeading)) < 0.01) {
       sim.heading = sim.faceHeading;
       sim.faceHeading = null;
