@@ -72,6 +72,8 @@ export const NOSE_RADIUS = 0.22;
 const SETTLE_SPEED = 1.5;
 /** Tembusan hidung sekecil ini dibiarkan (hindari gerak mikro tanpa henti). */
 const SETTLE_TOLERANCE = 0.01;
+/** Tindihan badan sekecil ini dianggap bebas. */
+const BODY_SETTLE_TOLERANCE = 5e-5;
 
 export interface SimInput {
   /** Arah gerak manual (WASD) di ruang dunia; panjang 0..1. */
@@ -195,8 +197,12 @@ function remainingDistance(sim: Sim): number {
  * halangan saat gerak manual dimulai (mis. baru tiba lewat rute, atau baru
  * berputar di dekat dinding). Koreksi penuh sekaligus akan melempar pemain
  * beberapa meter dalam satu frame; dengan batas ini ia bergerak paling cepat
- * secepat langkahnya sendiri (ditambah dorongan keluar-halangan sepersekian
- * sentimeter bila badannya sendiri sedang menindih geometri setelah rute).
+ * secepat langkahnya sendiri.
+ *
+ * Satu pengecualian: bila BADAN sendiri sedang menindih geometri (rute
+ * diikuti di grid, jadi bisa tiba dengan tindihan sampai ±8 cm) dan tombol
+ * ditekan sebelum sempat dirapikan, langkah (1) mengeluarkannya sekaligus —
+ * sentakan paling banyak sebesar tindihan itu, sekali.
  */
 function moveWithCollision(
   sim: Sim,
@@ -392,14 +398,19 @@ export function stepSim(
   // diganggu: pemain selalu sampai ke titik yang diklik, baru merapikan diri.
   if (!sim.settleBlocked) {
     const { obstacles, bounds } = nav;
-    let pushX = 0;
-    let pushZ = 0;
-    // Badan lebih dulu; kalau badan sudah bebas, baru kepala.
     const body = resolveCircle(sim.x, sim.z, PLAYER_RADIUS, obstacles, bounds);
-    if (Math.hypot(body.x - sim.x, body.z - sim.z) > 1e-3) {
-      pushX = body.x - sim.x;
-      pushZ = body.z - sim.z;
+    const overlap = Math.hypot(body.x - sim.x, body.z - sim.z);
+
+    if (overlap > BODY_SETTLE_TOLERANCE) {
+      // Badan menindih halangan (tiba lewat rute): geser keluar bertahap,
+      // langsung menuju posisi bebas terdekat. Sengaja tidak lewat
+      // `moveWithCollision`, yang akan mengeluarkannya sekaligus dalam satu
+      // frame (terlihat sebagai sentakan beberapa sentimeter).
+      const reach = Math.min(1, (SETTLE_SPEED * step) / overlap);
+      sim.x += (body.x - sim.x) * reach;
+      sim.z += (body.z - sim.z) * reach;
     } else {
+      // Badan bebas; periksa kepala.
       const noseX = sim.x + Math.sin(sim.heading) * NOSE_OFFSET;
       const noseZ = sim.z + Math.cos(sim.heading) * NOSE_OFFSET;
       if (
@@ -413,20 +424,20 @@ export function stepSim(
           obstacles,
           bounds,
         );
-        pushX = nose.x - noseX;
-        pushZ = nose.z - noseZ;
+        const pushX = nose.x - noseX;
+        const pushZ = nose.z - noseZ;
+        const push = Math.hypot(pushX, pushZ);
+        if (push > 1e-6) {
+          sim.moveDirX = pushX / push;
+          sim.moveDirZ = pushZ / push;
+          // Laju mundur MENGGANTIKAN sisa laju luncur (bukan maksimum
+          // keduanya): kalau laju luncur dibawa ke arah baru ini, pemain
+          // "memantul" jauh dari dinding padahal kepalanya baru masuk 1 cm.
+          // Dan tidak lebih cepat dari yang dibutuhkan untuk menutup sisa
+          // jaraknya dalam satu frame.
+          sim.speed = Math.min(SETTLE_SPEED, push / step) + DECELERATION * step;
+        }
       }
-    }
-    const push = Math.hypot(pushX, pushZ);
-    if (push > 1e-6) {
-      sim.moveDirX = pushX / push;
-      sim.moveDirZ = pushZ / push;
-      // Tidak lebih cepat dari yang dibutuhkan untuk menutup sisa jaraknya
-      // dalam satu frame (supaya tidak melewati titik bebas lalu berayun).
-      sim.speed = Math.max(
-        sim.speed,
-        Math.min(SETTLE_SPEED, push / step) + DECELERATION * step,
-      );
     }
   }
 

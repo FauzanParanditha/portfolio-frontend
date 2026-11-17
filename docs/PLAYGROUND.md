@@ -75,16 +75,22 @@ Prinsip yang dijaga:
      dibuang, lalu badan digeser mundur paling banyak sejauh langkah itu
      sendiri. Menabrak rak lurus dari depan berhenti dengan hidung di muka rak.
   2. **Saat diam:** bila kepala (atau badan) masih menindih halangan — mis.
-     baru tiba lewat klik di dekat dinding — robot mundur selangkah (≤ ±0,65 m)
-     sampai bebas.
+     baru tiba lewat klik di dekat dinding — robot mundur selangkah (paling
+     jauh ±0,7 m) sampai bebas.
   3. **Arah hadap dan rute tidak pernah dibatasi.** Robot selalu menghadap
      arah geraknya dan selalu sampai tepat di titik yang diklik.
 
-  Konsekuensinya: kepala boleh masuk ke halangan **sekejap** (≤ ±0,4 dtk) saat
-  berbelok di dekat dinding atau tepat saat tiba, sebelum dikoreksi. Tabrakan
-  tidak pernah memindahkan pemain lebih cepat dari laju jalannya, kecuali
-  dorongan keluar-halangan beberapa sentimeter pada frame WASD pertama
-  setelah rute (rute diikuti di grid, bukan di geometri tepat).
+  Konsekuensinya, dari pengukuran (60 fps):
+  - Kepala boleh masuk ke halangan **sekejap** saat berbelok di dekat dinding
+    atau tepat saat tiba: paling lama ±0,6 dtk sebelum robot bebas lagi
+    (±0,7 dtk di 10 fps).
+  - Klik lantai yang ujung rutenya kurang dari ±0,8 m dari halangan sering
+    (±40–50%) berakhir dengan robot mundur 0,2–0,6 m. Untuk klik acak di
+    seluruh ruangan itu sekitar satu dari empat.
+  - Tabrakan tidak memindahkan pemain lebih cepat dari laju jalannya. Satu
+    pengecualian: rute diikuti di grid, jadi badan bisa tiba menindih
+    geometri tepat sampai ±8 cm. Saat diam tindihan itu dikeluarkan bertahap;
+    bila tombol WASD ditekan tepat saat tiba, ia dikeluarkan sekaligus.
 
 - **Tidak ada kantong buntu.** Celah properti-ke-dinding yang lebih sempit
   dari 1,2 m ditutup (kotak halangannya diperpanjang sampai dinding). Celah
