@@ -54,6 +54,10 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {
   title?: string;
   hideTitle?: boolean;
+  /** Kelas tambahan untuk lapisan gelap di belakang panel. */
+  overlayClassName?: string;
+  /** Kelas tambahan untuk tombol tutup (X). */
+  closeClassName?: string;
 }
 
 const SheetContent = React.forwardRef<
@@ -61,11 +65,20 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(
   (
-    { side = "right", className, children, title, hideTitle = true, ...props },
+    {
+      side = "right",
+      className,
+      children,
+      title,
+      hideTitle = true,
+      overlayClassName,
+      closeClassName,
+      ...props
+    },
     ref,
   ) => (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Content
         ref={ref}
         className={cn(sheetVariants({ side }), className)}
@@ -85,7 +98,17 @@ const SheetContent = React.forwardRef<
         ) : null}
 
         {children}
-        <SheetPrimitive.Close className="focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        {/* Cincin fokus yang benar-benar terlihat (`ring-current` mengikuti
+            warna teks, jadi kontras di latar terang maupun gelap): tombol ini
+            menerima fokus awal saat panel terbuka. Ukuran & posisi sengaja
+            dibiarkan seperti semula; pemakai yang butuh area sentuh lebih
+            besar mengaturnya lewat `closeClassName`. */}
+        <SheetPrimitive.Close
+          className={cn(
+            "absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-current focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none",
+            closeClassName,
+          )}
+        >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
