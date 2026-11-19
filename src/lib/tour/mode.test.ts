@@ -3,8 +3,11 @@ import {
   readTourMode,
   resetTourModeForTest,
   subscribeTourMode,
+  TOUR_MODE_SCRIPT,
   writeTourMode,
 } from "./mode";
+
+const rootMode = () => document.documentElement.getAttribute("data-tour-mode");
 
 describe("pilihan tampilan tur", () => {
   beforeEach(() => resetTourModeForTest());
@@ -23,6 +26,51 @@ describe("pilihan tampilan tur", () => {
     expect(window.localStorage.getItem("tour-mode")).toBe("simple");
     writeTourMode("3d");
     expect(readTourMode()).toBe("3d");
+  });
+
+  it("pilihan tercermin di <html data-tour-mode> (dibaca CSS tata letak)", () => {
+    expect(rootMode()).toBeNull();
+    writeTourMode("simple");
+    expect(rootMode()).toBe("simple");
+    writeTourMode("3d");
+    expect(rootMode()).toBe("3d");
+    resetTourModeForTest();
+    expect(rootMode()).toBeNull();
+  });
+
+  describe("skrip pra-paint (root layout)", () => {
+    const run = () => new Function(TOUR_MODE_SCRIPT)();
+
+    it("memasang atribut dari pilihan tersimpan, sebelum React berjalan", () => {
+      window.localStorage.setItem("tour-mode", "simple");
+      run();
+      expect(rootMode()).toBe("simple");
+    });
+
+    it("tanpa pilihan atau nilai tak dikenal: tidak memasang apa pun", () => {
+      run();
+      expect(rootMode()).toBeNull();
+      window.localStorage.setItem("tour-mode", '"><script>');
+      run();
+      expect(rootMode()).toBeNull();
+    });
+
+    it("storage diblokir: tidak melempar, halaman tetap jalan", () => {
+      vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+        throw new DOMException("blocked", "SecurityError");
+      });
+      expect(run).not.toThrow();
+      expect(rootMode()).toBeNull();
+    });
+
+    it("sepakat dengan readTourMode untuk tiap nilai", () => {
+      for (const value of ["3d", "simple", "", "SIMPLE", "auto"]) {
+        resetTourModeForTest();
+        window.localStorage.setItem("tour-mode", value);
+        run();
+        expect(rootMode()).toBe(readTourMode());
+      }
+    });
   });
 
   it("nilai tak dikenal di storage diabaikan", () => {
@@ -59,6 +107,7 @@ describe("pilihan tampilan tur", () => {
     window.localStorage.setItem("tour-mode", "simple");
     window.dispatchEvent(new StorageEvent("storage", { key: "tour-mode" }));
     expect(readTourMode()).toBe("simple");
+    expect(rootMode()).toBe("simple");
     // Kunci lain tidak memicu apa pun.
     listener.mockClear();
     window.dispatchEvent(new StorageEvent("storage", { key: "lainnya" }));

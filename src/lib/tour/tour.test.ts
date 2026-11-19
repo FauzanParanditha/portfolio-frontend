@@ -10,15 +10,19 @@ import {
 import {
   buildTour,
   ease,
+  plateaus,
   pointAlong,
   progressAt,
+  type Span,
   TOUR_DOG_RADIUS,
   tourState,
 } from "./tour";
 
 const ALL: FixtureKind[] = ["terminal", "wall", "mailbox"];
 const NO_WALL: FixtureKind[] = ["terminal", "mailbox"];
-const LAYOUTS = [0, 1, 8, 12, MAX_STATIONS].flatMap((count) => [
+// Satu jumlah rak per jumlah baris (2–6): kedalaman ruangan berbeda di tiap
+// kasus, jadi posisi kamera relatif dinding belakang ikut berbeda.
+const LAYOUTS = [0, 1, 8, 9, 13, 17, 21, MAX_STATIONS].flatMap((count) => [
   { name: `${count} rak, lengkap`, layout: buildLayout(count, ALL) },
   { name: `${count} rak, tanpa dinding`, layout: buildLayout(count, NO_WALL) },
 ]);
@@ -176,6 +180,59 @@ describe("tourState", () => {
     }
   });
 
+  it.each(LAYOUTS)(
+    "$name: kamera tidak pernah masuk ke dalam perabot, properti, atau melewati dinding samping/belakang",
+    ({ layout }) => {
+      const tour = buildTour(layout);
+      const last = tour.stops.length - 1;
+      const { bounds } = layout;
+      // Halangan selain rak: meja terminal (+ monitor), kotak surat, properti.
+      const furniture = layout.obstacles.slice(layout.slots.length);
+      for (let p = 0; p <= last; p += 0.002) {
+        const { camera } = tourState(tour, p);
+        for (const rect of furniture) {
+          const inside =
+            camera.y < 2.3 &&
+            camera.x > rect.minX - 0.3 &&
+            camera.x < rect.maxX + 0.3 &&
+            camera.z > rect.minZ - 0.3 &&
+            camera.z < rect.maxZ + 0.3;
+          if (inside) {
+            throw new Error(
+              `kamera di dalam perabot pada progress ${p.toFixed(3)}: (${camera.x.toFixed(2)}, ${camera.y.toFixed(2)}, ${camera.z.toFixed(2)})`,
+            );
+          }
+        }
+        // Dinding barat dan belakang tergambar dari dalam: kamera tidak boleh
+        // berada di baliknya (yang terlihat hanya latar kosong). Sisi depan dan
+        // kanan boleh — dari sanalah ruangan dilihat.
+        expect(camera.x, `progress ${p.toFixed(3)}`).toBeGreaterThan(
+          bounds.minX,
+        );
+        expect(camera.z, `progress ${p.toFixed(3)}`).toBeGreaterThan(
+          bounds.minZ,
+        );
+      }
+    },
+  );
+
+  it("berlama-lama di perhentian: 10% pertama gulir hampir tidak menggerakkan kamera", () => {
+    const tour = buildTour(buildLayout(8, ALL));
+    for (let i = 0; i < tour.stops.length - 1; i++) {
+      const from = tour.stops[i].camera;
+      const to = tour.stops[i + 1].camera;
+      const whole = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+      const { camera } = tourState(tour, i + 0.1);
+      const moved = Math.hypot(
+        camera.x - from.x,
+        camera.y - from.y,
+        camera.z - from.z,
+      );
+      // Tanpa peredam (gerak linear) nilainya 10%.
+      expect(moved / whole).toBeLessThan(0.02);
+    }
+  });
+
   it("tepat di perhentian: kamera, titik pandang, robot, dan arah hadapnya milik perhentian itu", () => {
     const tour = buildTour(buildLayout(8, ALL));
     tour.stops.forEach((stop, i) => {
@@ -190,13 +247,14 @@ describe("tourState", () => {
     });
   });
 
-  it("di luar rentang dijepit; NaN dianggap awal", () => {
+  it("di luar rentang dijepit (juga ±tak hingga); NaN dianggap awal", () => {
     const tour = buildTour(buildLayout(8, ALL));
     const last = tour.stops.length - 1;
     expect(tourState(tour, -3)).toEqual(tourState(tour, 0));
     expect(tourState(tour, 99)).toEqual(tourState(tour, last));
+    expect(tourState(tour, Infinity)).toEqual(tourState(tour, last));
+    expect(tourState(tour, -Infinity)).toEqual(tourState(tour, 0));
     expect(tourState(tour, NaN)).toEqual(tourState(tour, 0));
-    expect(tourState(tour, Infinity)).toEqual(tourState(tour, 0));
   });
 
   it("gerak kamera kontinu: langkah kecil di progress = langkah kecil di ruang", () => {
@@ -268,8 +326,44 @@ describe("ease & pointAlong", () => {
   });
 });
 
+/** Dataran satu titik di tiap nilai (bagian yang muat di layar). */
+const points = (...centers: number[]): Span[] =>
+  centers.map((center) => ({ start: center, end: center }));
+
+describe("plateaus", () => {
+  it("bagian yang muat di layar: dataran satu titik di tengahnya", () => {
+    expect(plateaus([{ top: 100, height: 600 }], 800)).toEqual([
+      { start: 400, end: 400 },
+    ]);
+    // Tepat setinggi layar masih satu titik.
+    expect(plateaus([{ top: 0, height: 800 }], 800)).toEqual([
+      { start: 400, end: 400 },
+    ]);
+  });
+
+  it("bagian lebih tinggi dari layar: dataran selama ia memenuhi layar", () => {
+    // Bagian 2400 px di layar 800 px, mulai di y = 1000: memenuhi layar dari
+    // gulir 1000 (tengah layar 1400) sampai gulir 2600 (tengah layar 3000).
+    expect(plateaus([{ top: 1000, height: 2400 }], 800)).toEqual([
+      { start: 1400, end: 3000 },
+    ]);
+  });
+
+  it("tinggi nol atau NaN tidak menghasilkan dataran terbalik", () => {
+    for (const span of plateaus(
+      [
+        { top: 0, height: 0 },
+        { top: 50, height: NaN },
+      ],
+      800,
+    )) {
+      expect(span.start <= span.end || Number.isNaN(span.start)).toBe(true);
+    }
+  });
+});
+
 describe("progressAt", () => {
-  const centers = [400, 1200, 2000, 3600];
+  const centers = points(400, 1200, 2000, 3600);
 
   it("tepat di tengah bagian ke-k hasilnya k; di antaranya linear", () => {
     expect(progressAt(centers, 400)).toBe(0);
@@ -295,16 +389,47 @@ describe("progressAt", () => {
     }
   });
 
+  it("bagian tinggi: tepat k di sepanjang datarannya, linear di luar itu", () => {
+    // Layar 800. Bagian: 800, 800, 3200 (4 layar), 800.
+    const spans = plateaus(
+      [
+        { top: 0, height: 800 },
+        { top: 800, height: 800 },
+        { top: 1600, height: 3200 },
+        { top: 4800, height: 800 },
+      ],
+      800,
+    );
+    // Lompat ke jangkar bagian ke-2 (tepi atasnya di atas layar): tengah
+    // layar = 1600 + 400. Dulu hasilnya ≈ 1,2 dan perhentian aktifnya salah.
+    expect(progressAt(spans, 2000)).toBe(2);
+    // Selama kartunya dibaca, tetap di perhentian itu.
+    expect(progressAt(spans, 3200)).toBe(2);
+    expect(progressAt(spans, 4400)).toBe(2);
+    // Baru bergerak setelah tepi bawahnya naik melewati bawah layar.
+    expect(progressAt(spans, 4800)).toBe(2.5);
+    expect(progressAt(spans, 5200)).toBe(3);
+    // Menjelang bagian tinggi: linear dari tengah bagian sebelumnya.
+    expect(progressAt(spans, 1600)).toBe(1.5);
+
+    let previous = 0;
+    for (let y = 0; y <= 6000; y += 13) {
+      const p = progressAt(spans, y);
+      expect(p).toBeGreaterThanOrEqual(previous);
+      previous = p;
+    }
+  });
+
   it("masukan janggal: daftar kosong, satu bagian, NaN, bagian bertumpuk", () => {
     expect(progressAt([], 100)).toBe(0);
-    expect(progressAt([500], 100)).toBe(0);
-    expect(progressAt([500], 900)).toBe(0);
+    expect(progressAt(points(500), 100)).toBe(0);
+    expect(progressAt(points(500), 900)).toBe(0);
     expect(progressAt(centers, NaN)).toBe(0);
     // Sebelum tata letak (semua tinggi nol): tetap di awal.
-    expect(progressAt([0, 0, 0], 0)).toBe(0);
-    expect(progressAt([0, 0, 0], 10)).toBe(0);
+    expect(progressAt(points(0, 0, 0), 0)).toBe(0);
+    expect(progressAt(points(0, 0, 0), 10)).toBe(0);
     // Dua bagian bertumpuk di tengah daftar: dilompati, tidak membagi nol.
-    expect(progressAt([0, 100, 100, 200], 100)).toBe(1);
-    expect(progressAt([0, 100, 100, 200], 150)).toBe(2.5);
+    expect(progressAt(points(0, 100, 100, 200), 100)).toBe(1);
+    expect(progressAt(points(0, 100, 100, 200), 150)).toBe(2.5);
   });
 });

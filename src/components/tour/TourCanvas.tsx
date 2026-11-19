@@ -104,7 +104,12 @@ export default function TourCanvas(props: TourCanvasProps) {
 }
 
 /** Terapkan pose robot dari keadaan tur. Arah hadap mengikuti arah gerak. */
-function moveDog(sim: Sim, state: TourState, dt: number, snap: boolean): void {
+export function moveDog(
+  sim: Sim,
+  state: TourState,
+  dt: number,
+  snap: boolean,
+): void {
   const dx = state.dog.x - sim.x;
   const dz = state.dog.z - sim.z;
   const moved = Math.hypot(dx, dz);

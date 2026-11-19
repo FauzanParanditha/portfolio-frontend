@@ -2,6 +2,7 @@ import { GithubIcon, LinkedinIcon } from "@/components/icons/BrandIcons";
 import { CV_URL, PROFILE } from "@/content/profile";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Fragment } from "react";
 
 /**
  * Hero beranda — komponen SERVER.
@@ -36,10 +37,10 @@ export const HeroSection = () => {
           <div className="rise-in relative z-10 max-w-3xl">
             <h1 className="text-4xl leading-[1.05] font-medium tracking-tight sm:text-5xl md:text-5xl lg:text-[4rem]">
               {PROFILE.headlineLines.map((line, index) => (
-                <span key={line}>
+                <Fragment key={line}>
                   {index > 0 && <br />}
                   {line}
-                </span>
+                </Fragment>
               ))}
             </h1>
           </div>

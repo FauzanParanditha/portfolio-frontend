@@ -21,8 +21,9 @@ import type { Metadata } from "next";
  * server 3D di belakangnya. Komponen SERVER: semua data diambil di sini, jadi
  * HTML pertama sudah lengkap tanpa menunggu JavaScript.
  *
- * Masih pratinjau: `noindex` dan canonical ke beranda, supaya mesin pencari
- * tidak melihat dua halaman berisi sama. Keputusan menukar beranda diambil
+ * Masih pratinjau: `noindex`, supaya mesin pencari tidak melihat dua halaman
+ * berisi sama. Canonical-nya ke diri sendiri — `noindex` bersama canonical ke
+ * halaman LAIN adalah dua sinyal yang bertentangan. Keputusan menukar beranda diambil
  * setelah pengukuran di perangkat sungguhan (lihat docs/TOUR.md).
  */
 
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
   title: "Server Room Tour",
   description:
     "Scroll through a 3D server room: projects, experience, live API status, and contact.",
-  alternates: { canonical: "/" },
+  alternates: { canonical: "/tour" },
   robots: { index: false, follow: true },
 };
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { TOUR_MODE_SCRIPT } from "@/lib/tour/mode";
 import "./globals.css";
 import Providers from "./Providers";
 
@@ -122,6 +123,12 @@ export default function RootLayout({
             React tidak akan dieksekusi pada navigasi sisi klien. */}
         <Script id="intro-session" strategy="beforeInteractive">
           {INTRO_SESSION_SCRIPT}
+        </Script>
+        {/* Pilihan tampilan tur (3D / ringkas) dipasang pada <html> sebelum
+            paint, supaya /tour tidak tampil di tata letak bawaan lalu melompat
+            saat React terhidrasi. Beberapa byte, tanpa efek di halaman lain. */}
+        <Script id="tour-mode" strategy="beforeInteractive">
+          {TOUR_MODE_SCRIPT}
         </Script>
         <Providers>{children}</Providers>
       </body>

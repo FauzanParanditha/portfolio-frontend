@@ -29,7 +29,13 @@ import {
   subscribeTourMode,
   writeTourMode,
 } from "@/lib/tour/mode";
-import { buildTour, progressAt, type TourStopId } from "@/lib/tour/tour";
+import {
+  buildTour,
+  plateaus,
+  progressAt,
+  type Span,
+  type TourStopId,
+} from "@/lib/tour/tour";
 import { ArrowUpRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -66,9 +72,14 @@ const STOP_LABEL: Record<TourStopId, string> = {
   contact: "Contact",
 };
 
-/** Layar yang mendapat tampilan 3D secara bawaan; harus sama dengan globals.css. */
-const AUTO_3D_QUERY =
-  "(min-width: 768px) and (prefers-reduced-motion: no-preference)";
+/**
+ * Layar yang mendapat tampilan 3D secara bawaan: lebar DAN cukup tinggi
+ * (laptop, desktop, tablet lanskap). Ponsel lanskap dan tablet potret tidak —
+ * di sana kartu menutupi ruangan, dan kode 3D tidak perlu diunduh.
+ * HARUS sama dengan kueri media di globals.css (blok "Tur ruang server").
+ */
+export const AUTO_3D_QUERY =
+  "(min-width: 64rem) and (min-height: 37.5rem) and (prefers-reduced-motion: no-preference)";
 
 const NOSCRIPT_CSS = `
 .tour [data-requires-js] { display: none !important; }
@@ -131,14 +142,14 @@ export function TourShell({
     () => null,
   );
   const [sceneFailed, setSceneFailed] = useState(false);
-  const [ready, setReady] = useState(false);
 
   const canRender3d = webgl && !sceneFailed;
   const show3d = canRender3d && (chosen ? chosen === "3d" : auto3d);
-  // Tanpa atribut = bawaan dari CSS. "simple" dipaksa bila 3D mustahil.
-  const dataMode = canRender3d ? (chosen ?? undefined) : "simple";
+  // Pilihan pengunjung hidup di <html data-tour-mode> (lihat mode.ts), bukan
+  // di sini — supaya sudah berlaku sebelum React terhidrasi. Atribut ini hanya
+  // untuk memaksa tata letak ringkas bila 3D mustahil.
+  const dataMode = canRender3d ? undefined : "simple";
 
-  const handleReady = useCallback(() => setReady(true), []);
   const handleSceneError = useCallback(() => setSceneFailed(true), []);
 
   // ── Posisi gulir → perhentian aktif ──
@@ -148,13 +159,13 @@ export function TourShell({
   const [active, setActive] = useState(0);
 
   useEffect(() => {
-    let centers: number[] = [];
+    let spans: Span[] = [];
     let frame = 0;
 
     const update = () => {
       frame = 0;
       const progress = progressAt(
-        centers,
+        spans,
         window.scrollY + window.innerHeight / 2,
       );
       progressRef.current = progress;
@@ -162,12 +173,18 @@ export function TourShell({
       setActive((previous) => (previous === nearest ? previous : nearest));
     };
     const measure = () => {
-      centers = stopIds.map((id) => {
-        const element = stopRefs.current.get(id);
-        if (!element) return 0;
-        const rect = element.getBoundingClientRect();
-        return rect.top + window.scrollY + rect.height / 2;
-      });
+      spans = plateaus(
+        stopIds.map((id) => {
+          const rect = stopRefs.current.get(id)?.getBoundingClientRect();
+          // `rect.top` relatif ke layar; tambah posisi gulir → koordinat dokumen.
+          return rect
+            ? { top: rect.top + window.scrollY, height: rect.height }
+            : { top: 0, height: 0 };
+        }),
+        window.innerHeight,
+      );
+      // Frame gulir yang masih tertunda akan memakai ukuran lama; ganti.
+      if (frame !== 0) cancelAnimationFrame(frame);
       update();
     };
     const onScroll = () => {
@@ -215,10 +232,19 @@ export function TourShell({
     [featured, stations],
   );
 
-  const setStopRef = (id: TourStopId) => (element: HTMLElement | null) => {
-    if (element) stopRefs.current.set(id, element);
-    else stopRefs.current.delete(id);
-  };
+  // Satu callback ref untuk semua perhentian, tetap sama antar-render (callback
+  // baru tiap render membuat React melepas lalu memasang ulang ref-nya).
+  // Perhentiannya dikenali dari `id` elemen; pembersihnya dikembalikan sebagai
+  // fungsi (React 19).
+  const registerStop = useCallback((element: HTMLElement | null) => {
+    if (!element) return;
+    const id = element.id as TourStopId;
+    const stops = stopRefs.current;
+    stops.set(id, element);
+    return () => {
+      stops.delete(id);
+    };
+  }, []);
 
   const cards: Record<TourStopId, ReactNode> = {
     top: (
@@ -321,7 +347,7 @@ export function TourShell({
         <h2 id="projects-heading" className={titleClass}>
           Selected works
         </h2>
-        <p className={leadClass}>Every rack in the room is one project.</p>
+        <p className={leadClass}>Each project has its own rack in the room.</p>
         {featuredRows.length === 0 ? (
           <p className="text-sm text-zinc-400">No featured works available.</p>
         ) : (
@@ -420,13 +446,8 @@ export function TourShell({
 
       {/* ── Lapisan 3D: di belakang semua kartu, tidak menerima input. ── */}
       {show3d && (
-        <div
-          aria-hidden="true"
-          className={`pointer-events-none fixed inset-0 z-0 transition-opacity duration-700 motion-reduce:transition-none ${
-            ready ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <SceneBoundary onError={handleSceneError}>
+        <TourStage onError={handleSceneError}>
+          {(onReady) => (
             <TourCanvas
               layout={layout}
               stations={stations}
@@ -436,10 +457,10 @@ export function TourShell({
               health={health}
               paused={hidden}
               reducedMotion={reducedMotion}
-              onReady={handleReady}
+              onReady={onReady}
             />
-          </SceneBoundary>
-        </div>
+          )}
+        </TourStage>
       )}
 
       {/* ── Bilah atas ── */}
@@ -505,7 +526,7 @@ export function TourShell({
           <section
             key={id}
             id={id}
-            ref={setStopRef(id)}
+            ref={registerStop}
             aria-labelledby={`${id}-heading`}
             className="tour-stop"
           >
@@ -516,7 +537,10 @@ export function TourShell({
         ))}
       </main>
 
-      <div className="relative z-10">
+      {/* z-20, sama dengan rel dan muncul belakangan di DOM: footer menutupi
+          rel saat halaman sampai di dasar, sehingga tautan sosialnya tidak
+          tertindih. */}
+      <div className="relative z-20">
         <Footer />
       </div>
 
@@ -525,6 +549,36 @@ export function TourShell({
       <noscript>
         <style>{NOSCRIPT_CSS}</style>
       </noscript>
+    </div>
+  );
+}
+
+/**
+ * Bingkai kanvas: `position: fixed` di belakang kartu, tersembunyi dari
+ * pembaca layar, dan baru memudar masuk setelah scene benar-benar terpasang.
+ *
+ * Komponen sendiri supaya keadaan "sudah siap" ikut hilang tiap kanvas dilepas
+ * (ganti ke tampilan ringkas, layar diputar) — pemasangan berikutnya memudar
+ * masuk lagi, bukan menampilkan kanvas kosong sekejap.
+ */
+function TourStage({
+  onError,
+  children,
+}: {
+  onError: () => void;
+  children: (onReady: () => void) => ReactNode;
+}) {
+  const [ready, setReady] = useState(false);
+  const handleReady = useCallback(() => setReady(true), []);
+
+  return (
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none fixed inset-0 z-0 transition-opacity duration-700 motion-reduce:transition-none ${
+        ready ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <SceneBoundary onError={onError}>{children(handleReady)}</SceneBoundary>
     </div>
   );
 }

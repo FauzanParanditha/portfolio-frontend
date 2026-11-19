@@ -14,7 +14,7 @@ export class SceneBoundary extends Component<
   }
 
   componentDidCatch(error: unknown) {
-    console.error("[playground] scene 3D gagal dimuat:", error);
+    console.error("[scene] scene 3D gagal dimuat:", error);
     this.props.onError();
   }
 

@@ -196,13 +196,15 @@ export function pointAlong(route: Point[], t: number): Point {
 }
 
 /**
- * Keadaan tur pada `progress`. Nilai di luar rentang dijepit; `NaN` dianggap 0
+ * Keadaan tur pada `progress`. Nilai di luar rentang (termasuk ±tak hingga)
+ * dijepit; `NaN` dianggap 0
  * (halaman yang belum sempat diukur tidak boleh membuat kamera lenyap).
  */
 export function tourState(tour: Tour, progress: number): TourState {
   const { stops, routes } = tour;
   const last = stops.length - 1;
-  const p = Number.isFinite(progress) ? clamp(progress, 0, last) : 0;
+  // Tak hingga dijepit seperti bilangan lain; hanya NaN yang dianggap awal.
+  const p = Number.isNaN(progress) ? 0 : clamp(progress, 0, last);
   if (last <= 0) {
     const only = stops[0];
     return {
@@ -225,28 +227,60 @@ export function tourState(tour: Tour, progress: number): TourState {
   };
 }
 
+/** Rentang posisi gulir (titik tengah layar) tempat sebuah perhentian "penuh". */
+export interface Span {
+  start: number;
+  end: number;
+}
+
+/**
+ * Dataran tiap bagian: selama titik tengah layar berada di dalamnya, `progress`
+ * tepat di perhentian itu.
+ *
+ * Bagian yang muat di layar punya dataran satu titik (titik tengahnya). Bagian
+ * yang lebih tinggi dari layar — daftar pengalaman yang panjang, form kontak di
+ * layar pendek — punya dataran sepanjang ia memenuhi layar: dari saat tepi
+ * atasnya menyentuh atas layar sampai tepi bawahnya menyentuh bawah layar.
+ * Tanpa dataran, kamera sudah setengah jalan ke perhentian berikutnya padahal
+ * kartunya masih dibaca, dan lompat ke jangkar bagian itu mendarat di
+ * "perhentian sebelumnya".
+ */
+export function plateaus(
+  sections: ReadonlyArray<{ top: number; height: number }>,
+  viewport: number,
+): Span[] {
+  return sections.map(({ top, height }) => {
+    if (!(height > viewport)) {
+      const center = top + height / 2;
+      return { start: center, end: center };
+    }
+    return { start: top + viewport / 2, end: top + height - viewport / 2 };
+  });
+}
+
 /**
  * Dari posisi gulir ke `progress`.
  *
- * @param centers  titik tengah tiap bagian (koordinat dokumen, urut menaik).
- * @param y        titik tengah layar saat ini (`scrollY + tinggi / 2`).
+ * @param spans  dataran tiap bagian (lihat `plateaus`), urut menaik.
+ * @param y      titik tengah layar saat ini (`scrollY + tinggi / 2`).
  *
- * Tepat di tengah bagian ke-k hasilnya k; di antaranya linear. Di atas bagian
- * pertama atau di bawah yang terakhir hasilnya dijepit.
+ * Di dalam dataran bagian ke-k hasilnya k; di antara dua dataran linear. Di
+ * atas bagian pertama atau di bawah yang terakhir hasilnya dijepit.
  */
-export function progressAt(centers: readonly number[], y: number): number {
-  const last = centers.length - 1;
+export function progressAt(spans: readonly Span[], y: number): number {
+  const last = spans.length - 1;
   if (last < 0 || !Number.isFinite(y)) return 0;
   // Halaman belum punya tata letak (semua bagian di titik yang sama): anggap
   // masih di awal, jangan melompat ke perhentian terakhir.
-  if (y <= centers[0] || centers[last] <= centers[0]) return 0;
+  if (y <= spans[0].end || spans[last].end <= spans[0].start) return 0;
   for (let i = 0; i < last; i++) {
-    const a = centers[i];
-    const b = centers[i + 1];
-    if (y <= b) {
+    const a = spans[i].end;
+    const next = spans[i + 1];
+    if (y <= next.start) {
       // Dua bagian bertumpuk di titik yang sama (tinggi nol): lompat saja.
-      return b > a ? i + (y - a) / (b - a) : i + 1;
+      return next.start > a ? i + (y - a) / (next.start - a) : i + 1;
     }
+    if (y <= next.end) return i + 1;
   }
   return last;
 }

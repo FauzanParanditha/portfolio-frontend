@@ -19,8 +19,9 @@ Bedanya dengan `/playground`: di sana pengunjung menggerakkan robot sendiri
 | 4     | Uji di ponsel sungguhan dan ukur kecepatan muat            | Belum                          |
 | 5     | Tukar beranda ke tur — hanya bila angka tahap 4 bagus      | Belum (titik keputusan)        |
 
-Selama masih pratinjau, `/tour` ber-`noindex`, canonical-nya ke `/`, tidak
-masuk sitemap, dan tidak ditautkan dari beranda. Beranda (`/`) tidak berubah.
+Selama masih pratinjau, `/tour` ber-`noindex` (canonical ke dirinya sendiri),
+tidak masuk sitemap, dan tidak ditautkan dari beranda. Beranda (`/`) tidak
+berubah.
 
 ## Perhentian
 
@@ -44,22 +45,33 @@ Urutannya mengikuti letak di ruangan, bukan urutan beranda.
 
 ## Dua tampilan, satu markup
 
-| Tampilan | Kapan menjadi bawaan                                            | Isinya                                        |
-| -------- | --------------------------------------------------------------- | --------------------------------------------- |
-| 3D       | Layar ≥ 768 px **dan** tidak meminta gerak dikurangi            | Tiap perhentian setinggi layar, kartu di kiri |
-| Ringkas  | Ponsel, `prefers-reduced-motion`, tanpa WebGL, tanpa JavaScript | Kartu bertumpuk di tengah, tanpa kanvas       |
+| Tampilan | Kapan menjadi bawaan                                                                                                            | Isinya                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 3D       | Lebar ≥ 64rem (1024 px) **dan** tinggi ≥ 37,5rem (600 px), tanpa permintaan pengurangan gerak — laptop, desktop, tablet lanskap | Tiap perhentian setinggi layar, kartu di kiri |
+| Ringkas  | Ponsel (juga saat lanskap), tablet potret, `prefers-reduced-motion`, tanpa WebGL, tanpa JavaScript                              | Kartu bertumpuk di tengah, tanpa kanvas       |
 
 - **Bawaannya ditentukan CSS, bukan JavaScript** (`globals.css`, blok "Tur
   ruang server"). HTML dari server sudah berada di tata letak yang benar,
-  jadi halaman tidak melompat saat React terhidrasi.
+  jadi halaman tidak melompat saat React terhidrasi. Kueri media yang sama
+  dipakai `AUTO_3D_QUERY` di `TourShell.tsx` untuk memutuskan apakah kanvas
+  dipasang; sebuah test menjaga keduanya tetap identik.
 - Tombol **Simple version / 3D version** di bilah atas menimpa bawaan itu.
   Pilihannya disimpan di `localStorage` (`tour-mode`) dan dipasang sebagai
-  `data-mode` pada `.tour`.
-- Tanpa WebGL atau bila scene gagal dimuat: `data-mode="simple"` dipaksa dan
-  tombolnya disembunyikan.
-- Kode 3D (three.js + scene) baru diunduh bila tampilan 3D benar-benar
-  dipakai; pengunjung ponsel tidak mengunduhnya sama sekali kecuali menekan
-  tombolnya.
+  `data-tour-mode` pada `<html>` — **sebelum paint**, oleh skrip kecil di root
+  layout (`TOUR_MODE_SCRIPT`). Pengunjung yang pernah memilih tidak melihat
+  tata letak bawaan sekejap lalu melompat.
+- Tanpa WebGL atau bila scene gagal dimuat: React memasang
+  `data-mode="simple"` pada `.tour` (menang atas pilihan pengunjung) dan
+  tombolnya disembunyikan. Ini satu-satunya kasus tata letak berganti setelah
+  hidrasi.
+- Kode 3D (three.js + scene, ±250 KB gzip) baru diunduh bila tampilan 3D
+  benar-benar dipakai; pengunjung ponsel tidak mengunduhnya sama sekali
+  kecuali menekan tombolnya.
+- Teks tombol dan baris "Scroll to walk through the room." ditentukan
+  JavaScript, jadi di layar lebar keduanya baru benar setelah hidrasi
+  (sepersekian detik). Bila bundel JavaScript gagal dimuat — bukan dimatikan —
+  layar lebar tertinggal di tata letak tinggi tanpa kanvas; isinya tetap
+  terbaca.
 
 ## Arsitektur
 
@@ -92,9 +104,14 @@ src/components/playground/scene/{Room,Racks,Fixtures,RobotDog}.tsx  Scene, dipak
 
 ### Dari gulir ke gambar
 
-1. `TourShell` mengukur titik tengah tiap bagian (diukur ulang saat ukuran
-   berubah) dan, tiap halaman digulir, menghitung `progress` dengan
-   `progressAt`: tepat di tengah bagian ke-k nilainya k, di antaranya linear.
+1. `TourShell` mengukur tiap bagian (diukur ulang saat ukuran berubah) dan
+   menurunkan **dataran**-nya (`plateaus`): rentang posisi gulir tempat bagian
+   itu "penuh". Tiap halaman digulir, `progressAt` menghitung `progress`: di
+   dalam dataran bagian ke-k nilainya tepat k, di antara dua dataran linear.
+   - Bagian yang muat di layar: datarannya satu titik (titik tengahnya).
+   - Bagian yang lebih tinggi dari layar (daftar pengalaman yang panjang):
+     datarannya sepanjang ia memenuhi layar. Kamera diam selama kartunya
+     dibaca, dan lompat ke jangkarnya langsung mengaktifkan perhentian itu.
 2. `progress` ditulis ke sebuah ref — bukan state — supaya menggulir tidak
    merender ulang React. Hanya perhentian aktif (pembulatannya) yang menjadi
    state.
@@ -140,8 +157,11 @@ saat berhenti.
   perhentian dari kartu status; tiap 10 dtk selama kartu itu yang dibaca,
   60 dtk selain itu; berhenti saat tab tersembunyi. Pengunjung yang tidak
   pernah menggulir ke sana tidak mengirim satu permintaan pun.
-- **Robot tidak menembus apa pun, kamera tidak masuk ke dalam rak** — diuji
-  untuk 0–24 rak, dengan dan tanpa dinding pengalaman.
+- **Robot tidak menembus apa pun; kamera tidak masuk ke dalam rak maupun
+  perabot, dan tidak berada di balik dinding barat/belakang** — diuji untuk
+  tiap jumlah baris rak (2–6), dengan dan tanpa dinding pengalaman.
+- **Fokus keyboard dan jangkar tidak mendarat di balik bilah atas**
+  (`scroll-padding-top` pada `<html>` selama halaman tur terpasang).
 - **Render berhenti saat tab tersembunyi**; resolusi turun otomatis bila FPS
   jatuh (sama dengan playground).
 
@@ -159,7 +179,11 @@ Jalankan backend + `pnpm dev`, buka `/tour`:
    masih berlaku. "3D version" mengembalikannya.
 6. Lebar ponsel: bawaannya tanpa 3D; "3D version" menyalakannya dengan kartu
    di bawah.
-7. `curl -s localhost:3000/tour | grep -c "<section"` → 6 (isi ada tanpa JS).
+7. `curl -s localhost:3000/tour | grep -o 'class="tour-stop"' | wc -l` → 6
+   (isi ada tanpa JS; 5 bila tidak ada data pengalaman).
+8. Ponsel lanskap dan tablet potret: bawaannya tanpa 3D. Tablet lanskap: 3D.
+9. Tab dari kolom alamat sampai form kontak, lalu Shift+Tab kembali: kontrol
+   yang difokus selalu terlihat di bawah bilah atas.
 
 ## Belum dikerjakan
 
@@ -171,3 +195,9 @@ Jalankan backend + `pnpm dev`, buka `/tour`:
   deretan rak); papan keahlian bisa menyusul.
 - Sorotan rak hanya untuk proyek unggulan yang kebagian rak; kamera tidak
   berpindah ke rak yang disorot.
+- Belum teruji otomatis: loop render di `TourCanvas` (`useFrame`: kamera
+  mengikuti keadaan tur, geseran gambar, jeda saat tab tersembunyi). Yang
+  diuji adalah fungsi murninya (`tourState`, `moveDog`, `fovForAspect`);
+  sisanya diperiksa lewat verifikasi manual di atas.
+- Tautan "Experience" di footer tidak punya sasaran bila tidak ada data
+  pengalaman.

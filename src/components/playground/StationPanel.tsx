@@ -252,7 +252,6 @@ const eyebrowClass =
 const titleClass =
   "text-2xl leading-tight font-medium tracking-tight text-white";
 
-// Keadaan disampaikan dengan ikon + teks, tidak hanya warna.
 /** Terminal: status backend yang sebenarnya, diperiksa dari browser ini. */
 function StatusBody({ health }: { health: Health | null }) {
   return (
