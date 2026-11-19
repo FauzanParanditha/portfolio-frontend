@@ -114,6 +114,20 @@ export default function RootLayout({
     // Cakupannya satu tingkat, jadi ketidakcocokan sungguhan di dalam pohon
     // tetap dilaporkan.
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        {/* Pilihan tampilan tur (3D / ringkas) dipasang pada <html> SEBELUM
+            paint, supaya /tour tidak tampil di tata letak bawaan lalu melompat.
+
+            Sengaja <script> inline biasa, bukan <Script beforeInteractive>:
+            di App Router yang terakhir hanya mengantre ke `self.__next_s` dan
+            baru dijalankan saat runtime Next menyala — SETELAH paint pertama
+            (terukur: CLS 0,146 di desktop dengan pilihan "simple"). Skrip
+            inline di <head> dijalankan parser sebelum <body> digambar.
+            Beberapa byte, sinkron, tanpa efek di halaman lain. Root layout
+            tidak dirender ulang di klien, jadi skrip ini tidak pernah
+            disisipkan React (yang tidak akan mengeksekusinya). */}
+        <script dangerouslySetInnerHTML={{ __html: TOUR_MODE_SCRIPT }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -123,12 +137,6 @@ export default function RootLayout({
             React tidak akan dieksekusi pada navigasi sisi klien. */}
         <Script id="intro-session" strategy="beforeInteractive">
           {INTRO_SESSION_SCRIPT}
-        </Script>
-        {/* Pilihan tampilan tur (3D / ringkas) dipasang pada <html> sebelum
-            paint, supaya /tour tidak tampil di tata letak bawaan lalu melompat
-            saat React terhidrasi. Beberapa byte, tanpa efek di halaman lain. */}
-        <Script id="tour-mode" strategy="beforeInteractive">
-          {TOUR_MODE_SCRIPT}
         </Script>
         <Providers>{children}</Providers>
       </body>

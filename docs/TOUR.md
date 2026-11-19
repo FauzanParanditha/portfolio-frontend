@@ -11,13 +11,13 @@ Bedanya dengan `/playground`: di sana pengunjung menggerakkan robot sendiri
 
 ## Posisi di rencana lima tahap
 
-| Tahap | Isi                                                        | Status                         |
-| ----- | ---------------------------------------------------------- | ------------------------------ |
-| 1     | Playground: ruangan, rak proyek, robot                     | Selesai                        |
-| 2     | Tiga stasiun di `/playground` + endpoint status di backend | Selesai                        |
-| 3     | Tur dengan scroll di `/tour` (dokumen ini)                 | Selesai, menunggu review/merge |
-| 4     | Uji di ponsel sungguhan dan ukur kecepatan muat            | Belum                          |
-| 5     | Tukar beranda ke tur — hanya bila angka tahap 4 bagus      | Belum (titik keputusan)        |
+| Tahap | Isi                                                        | Status                                                            |
+| ----- | ---------------------------------------------------------- | ----------------------------------------------------------------- |
+| 1     | Playground: ruangan, rak proyek, robot                     | Selesai                                                           |
+| 2     | Tiga stasiun di `/playground` + endpoint status di backend | Selesai                                                           |
+| 3     | Tur dengan scroll di `/tour` (dokumen ini)                 | Selesai                                                           |
+| 4     | Uji di ponsel sungguhan dan ukur kecepatan muat            | Ukur lab selesai; uji ponsel sungguhan menunggu (lihat "Tahap 4") |
+| 5     | Tukar beranda ke tur — hanya bila angka tahap 4 bagus      | Belum (titik keputusan)                                           |
 
 Selama masih pratinjau, `/tour` ber-`noindex` (canonical ke dirinya sendiri),
 tidak masuk sitemap, dan tidak ditautkan dari beranda. Beranda (`/`) tidak
@@ -57,9 +57,12 @@ Urutannya mengikuti letak di ruangan, bukan urutan beranda.
   dipasang; sebuah test menjaga keduanya tetap identik.
 - Tombol **Simple version / 3D version** di bilah atas menimpa bawaan itu.
   Pilihannya disimpan di `localStorage` (`tour-mode`) dan dipasang sebagai
-  `data-tour-mode` pada `<html>` — **sebelum paint**, oleh skrip kecil di root
-  layout (`TOUR_MODE_SCRIPT`). Pengunjung yang pernah memilih tidak melihat
-  tata letak bawaan sekejap lalu melompat.
+  `data-tour-mode` pada `<html>` — **sebelum paint**, oleh skrip inline kecil
+  di `<head>` root layout (`TOUR_MODE_SCRIPT`). Pengunjung yang pernah memilih
+  tidak melihat tata letak bawaan sekejap lalu melompat.
+  - Harus `<script>` inline biasa. `<Script strategy="beforeInteractive">`
+    di App Router hanya mengantre dan baru jalan setelah paint pertama;
+    terukur sebagai CLS 0,146 sebelum diganti.
 - Tanpa WebGL atau bila scene gagal dimuat: React memasang
   `data-mode="simple"` pada `.tour` (menang atas pilihan pengunjung) dan
   tombolnya disembunyikan. Ini satu-satunya kasus tata letak berganti setelah
@@ -67,11 +70,12 @@ Urutannya mengikuti letak di ruangan, bukan urutan beranda.
 - Kode 3D (three.js + scene, ±250 KB gzip) baru diunduh bila tampilan 3D
   benar-benar dipakai; pengunjung ponsel tidak mengunduhnya sama sekali
   kecuali menekan tombolnya.
-- Teks tombol dan baris "Scroll to walk through the room." ditentukan
-  JavaScript, jadi di layar lebar keduanya baru benar setelah hidrasi
-  (sepersekian detik). Bila bundel JavaScript gagal dimuat — bukan dimatikan —
-  layar lebar tertinggal di tata letak tinggi tanpa kanvas; isinya tetap
-  terbaca.
+- Baris "Scroll to walk through the room." tampil-tidaknya ditentukan CSS
+  (`.tour-only-3d`), sama seperti tata letaknya. Teks tombol ditentukan
+  JavaScript dan baru benar setelah hidrasi; lebarnya dibuat tetap supaya
+  pergantian teks tidak menggeser apa pun.
+- Bila bundel JavaScript gagal dimuat — bukan dimatikan — layar lebar
+  tertinggal di tata letak tinggi tanpa kanvas; isinya tetap terbaca.
 
 ## Arsitektur
 
@@ -82,10 +86,12 @@ src/components/tour/
                                  pilihan tampilan, status backend
   TourCanvas.tsx                 Dimuat malas: <Canvas>, kamera & robot
                                  digerakkan posisi gulir
+  TourPerf.tsx                   Panel ukur; hanya dimuat dengan `?perf`
 src/lib/tour/                    Logika murni, tanpa three.js/DOM
   tour.ts                        Perhentian, jalur robot, keadaan pada
                                  `progress`, posisi gulir → `progress`
-  mode.ts                        Pilihan tampilan (localStorage)
+  mode.ts                        Pilihan tampilan (localStorage) + skrip pra-paint
+  perf.ts                        Ringkasan frame dan teks laporan ukur
 src/content/profile.ts           Teks profil — satu sumber untuk beranda & tur
 src/lib/skills.ts                Pengelompokan tag keahlian (beranda & tur)
 ```
@@ -185,10 +191,89 @@ Jalankan backend + `pnpm dev`, buka `/tour`:
 9. Tab dari kolom alamat sampai form kontak, lalu Shift+Tab kembali: kontrol
    yang difokus selalu terlihat di bawah bilah atas.
 
+## Tahap 4 — pengukuran
+
+### Hasil lab
+
+Build produksi (`pnpm build && pnpm start`), Chrome headless, cache mati,
+median tiga kali muat. Profil ponsel: layar 390×844, CPU diperlambat 4×,
+jaringan "Slow 4G" (RTT 150 ms, 1,6 Mbps). Profil desktop: 1440×900, tanpa
+perlambatan.
+
+| Halaman              | Profil  | LCP (ms) | CLS | TBT (ms) | Unduhan (KB) | di antaranya JS (KB) |
+| -------------------- | ------- | -------- | --- | -------- | ------------ | -------------------- |
+| `/` (beranda)        | ponsel  | 704      | 0   | 46       | 315          | 215                  |
+| `/tour` (bawaan)     | ponsel  | 720      | 0   | 20       | 333          | 240                  |
+| `/tour` (3D dipaksa) | ponsel  | 700      | 0   | 274      | 586          | 485                  |
+| `/` (beranda)        | desktop | 112      | 0   | 0        | 315          | 215                  |
+| `/tour` (bawaan, 3D) | desktop | 76       | 0   | 47       | 586          | 485                  |
+| `/tour` (ringkas)    | desktop | 76       | 0   | 0        | 333          | 240                  |
+
+Yang bisa disimpulkan:
+
+- **Di ponsel, tur bawaan setara beranda:** +18 KB unduhan, LCP dan CLS sama.
+  Pengunjung ponsel tidak membayar apa pun untuk 3D yang tidak mereka minta.
+- **3D menambah ±250 KB JavaScript** dan, di CPU yang diperlambat, ±250 ms
+  waktu blokir. Teks sudah tampil sebelum itu (LCP tidak berubah).
+- **Tidak ada lompatan tata letak** (CLS 0) di semua jalur, termasuk dengan
+  pilihan tampilan tersimpan.
+
+Yang **tidak** bisa disimpulkan dari lab:
+
+- **Laju frame di ponsel.** Chrome di mesin pengukur memakai GPU laptop;
+  angkanya (60 fps) tidak berkata apa-apa soal ponsel. Ini hanya bisa diukur
+  di perangkat sungguhan.
+- **LCP di jaringan nyata.** Server lab berada di mesin yang sama; angka di
+  atas berguna untuk MEMBANDINGKAN halaman, bukan sebagai angka mutlak.
+
+### Uji di ponsel sungguhan
+
+`/tour?perf` menampilkan panel ukur kecil (hanya diunduh dengan parameter itu;
+tidak ada data yang dikirim ke mana pun):
+
+1. Buka `/tour?perf` di ponsel. Panel di kiri-bawah menampilkan laju frame.
+2. Untuk mengukur 3D: tekan **3D version** di kanan atas, tunggu ruangan
+   tampil.
+3. Tekan **Run scroll test**. Halaman bergulir sendiri selama 12 detik.
+4. Tekan **Copy** (atau salin teks di kotaknya) dan simpan laporannya. Ulangi
+   sekali tanpa 3D sebagai pembanding.
+
+Laporannya memuat: mode, ukuran layar dan kanvas, GPU, LCP/CLS/waktu blokir
+(yang didukung browser itu — Safari tidak melaporkan semuanya, ditulis `n/a`),
+ukuran unduhan, dan laju frame saat diam dan saat bergulir (rata-rata, 1%
+terendah, frame terlama, porsi frame di bawah 30 fps).
+
+Agar ponsel bisa menjangkau mesin pengembang di jaringan yang sama, alamat API
+harus memakai IP mesin itu, bukan `localhost`:
+
+```sh
+IP=$(ipconfig getifaddr en0)          # macOS; IP mesin ini di jaringan lokal
+# Backend: izinkan origin frontend lewat IP itu (tanpa mengubah .env)
+CORS_ALLOWED_ORIGINS="http://localhost:3000,http://$IP:3000" go run ./cmd/api
+# Frontend: alamat API ikut tertanam saat build
+NEXT_PUBLIC_API_URL="http://$IP:8080/api/v1" pnpm build && pnpm start
+# Di ponsel: http://<IP>:3000/tour?perf
+```
+
+Pakai build produksi, bukan `pnpm dev` — mode pengembangan jauh lebih lambat
+dan angkanya menyesatkan. Tombol Copy bisa ditolak browser di `http://`;
+teksnya tetap bisa dipilih manual dari kotak laporan.
+
+### Usulan patokan keputusan (tahap 5)
+
+Usulan, belum disepakati. Diukur di ponsel kelas menengah dan satu laptop
+tanpa GPU khusus:
+
+| Yang diukur                              | Lolos bila                                     | Bila gagal                                  |
+| ---------------------------------------- | ---------------------------------------------- | ------------------------------------------- |
+| Ponsel, tur bawaan (ringkas)             | LCP ≤ 2,5 dtk di 4G, CLS ≤ 0,1                 | Beranda tidak ditukar                       |
+| Laptop, tur 3D saat bergulir             | rata-rata ≥ 50 fps, 1% terendah ≥ 30           | Beranda tidak ditukar, atau 3D jadi pilihan |
+| Ponsel, 3D atas permintaan saat bergulir | rata-rata ≥ 40 fps, frame di bawah 30 fps ≤ 5% | Tombol "3D version" disembunyikan di ponsel |
+
 ## Belum dikerjakan
 
-- **Tahap 4:** ukur di ponsel sungguhan (LCP, ukuran unduhan, FPS, daya) dan
-  putuskan apakah beranda ditukar.
+- **Tahap 4:** angka dari ponsel dan laptop sungguhan (laju frame, daya)
+  lewat `/tour?perf`, lalu putuskan apakah beranda ditukar.
 - **Bila ditukar (tahap 5):** cabut `noindex`, pindahkan data terstruktur dan
   intro beranda, arahkan `/tour` ke `/`.
 - Belum ada objek khusus untuk "About" (sekarang pandangan dari atas ke

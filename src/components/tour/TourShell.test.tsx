@@ -137,7 +137,8 @@ describe("TourShell (tanpa WebGL)", () => {
     );
     expect(container.querySelector("canvas")).toBeNull();
     expect(screen.queryByRole("button", { name: /version/i })).toBeNull();
-    expect(screen.queryByText(/Scroll to walk/i)).toBeNull();
+    // Petunjuk gulir ada di DOM tetapi disembunyikan CSS di luar tata letak 3D.
+    expect(screen.getByText(/Scroll to walk/i)).toHaveClass("tour-only-3d");
   });
 
   it("rel perhentian berisi tautan jangkar asli ke tiap bagian", () => {
@@ -312,5 +313,23 @@ describe("TourShell (tanpa WebGL)", () => {
     expect(
       screen.getByRole("link", { name: /Skip to content/i }),
     ).toHaveAttribute("href", "#main");
+  });
+
+  it("panel ukur hanya ada bila alamatnya memuat ?perf", async () => {
+    const { unmount } = render(<TourShell {...base} />);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("complementary")).toBeNull();
+    unmount();
+
+    window.history.replaceState({}, "", "/tour?perf=1");
+    try {
+      render(<TourShell {...base} />);
+      expect(
+        await screen.findByRole("complementary", { name: "Performance test" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Perf · simple")).toBeInTheDocument();
+    } finally {
+      window.history.replaceState({}, "", "/");
+    }
   });
 });

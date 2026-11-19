@@ -253,7 +253,7 @@ describe("TourShell (3D tersedia)", () => {
       "status",
       "contact",
     ]);
-    expect(screen.getByText(/Scroll to walk/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scroll to walk/i)).toHaveClass("tour-only-3d");
   });
 
   it("menggulir memindahkan posisi tur dan menandai perhentian aktif", async () => {
@@ -428,7 +428,6 @@ describe("TourShell (3D tersedia)", () => {
     expect(window.localStorage.getItem("tour-mode")).toBe("simple");
     expect(container.querySelector(".tour")).not.toHaveAttribute("data-mode");
     expect(screen.getByRole("button", { name: "3D version" })).toBeVisible();
-    expect(screen.queryByText(/Scroll to walk/i)).toBeNull();
 
     // Kunjungan berikutnya: pilihan masih berlaku.
     unmount();
@@ -536,6 +535,24 @@ describe("TourShell (3D tersedia)", () => {
       ...css.matchAll(/@media ([^{]+)\{\s*html:not\(\[data-tour-mode\]\)/g),
     ].map((match) => match[1].trim());
     expect(media).toEqual([AUTO_3D_QUERY]);
+  });
+
+  it("petunjuk gulir: tersembunyi secara bawaan, tampil hanya di tata letak 3D (ditentukan CSS)", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    // Bawaan: tersembunyi bersama rel.
+    expect(css).toMatch(/\.tour-rail,\s*\.tour-only-3d \{\s*display: none;/);
+    // Tampil di kedua jalur 3D (bawaan & pilihan pengunjung), tidak pernah
+    // bila tata letak ringkas dipaksa.
+    const shown = [
+      ...css.matchAll(/([^{}]+)\.tour-only-3d \{\s*display: block;/g),
+    ].map((match) => match[1].trim());
+    expect(shown).toEqual([
+      'html:not([data-tour-mode]) .tour:not([data-mode="simple"])',
+      'html[data-tour-mode="3d"] .tour:not([data-mode="simple"])',
+    ]);
   });
 
   it("HTML dari server: isi lengkap, tanpa atribut pemaksa, dan gaya <noscript> untuk tata letak ringkas", () => {

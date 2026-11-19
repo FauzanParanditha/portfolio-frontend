@@ -51,6 +51,14 @@ import {
 
 // three.js + scene hanya diunduh bila tampilan 3D benar-benar dipakai.
 const TourCanvas = dynamic(() => import("./TourCanvas"), { ssr: false });
+// Panel ukur untuk uji di perangkat sungguhan; hanya diunduh dengan `?perf`.
+const TourPerf = dynamic(() => import("./TourPerf"), { ssr: false });
+
+const noopSubscribe = () => () => {};
+/** Alamat memuat `?perf`. Dibaca dari `location` — `useSearchParams` akan
+ * memaksa halaman statis ini keluar dari prerender. */
+const hasPerfFlag = () =>
+  new URLSearchParams(window.location.search).has("perf");
 
 interface TourShellProps {
   /** Proyek yang mengisi rak (urutan API), sama seperti di /playground. */
@@ -86,7 +94,7 @@ const NOSCRIPT_CSS = `
 .tour .tour-stop { display: block !important; min-height: 0 !important; padding: 1.75rem 1rem !important; }
 .tour .tour-stop:first-of-type { padding-top: 6.5rem !important; }
 .tour .tour-panel { width: min(100%, 42rem) !important; margin-inline: auto !important; }
-.tour .tour-rail { display: none !important; }`;
+.tour .tour-rail, .tour .tour-only-3d { display: none !important; }`;
 
 const focusRing =
   "focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden";
@@ -142,6 +150,7 @@ export function TourShell({
     () => null,
   );
   const [sceneFailed, setSceneFailed] = useState(false);
+  const perf = useSyncExternalStore(noopSubscribe, hasPerfFlag, () => false);
 
   const canRender3d = webgl && !sceneFailed;
   const show3d = canRender3d && (chosen ? chosen === "3d" : auto3d);
@@ -304,11 +313,12 @@ export function TourShell({
             </div>
           ))}
         </dl>
-        {show3d && (
-          <p className="text-sm text-zinc-400">
-            Scroll to walk through the room.
-          </p>
-        )}
+        {/* Tampil-tidaknya ditentukan CSS (`.tour-only-3d`), bukan `show3d`:
+            baris yang baru muncul setelah hidrasi menggeser isi kartu
+            (terukur sebagai layout shift). */}
+        <p className="tour-only-3d text-sm text-zinc-400">
+          Scroll to walk through the room.
+        </p>
       </>
     ),
     about: (
@@ -491,7 +501,9 @@ export function TourShell({
               type="button"
               data-requires-js
               onClick={() => writeTourMode(show3d ? "simple" : "3d")}
-              className={`inline-flex min-h-11 items-center rounded-full border border-zinc-700 bg-zinc-950 px-4 text-xs font-medium tracking-widest text-zinc-200 uppercase transition-colors hover:border-white hover:text-white ${focusRing}`}
+              // Lebar tetap: teksnya baru benar setelah hidrasi, dan tombol
+              // yang melebar akan menggeser tautan di sebelahnya.
+              className={`inline-flex min-h-11 min-w-44 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 px-4 text-xs font-medium tracking-widest text-zinc-200 uppercase transition-colors hover:border-white hover:text-white ${focusRing}`}
             >
               {show3d ? "Simple version" : "3D version"}
             </button>
@@ -543,6 +555,8 @@ export function TourShell({
       <div className="relative z-20">
         <Footer />
       </div>
+
+      {perf && <TourPerf show3d={show3d} />}
 
       {/* Tanpa JavaScript tidak ada kanvas: pakai tata letak ringkas dan
           sembunyikan kontrol yang butuh JS. */}
