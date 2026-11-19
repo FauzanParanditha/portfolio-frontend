@@ -1,6 +1,10 @@
 import { PlaygroundShell } from "@/components/playground/PlaygroundShell";
-import { MAX_STATIONS, toPlaygroundProject } from "@/lib/playground/layout";
-import { getProjectsPage } from "@/lib/server/portfolio";
+import {
+  MAX_STATIONS,
+  toPlaygroundExperience,
+  toPlaygroundProject,
+} from "@/lib/playground/layout";
+import { getExperiences, getProjectsPage } from "@/lib/server/portfolio";
 import type { Metadata } from "next";
 
 /**
@@ -46,10 +50,10 @@ export const metadata: Metadata = {
 
 export default async function PlaygroundPage() {
   // Satu lebih banyak dari kapasitas rak: cukup untuk tahu ada "sisanya".
-  const { projects, total } = await getProjectsPage({
-    page: 1,
-    limit: MAX_STATIONS + 1,
-  });
+  const [{ projects, total }, experiences] = await Promise.all([
+    getProjectsPage({ page: 1, limit: MAX_STATIONS + 1 }),
+    getExperiences(),
+  ]);
 
   return (
     <main>
@@ -64,6 +68,7 @@ export default async function PlaygroundPage() {
             ? Math.max(total, projects.length)
             : projects.length
         }
+        experiences={experiences.map(toPlaygroundExperience)}
       />
     </main>
   );

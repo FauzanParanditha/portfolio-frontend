@@ -5,38 +5,48 @@ robot anjing ke sebuah rak untuk membuka detail proyeknya. Halaman ini
 **opsional**: portfolio biasa tidak bergantung padanya, dan beranda tidak
 memuat satu byte pun kode 3D.
 
-Status: **Tahap 1** (ruangan, rak proyek, klik-untuk-jalan, panel detail, pintu
-masuk dari hero & navbar).
+Status: **Tahap 2**. Tahap 1 = ruangan, rak proyek, klik-untuk-jalan, panel
+detail, pintu masuk dari hero & navbar. Tahap 2 menambah tiga stasiun di lobi:
+
+| Stasiun     | Objek di ruangan               | Panelnya berisi                              | Tanpa JS / tanpa 3D             |
+| ----------- | ------------------------------ | -------------------------------------------- | ------------------------------- |
+| Live status | Meja + monitor (kode `API`)    | Jawaban `/healthz` & `/readyz` saat itu juga | Tombol (disembunyikan tanpa JS) |
+| Experience  | Papan di dinding barat (`LOG`) | Riwayat kerja dari `/experiences`            | Tautan ke `/#experience`        |
+| Contact     | Kotak surat (`MSG`)            | Form kontak yang sama dengan beranda         | Tautan ke `/#contact`           |
 
 ## Cara pakai
 
-| Aksi                       | Mouse / keyboard                       | Sentuh             |
-| -------------------------- | -------------------------------------- | ------------------ |
-| Jalan ke suatu titik       | Klik lantai                            | Ketuk lantai       |
-| Buka proyek                | Klik rak, atau pilih di daftar "Racks" | Ketuk rak / daftar |
-| Jalan manual               | `W A S D` atau panah (relatif kamera)  | —                  |
-| Periksa rak di depan robot | `E` atau tombol "Inspect"              | Tombol "Inspect"   |
-| Putar kamera               | Seret                                  | Seret satu jari    |
-| Zoom                       | Roda mouse                             | Cubit dua jari     |
+| Aksi                       | Mouse / keyboard                            | Sentuh           |
+| -------------------------- | ------------------------------------------- | ---------------- |
+| Jalan ke suatu titik       | Klik lantai                                 | Ketuk lantai     |
+| Buka proyek / stasiun      | Klik rak atau perabot, atau pilih di daftar | Ketuk / daftar   |
+| Jalan manual               | `W A S D` atau panah (relatif kamera)       | —                |
+| Periksa rak di depan robot | `E` atau tombol "Inspect"                   | Tombol "Inspect" |
+| Putar kamera               | Seret                                       | Seret satu jari  |
+| Zoom                       | Roda mouse                                  | Cubit dua jari   |
 
 ## Arsitektur
 
 ```
-src/app/playground/page.tsx          Server: ambil proyek, kirim ke shell
+src/app/playground/page.tsx          Server: ambil proyek & pengalaman, kirim ke shell
 src/components/playground/
   PlaygroundShell.tsx                Klien: HUD, daftar rak, fallback, state panel
   StationPanel.tsx                   Panel detail (Radix Dialog, DOM biasa)
+src/components/contact/ContactForm.tsx  Form kontak; dipakai beranda & panel kotak surat
+src/hooks/use-backend-health.ts      SWR: periksa status backend dari browser
   scene/                             Dimuat malas (next/dynamic, ssr: false)
     PlaygroundCanvas.tsx             <Canvas>, loop simulasi, input keyboard
     Room.tsx                         Lantai, dinding, lampu, properti
     Racks.tsx                        Rak + LED + papan nama (instancing)
+    Fixtures.tsx                     Terminal, papan pengalaman, kotak surat
     RobotDog.tsx                     Model & animasi prosedural pemain
     CameraRig.tsx                    Kamera ikut/putar/zoom + hindari halangan
     textures.ts                      Tekstur Canvas 2D (tanpa berkas aset)
 src/lib/playground/                  Logika murni, tanpa three.js/DOM
   grid.ts                            Grid navigasi, A*, penghalusan jalur
   collision.ts                       Tabrakan lingkaran-vs-kotak (gerak manual)
-  layout.ts                          Proyek → stasiun → posisi rak → grid
+  layout.ts                          Proyek → stasiun → posisi rak & perabot → grid
+  health.ts                          Klasifikasi jawaban /healthz & /readyz
   sim.ts                             Gerak pemain (rute + WASD + tabrakan)
 ```
 
@@ -59,6 +69,46 @@ Prinsip yang dijaga:
   Tidak ada glTF, font, atau CDN.
 - **Dependensi minimal:** `three` dan `@react-three/fiber` saja (tanpa drei,
   tanpa pustaka fisika — lantainya datar, A* di grid sudah cukup).
+
+## Stasiun (tahap 2)
+
+- **Satu daftar tujuan.** `layout.targets` = rak (`layout.slots`) diikuti
+  perabot (`layout.fixtures`); `targets[i].index === i`. Indeks itu dipakai di
+  mana-mana (perintah jalan, "sudah tiba", sorotan, panel). Tiap tujuan membawa
+  titik berdiri (`approach`) dan arah hadap (`face`) sendiri — rak menghadap
+  utara, dinding pengalaman ke barat, kotak surat ke kamera.
+- **Status live itu sungguhan.** Browser pengunjung memanggil
+  `${NEXT_PUBLIC_API_URL}/healthz` dan `/readyz` (endpoint backend di bawah
+  `/api/v1`, PR backend `feat/health-api`). Yang ditampilkan hanya
+  operational / degraded / unavailable + waktu pulang-pergi; backend sengaja
+  tidak membuka sebabnya. Waktu `/readyz` **bukan** latensi database (hasilnya
+  di-memo 5 dtk di backend), jadi tidak diberi label seperti itu.
+  - Jeda pemeriksaan: 60 dtk untuk monitor di ruangan, 10 dtk selama panel
+    status terbuka, berhenti saat tab tersembunyi. Batas backend 60/menit per
+    IP; pemakaian terbanyak 12/menit.
+  - Saat panel dibuka dan hasil terakhir sudah berumur ≥ 5 dtk, status
+    langsung diperiksa ulang — teks panel menyebutnya "right now".
+  - `429` → jeda kembali ke 60 dtk sampai backend menjawab lagi.
+  - Tanpa scene (tanpa WebGL) status baru diperiksa saat panelnya dibuka —
+    termasuk di render hidrasi pertama, saat browser belum tahu WebGL-nya.
+  - Backend lama tanpa endpoint itu (404) atau tidak terjangkau → "Unavailable"
+    dengan tenang, tanpa toast. `429` → "Checking paused".
+  - Memakai `fetch` langsung (tanpa kredensial, batas waktu 5 dtk yang
+    mencakup pembacaan isi), bukan `publicClient`, supaya interceptor axios
+    tidak memunculkan toast galat.
+  - Hasil diumumkan ke pembaca layar lewat `role="status"` pada pil status.
+- **Dinding pengalaman** hanya ada bila `/experiences` mengembalikan data;
+  paling banyak tiga papan digambar, panelnya memuat semua entri.
+- **Form kontak** adalah komponen yang sama dengan beranda
+  (`ContactForm variant="panel"`): batas panjang, 422, dan 429 ditangani di
+  satu tempat. Draf disimpan di `StationPanel` selama halaman terbuka, jadi
+  menutup panel (Escape, klik di luar) tidak menghapus ketikan; draf
+  dikosongkan setelah pesan terkirim.
+- **Isi panel bisa digulir dengan keyboard:** wadah gulirnya `role="region"`
+  ber-`tabIndex={0}` dan menjadi fokus awal saat panel terbuka.
+- **Kamera digeser di layar lebar.** Daftar rak menutupi 312 px di kiri, jadi
+  gambar digeser separuhnya ke kanan (`setViewOffset`); tanpa itu dinding barat
+  jatuh tepat di balik daftar.
 
 ## Catatan teknis
 
@@ -92,6 +142,18 @@ Prinsip yang dijaga:
     geometri tepat sampai ±8 cm. Saat diam tindihan itu dikeluarkan bertahap;
     bila tombol WASD ditekan tepat saat tiba, ia dikeluarkan sekaligus.
 
+- **Kepala keluar di sisi badannya.** Kotak surat hanya setebal 0,5 m: kepala
+  yang masuk lebih dari separuhnya punya "sisi keluar terdekat" di seberang.
+  `resolveCircle` menerima jangkar (pusat badan) dan MENCORET sisi di seberang
+  sisi masuk dari kandidat, lalu mengambil yang terdekat dari sisanya.
+  Dicoret, bukan ditukar setelah terpilih: versi "tukar" membuat dua
+  pemeriksaan berurutan memilih sisi berlawanan tepat di garis seri, dan robot
+  lari di tempat. Ditemukan lewat sapuan 300 benih di ruangan berperabot (enam
+  benih bawaan lolos semua) dan sapuan rapat pose di sekitar kotak surat, yang
+  kini menjadi test tetap.
+- **Belum teruji otomatis:** pemakaian indeks tujuan di dalam
+  `PlaygroundCanvas` (kanvas selalu ditiru di test). Diperiksa lewat
+  verifikasi manual di bawah.
 - **Tidak ada kantong buntu.** Celah properti-ke-dinding yang lebih sempit
   dari 1,2 m ditutup (kotak halangannya diperpanjang sampai dinding). Celah
   seperti itu muat untuk gerak manual tetapi tertutup di grid, sehingga rute
@@ -120,6 +182,10 @@ Prinsip yang dijaga:
 
 Jalankan backend + `pnpm dev`, buka `/playground`, lalu periksa:
 
+0. Daftar "Stations": Live status → robot ke meja, panel menampilkan
+   Operational dengan dua baris; matikan backend → dalam 10 dtk berubah
+   Unavailable. Experience → papan di dinding barat terlihat (tidak tertutup
+   daftar). Contact → form terkirim dan muncul di admin.
 1. Klik lantai → robot berjalan memutari rak; klik rak berisi → robot datang
    lalu panel terbuka; klik rak kosong → robot datang, panel tidak terbuka.
 2. `W A S D` bergerak relatif kamera dan tidak menembus rak/dinding.
@@ -131,6 +197,5 @@ Jalankan backend + `pnpm dev`, buka `/playground`, lalu periksa:
 
 ## Belum dikerjakan (tahap berikutnya)
 
-- Terminal status live (`/healthz`, `/readyz`) dan paket data di kabel.
-- Papan timeline pengalaman dan kotak surat (form kontak).
+- Paket data di kabel dan animasi rak saat status berubah.
 - Teaser 3D di hero.

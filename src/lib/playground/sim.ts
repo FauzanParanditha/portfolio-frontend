@@ -33,8 +33,11 @@ export interface Sim {
   speed: number;
   route: Point[];
   routeIndex: number;
-  /** Slot rak yang sedang dituju; `null` bila hanya berjalan ke titik lantai. */
+  /** Tujuan (indeks di `layout.targets`) yang sedang dituju; `null` bila hanya
+   * berjalan ke titik lantai. */
   targetSlot: number | null;
+  /** Arah hadap setelah tiba di tujuan itu. */
+  targetFace: number;
   /** Arah hadap yang dikejar saat diam (mis. menghadap rak setelah tiba). */
   faceHeading: number | null;
   /** Titik tujuan untuk penanda di lantai. */
@@ -95,6 +98,7 @@ export function createSim(spawn: Point, heading = FACE_RACK_HEADING): Sim {
     route: [],
     routeIndex: 0,
     targetSlot: null,
+    targetFace: FACE_RACK_HEADING,
     faceHeading: null,
     marker: null,
     moveDirX: 0,
@@ -112,13 +116,15 @@ function clearRoute(sim: Sim): void {
 
 /**
  * Arahkan pemain ke `to`. Mengembalikan `false` bila tidak ada jalur (keadaan
- * tidak diubah). `slot` diisi bila tujuannya titik berdiri sebuah rak.
+ * tidak diubah). `slot` dan `face` diisi bila tujuannya titik berdiri sebuah
+ * rak atau perabot: pengenalnya, dan arah hadap setelah tiba.
  */
 export function setDestination(
   sim: Sim,
   grid: Grid,
   to: Point,
   slot: number | null = null,
+  face: number = FACE_RACK_HEADING,
 ): boolean {
   const route = findRoute(grid, { x: sim.x, z: sim.z }, to, PLAYER_RADIUS / 2);
   if (!route) return false;
@@ -132,6 +138,7 @@ export function setDestination(
   // Titik pertama adalah posisi sekarang.
   sim.routeIndex = 1;
   sim.targetSlot = slot;
+  sim.targetFace = face;
   sim.faceHeading = null;
   sim.settleBlocked = false;
   sim.marker = route[route.length - 1];
@@ -238,6 +245,7 @@ function moveWithCollision(
       NOSE_RADIUS,
       obstacles,
       bounds,
+      { x: startX, z: startZ },
     );
     const outX = headFree.x - headX;
     const outZ = headFree.z - headZ;
@@ -260,7 +268,10 @@ function moveWithCollision(
 
     const noseX = body.x + forwardX * NOSE_OFFSET;
     const noseZ = body.z + forwardZ * NOSE_OFFSET;
-    const nose = resolveCircle(noseX, noseZ, NOSE_RADIUS, obstacles, bounds);
+    const nose = resolveCircle(noseX, noseZ, NOSE_RADIUS, obstacles, bounds, {
+      x: body.x,
+      z: body.z,
+    });
     const pushX = nose.x - noseX;
     const pushZ = nose.z - noseZ;
     const pushLength = Math.hypot(pushX, pushZ);
@@ -383,7 +394,7 @@ export function stepSim(
       const slot = sim.targetSlot;
       clearRoute(sim);
       sim.speed = 0;
-      sim.faceHeading = slot !== null ? FACE_RACK_HEADING : null;
+      sim.faceHeading = slot !== null ? sim.targetFace : null;
       return { type: "arrived", slot };
     }
     return null;
@@ -423,6 +434,7 @@ export function stepSim(
           NOSE_RADIUS,
           obstacles,
           bounds,
+          { x: sim.x, z: sim.z },
         );
         const pushX = nose.x - noseX;
         const pushZ = nose.z - noseZ;

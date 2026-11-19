@@ -132,3 +132,88 @@ describe("segmentHitsBox", () => {
     expect(segmentHitsBox([0, 0.75, -2], [0, 14, 6], min, max)).toBe(false);
   });
 });
+
+describe("resolveCircle dengan jangkar (lingkaran hidung)", () => {
+  // Halangan tipis: x 0..0,5 (seperti kotak surat), memanjang di Z.
+  const THIN: Rect = { minX: 0, maxX: 0.5, minZ: -2, maxZ: 2 };
+  const NOSE = 0.22;
+
+  it("tanpa jangkar: keluar lewat sisi terdekat, walau itu di seberang", () => {
+    // Pusat 0,3 m dari sisi kanan (maxX), 0,2 m dari sisi kiri.
+    const p = resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS);
+    expect(p.x).toBeCloseTo(-NOSE);
+  });
+
+  it("dengan jangkar di kanan: keluar ke kanan, tempat badannya berada", () => {
+    const p = resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS, { x: 0.8, z: 0.1 });
+    expect(p.x).toBeCloseTo(0.5 + NOSE);
+    expect(p.z).toBeCloseTo(0);
+  });
+
+  it("jangkar di sisi yang sama dengan sisi terdekat: hasil tidak berubah", () => {
+    const anchored = resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS, {
+      x: -0.4,
+      z: 0.1,
+    });
+    expect(anchored).toEqual(resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS));
+  });
+
+  it("sisi terdekat BERSEBELAHAN dengan sisi masuk (memotong sudut): tetap dipakai", () => {
+    // Masuk dari kanan dekat ujung bawah kotak; sisi terdekat adalah minZ.
+    const p = resolveCircle(0.3, -1.95, NOSE, [THIN], BOUNDS, {
+      x: 0.9,
+      z: -1.9,
+    });
+    expect(p.z).toBeCloseTo(-2 - NOSE);
+    expect(p.x).toBeCloseTo(0.3);
+  });
+
+  it("sisi masuk tidak muat di dalam ruangan: sisi terdekat yang muat tetap dipakai", () => {
+    // Kotak menempel dinding kanan; jangkar (mustahil) di luar dinding itu.
+    const wall: Rect = { minX: 4.6, maxX: 5, minZ: -1, maxZ: 1 };
+    const p = resolveCircle(4.85, 0, NOSE, [wall], BOUNDS, { x: 5.6, z: 0 });
+    expect(p.x).toBeCloseTo(4.6 - NOSE);
+  });
+
+  it("jangkar diagonal: sisi masuk = sisi yang diseberangi PALING AKHIR", () => {
+    // Ruas dari kanan-atas melewati garis maxZ lebih dulu (masih di luar
+    // kotak), baru masuk lewat maxX. Sisi seberangnya (minX) dicoret.
+    const p = resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS, { x: 0.8, z: 2.3 });
+    expect(p.x).toBeCloseTo(0.5 + NOSE);
+    // Kotak yang sama diputar 90°: masuk lewat maxZ.
+    const flat: Rect = { minX: -2, maxX: 2, minZ: 0, maxZ: 0.5 };
+    const q = resolveCircle(0, 0.2, NOSE, [flat], BOUNDS, { x: 2.3, z: 0.8 });
+    expect(q.z).toBeCloseTo(0.5 + NOSE);
+  });
+
+  it("jangkar tepat di tepi kotak dihitung di luar", () => {
+    const p = resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS, { x: 0.5, z: 0.1 });
+    expect(p.x).toBeCloseTo(0.5 + NOSE);
+  });
+
+  it("sisi seberang dicoret, bukan ditukar: yang terpilih sisi terdekat dari sisanya", () => {
+    // Kotak 0,5 × 0,5. Titik dekat pojok kiri-bawah, jangkar di kanan:
+    // seberang (minX, 0,10) paling dekat tetapi dicoret; berikutnya minZ
+    // (0,12) — lebih dekat daripada sisi masuk maxX (0,40).
+    const box: Rect = { minX: 0, maxX: 0.5, minZ: 0, maxZ: 0.5 };
+    const p = resolveCircle(0.1, 0.12, NOSE, [box], BOUNDS, { x: 0.9, z: 0.2 });
+    expect(p.z).toBeCloseTo(-NOSE);
+    expect(p.x).toBeCloseTo(0.1);
+  });
+
+  it("jangkar sendiri di dalam kotak: diabaikan", () => {
+    const anchored = resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS, {
+      x: 0.4,
+      z: 0,
+    });
+    expect(anchored).toEqual(resolveCircle(0.2, 0, NOSE, [THIN], BOUNDS));
+  });
+
+  it("pusat di luar kotak: jangkar tidak berpengaruh", () => {
+    const anchored = resolveCircle(0.6, 0, NOSE, [THIN], BOUNDS, {
+      x: -1,
+      z: 0,
+    });
+    expect(anchored).toEqual(resolveCircle(0.6, 0, NOSE, [THIN], BOUNDS));
+  });
+});

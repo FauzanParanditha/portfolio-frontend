@@ -1,10 +1,15 @@
 "use client";
 
+import { useBackendHealth } from "@/hooks/use-backend-health";
 import {
   buildLayout,
   buildStations,
-  rackCode,
+  fixtureKindsFor,
+  isRackStation,
+  targetCode,
+  type PlaygroundExperience,
   type PlaygroundProject,
+  type Target,
 } from "@/lib/playground/layout";
 import { ArrowLeft, List, X } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -33,6 +38,8 @@ interface PlaygroundShellProps {
   projects: PlaygroundProject[];
   /** Jumlah proyek di backend; bisa lebih besar dari `projects.length`. */
   total: number;
+  /** Riwayat pengalaman untuk dinding pengalaman; kosong = dindingnya absen. */
+  experiences?: PlaygroundExperience[];
 }
 
 const NOSCRIPT_CSS = `
@@ -119,12 +126,25 @@ class SceneBoundary extends Component<
  *   JavaScript dan terbaca mesin pencari;
  * - pembaca layar tidak perlu "melihat" kanvas sama sekali.
  */
-export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
+export function PlaygroundShell({
+  projects,
+  total,
+  experiences,
+}: PlaygroundShellProps) {
   const stations = useMemo(
-    () => buildStations(projects, total),
-    [projects, total],
+    () => buildStations(projects, total, experiences),
+    [projects, total, experiences],
   );
-  const layout = useMemo(() => buildLayout(stations.length), [stations.length]);
+  // Rak mengikuti jumlah stasiun rak; perabot (terminal, dinding, kotak surat)
+  // mengikuti stasiun sisanya.
+  const layout = useMemo(
+    () =>
+      buildLayout(
+        stations.filter(isRackStation).length,
+        fixtureKindsFor(stations),
+      ),
+    [stations],
+  );
 
   const webgl = useSyncExternalStore(noopSubscribe, detectWebGL, () => true);
   const reducedMotion = useSyncExternalStore(
@@ -150,7 +170,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   // yang terjadi".
   const [announcement, setAnnouncement] = useState("");
 
-  const linkRefs = useRef(new Map<number, HTMLAnchorElement>());
+  const linkRefs = useRef(new Map<number, HTMLElement>());
   const inspectRef = useRef<HTMLButtonElement | null>(null);
   const listToggleRef = useRef<HTMLButtonElement | null>(null);
   // Dari mana panel terakhir dibuka; menentukan ke mana fokus dikembalikan.
@@ -180,17 +200,27 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   const handleReady = useCallback(() => setReady(true), []);
   const handleSceneError = useCallback(() => setSceneFailed(true), []);
 
-  const panelStation =
-    panelSlot === null
+  const stationAt = (index: number | null) =>
+    index === null
       ? null
-      : (stations[layout.slots[panelSlot]?.station ?? -1] ?? null);
-  const nearStation =
-    nearSlot === null
-      ? null
-      : (stations[layout.slots[nearSlot]?.station ?? -1] ?? null);
+      : (stations[layout.targets[index]?.station ?? -1] ?? null);
+  const panelStation = stationAt(panelSlot);
+  const nearStation = stationAt(nearSlot);
+  const panelTarget = panelSlot === null ? null : layout.targets[panelSlot];
 
-  // Klik biasa pada tautan rak = jalan ke rak itu lalu buka panelnya.
-  // Klik dengan tombol pengubah / tengah tetap membuka halaman proyeknya.
+  // Status backend: diperiksa pelan untuk layar monitor di ruangan, dan lebih
+  // sering selama panel status terbuka. Berhenti saat tab tersembunyi; tanpa
+  // scene tidak ada monitor, jadi hanya diperiksa selama panelnya terbuka.
+  // `sceneActive` (scene benar-benar terpasang), bukan `sceneAvailable`: yang
+  // terakhir bernilai `true` di render hidrasi pertama apa pun perangkatnya.
+  const statusOpen = panelOpen && panelStation?.kind === "status";
+  const health = useBackendHealth(
+    statusOpen,
+    !hidden && (sceneActive || statusOpen),
+  );
+
+  // Klik biasa pada entri daftar = jalan ke sana lalu buka panelnya.
+  // Klik dengan tombol pengubah / tengah tetap membuka halaman tujuannya.
   const handleStationClick = (event: MouseEvent, slot: number) => {
     if (
       event.defaultPrevented ||
@@ -208,9 +238,14 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
     if (sceneActive) {
       pendingListSlot.current = slot;
       setCommand((previous) => ({ slot, nonce: (previous?.nonce ?? 0) + 1 }));
-      const station = stations[layout.slots[slot]?.station ?? -1];
-      if (station && !reducedMotion) {
-        setAnnouncement(`Walking to rack ${rackCode(slot)}, ${station.label}.`);
+      const target = layout.targets[slot];
+      const station = stationAt(slot);
+      if (target && station && !reducedMotion) {
+        setAnnouncement(
+          target.kind === "rack"
+            ? `Walking to rack ${targetCode(target)}, ${station.label}.`
+            : `Walking to ${station.label}.`,
+        );
       }
     } else {
       // Tanpa scene, tidak ada yang perlu "berjalan" — langsung buka panel.
@@ -240,6 +275,58 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
   }, [nearSlot, panelOpen, openPanel]);
 
   const stationSlots = layout.slots.filter((slot) => slot.station !== null);
+
+  // Satu entri daftar. Stasiun yang punya padanan halaman biasa berupa tautan
+  // asli (bekerja tanpa JavaScript); sisanya tombol.
+  const renderEntry = (target: Target) => {
+    const station = stations[target.station as number];
+    const selected = panelOpen && panelSlot === target.index;
+    const className = `flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-sm transition-colors hover:bg-zinc-900 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden focus-visible:ring-inset ${
+      nearSlot === target.index ? "text-white" : "text-zinc-300"
+    }`;
+    const setRef = (node: HTMLElement | null) => {
+      if (node) linkRefs.current.set(target.index, node);
+      else linkRefs.current.delete(target.index);
+    };
+    const content = (
+      <>
+        <span
+          className={`font-mono text-xs ${
+            station.kind === "archive" ? "text-amber-400" : "text-cyan-400"
+          }`}
+        >
+          {targetCode(target)}
+        </span>
+        <span className="truncate">{station.label}</span>
+      </>
+    );
+    return (
+      // Tanpa JavaScript tombol tidak berguna; seluruh barisnya disembunyikan.
+      <li key={station.id} data-requires-js={station.href ? undefined : ""}>
+        {station.href ? (
+          <a
+            ref={setRef}
+            href={station.href}
+            onClick={(event) => handleStationClick(event, target.index)}
+            aria-current={selected ? "true" : undefined}
+            className={className}
+          >
+            {content}
+          </a>
+        ) : (
+          <button
+            ref={setRef}
+            type="button"
+            onClick={(event) => handleStationClick(event, target.index)}
+            aria-current={selected ? "true" : undefined}
+            className={className}
+          >
+            {content}
+          </button>
+        )}
+      </li>
+    );
+  };
 
   // Setelah panel tertutup, kembalikan fokus ke pemicunya:
   // - dari daftar → tautan rak itu (atau tombol Inspect bila daftarnya
@@ -277,6 +364,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
               layout={layout}
               stations={stations}
               command={command}
+              health={health}
               paused={panelOpen || hidden}
               reducedMotion={reducedMotion}
               onArrive={handleArrive}
@@ -312,7 +400,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
             </p>
             <p className="mt-3 text-base leading-relaxed text-zinc-300">
               This device or browser can&apos;t render the 3D room. Every
-              project is still one click away in the rack list.
+              project and station is still one click away in the list.
             </p>
           </div>
         </div>
@@ -339,7 +427,8 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
           </h1>
           <p className="sr-only">
             An interactive 3D room where every server rack is one of my
-            projects. Use the rack list to open any project without the 3D view.
+            projects, with a live status terminal, an experience wall and a
+            mailbox. Use the list to open any of them without the 3D view.
           </p>
         </div>
       </header>
@@ -347,8 +436,8 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
       {/* ── Daftar rak ── */}
       <nav
         id="rack-list"
-        aria-label="Project racks"
-        className={`absolute z-20 flex-col rounded-lg border border-zinc-800 bg-zinc-950/85 backdrop-blur-md md:top-24 md:bottom-auto md:left-6 md:flex md:max-h-[calc(100svh-13rem)] md:w-72 ${
+        aria-label="Racks and stations"
+        className={`absolute z-20 flex-col overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950/85 backdrop-blur-md md:top-24 md:bottom-auto md:left-6 md:flex md:max-h-[calc(100svh-13rem)] md:w-72 ${
           listOpen || !sceneAvailable
             ? "inset-x-4 bottom-20 flex max-h-[60svh]"
             : "hidden"
@@ -362,7 +451,7 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
             <button
               type="button"
               onClick={() => setListOpen(false)}
-              aria-label="Close rack list"
+              aria-label="Close list"
               className={`-mr-2 flex h-9 w-9 items-center justify-center rounded-sm text-zinc-400 hover:text-white md:hidden ${focusRing}`}
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -382,39 +471,16 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
             .
           </p>
         ) : (
-          <ul className="overflow-y-auto py-1">
-            {stationSlots.map((slot) => {
-              const station = stations[slot.station as number];
-              const selected = panelOpen && panelSlot === slot.index;
-              return (
-                <li key={station.id}>
-                  <a
-                    ref={(node) => {
-                      if (node) linkRefs.current.set(slot.index, node);
-                      else linkRefs.current.delete(slot.index);
-                    }}
-                    href={station.href}
-                    onClick={(event) => handleStationClick(event, slot.index)}
-                    aria-current={selected ? "true" : undefined}
-                    className={`flex min-h-11 items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-zinc-900 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden focus-visible:ring-inset ${
-                      nearSlot === slot.index ? "text-white" : "text-zinc-300"
-                    }`}
-                  >
-                    <span
-                      className={`font-mono text-xs ${
-                        station.kind === "archive"
-                          ? "text-amber-400"
-                          : "text-cyan-400"
-                      }`}
-                    >
-                      {rackCode(slot.index)}
-                    </span>
-                    <span className="truncate">{station.label}</span>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className="py-1">{stationSlots.map(renderEntry)}</ul>
+        )}
+
+        {layout.fixtures.length > 0 && (
+          <>
+            <h2 className="border-t border-zinc-800 px-4 py-3 font-mono text-xs tracking-widest text-zinc-400 uppercase">
+              Stations
+            </h2>
+            <ul className="pb-1">{layout.fixtures.map(renderEntry)}</ul>
+          </>
         )}
       </nav>
 
@@ -449,15 +515,15 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
               className={`pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-950/80 px-4 text-xs font-medium tracking-widest text-zinc-200 uppercase backdrop-blur-md md:hidden ${focusRing}`}
             >
               <List className="h-4 w-4" aria-hidden="true" />
-              Racks
+              Racks<span className="sr-only"> and stations</span>
             </button>
 
             <p
               data-requires-js
               className="mx-auto hidden rounded-full border border-zinc-800 bg-zinc-950/80 px-4 py-2 text-center text-xs text-zinc-400 backdrop-blur-md md:block"
             >
-              Click the floor to walk · Click a rack to inspect · Drag to look
-              around · Scroll to zoom · WASD to move
+              Click the floor to walk · Click a rack or station to inspect ·
+              Drag to look around · Scroll to zoom · WASD to move
             </p>
             <p
               data-requires-js
@@ -472,7 +538,8 @@ export function PlaygroundShell({ projects, total }: PlaygroundShellProps) {
       <StationPanel
         open={panelOpen}
         station={panelStation}
-        slotIndex={panelSlot}
+        code={panelTarget ? targetCode(panelTarget) : ""}
+        health={health}
         onClose={() => setPanelOpen(false)}
         onCloseAutoFocus={restoreFocus}
       />

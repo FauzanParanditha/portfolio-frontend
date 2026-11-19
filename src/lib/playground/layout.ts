@@ -1,3 +1,4 @@
+import type { Experience } from "@/types/experience";
 import type { Project } from "@/types/portfolio";
 import { type Rect, rectFromCenter } from "./collision";
 import {
@@ -87,6 +88,56 @@ export function toPlaygroundProject(project: Project): PlaygroundProject {
   };
 }
 
+/** Subset data pengalaman yang dipakai dinding pengalaman & panelnya. */
+export type PlaygroundExperience = Pick<
+  Experience,
+  | "id"
+  | "title"
+  | "company"
+  | "location"
+  | "startDate"
+  | "endDate"
+  | "isCurrent"
+  | "description"
+> & { tags: string[]; highlights: string[] };
+
+export function toPlaygroundExperience(
+  experience: Experience,
+): PlaygroundExperience {
+  return {
+    id: experience.id,
+    title: experience.title,
+    company: experience.company,
+    location: experience.location,
+    startDate: experience.startDate,
+    endDate: experience.endDate,
+    isCurrent: experience.isCurrent,
+    description: experience.description,
+    tags: (experience.tags ?? []).map((tag) => tag.name).filter(Boolean),
+    highlights: (experience.highlights ?? [])
+      .map((item) => item.text)
+      .filter(Boolean),
+  };
+}
+
+/** Rentang waktu sebuah pengalaman, seperti yang tampil di beranda. */
+export function experiencePeriod(
+  experience: Pick<PlaygroundExperience, "startDate" | "endDate" | "isCurrent">,
+): string {
+  const end = experience.isCurrent
+    ? "Present"
+    : experience.endDate || "Finished";
+  return `${experience.startDate} — ${end}`;
+}
+
+/**
+ * Stasiun = sesuatu yang bisa dikunjungi dan punya panel. Dua kelompok:
+ * - rak (`project`, `archive`): satu per proyek, selalu di awal array;
+ * - perabot (`status`, `experience`, `contact`): terminal, dinding, kotak surat.
+ *
+ * `href` adalah tujuan tautan di daftar (bekerja tanpa JavaScript / tanpa 3D);
+ * `null` bila stasiun itu tidak punya padanan halaman biasa.
+ */
 export type Station =
   | {
       kind: "project";
@@ -102,7 +153,39 @@ export type Station =
       href: "/projects";
       /** Banyaknya proyek yang tidak kebagian rak sendiri. */
       remaining: number;
-    };
+    }
+  | { kind: "status"; id: "status"; label: string; href: null }
+  | {
+      kind: "experience";
+      id: "experience";
+      label: string;
+      href: "/#experience";
+      experiences: PlaygroundExperience[];
+    }
+  | { kind: "contact"; id: "contact"; label: string; href: "/#contact" };
+
+export type FixtureKind = "terminal" | "wall" | "mailbox";
+
+/** Perabot yang mewakili tiap jenis stasiun non-rak. */
+const FIXTURE_FOR: Record<
+  Exclude<Station["kind"], "project" | "archive">,
+  FixtureKind
+> = { status: "terminal", experience: "wall", contact: "mailbox" };
+
+export function isRackStation(
+  station: Station,
+): station is Extract<Station, { kind: "project" | "archive" }> {
+  return station.kind === "project" || station.kind === "archive";
+}
+
+/** Jenis perabot yang dibutuhkan sebuah daftar stasiun, urut sesuai daftarnya. */
+export function fixtureKindsFor(stations: Station[]): FixtureKind[] {
+  const kinds: FixtureKind[] = [];
+  for (const station of stations) {
+    if (!isRackStation(station)) kinds.push(FIXTURE_FOR[station.kind]);
+  }
+  return kinds;
+}
 
 /**
  * Susun stasiun dari proyek. `total` = jumlah proyek di backend (dari meta
@@ -110,10 +193,14 @@ export type Station =
  *
  * Bila proyek melebihi kapasitas, rak terakhir menjadi rak "Arsip" yang
  * menautkan ke daftar lengkap — tidak ada proyek yang hilang tanpa jejak.
+ *
+ * Setelah rak menyusul stasiun perabot: terminal status (selalu ada), dinding
+ * pengalaman (hanya bila ada datanya), dan kotak surat (selalu ada).
  */
 export function buildStations(
   projects: PlaygroundProject[],
   total = projects.length,
+  experiences: PlaygroundExperience[] = [],
 ): Station[] {
   // `total` datang dari meta API; nilai yang tidak masuk akal (NaN, negatif,
   // tak hingga) diabaikan dan jumlah yang benar-benar diterima yang dipakai.
@@ -140,18 +227,55 @@ export function buildStations(
       remaining: count - shown.length,
     });
   }
+
+  stations.push({
+    kind: "status",
+    id: "status",
+    label: "Live status",
+    href: null,
+  });
+  if (experiences.length > 0) {
+    stations.push({
+      kind: "experience",
+      id: "experience",
+      label: "Experience",
+      href: "/#experience",
+      experiences,
+    });
+  }
+  stations.push({
+    kind: "contact",
+    id: "contact",
+    label: "Contact",
+    href: "/#contact",
+  });
   return stations;
 }
 
-export interface RackSlot {
+/**
+ * Tujuan yang bisa didatangi pemain: rak atau perabot. `index` adalah posisinya
+ * di `layout.targets` (rak lebih dulu, lalu perabot) dan dipakai sebagai
+ * pengenal di seluruh playground.
+ */
+export interface Target {
   index: number;
+  kind: "rack" | FixtureKind;
   x: number;
   z: number;
   /** Indeks ke array stasiun, atau `null` untuk rak kosong (dekorasi). */
   station: number | null;
-  /** Titik berdiri pemain di depan rak. */
+  /** Titik berdiri pemain di depan tujuan. */
   approach: Point;
+  /** Arah hadap pemain saat berdiri di sana (0 = +Z, π = -Z). */
+  face: number;
 }
+
+export type RackSlot = Target & { kind: "rack" };
+export type Fixture = Target & { kind: FixtureKind };
+
+/** Tapak meja terminal dan kotak surat (lebar X × kedalaman Z). */
+export const DESK = { width: 1.9, depth: 0.8, height: 0.78 } as const;
+export const MAILBOX = { width: 0.5, depth: 0.4 } as const;
 
 export type PropKind = "bed" | "plant" | "cooler" | "crates";
 
@@ -168,18 +292,31 @@ export interface RoomLayout {
   width: number;
   depth: number;
   rows: number;
+  /** Rak (berisi maupun kosong). */
   slots: RackSlot[];
+  /** Perabot berstasiun: terminal, dinding pengalaman, kotak surat. */
+  fixtures: Fixture[];
+  /** `slots` diikuti `fixtures`; `targets[i].index === i`. */
+  targets: Target[];
   props: RoomProp[];
   spawn: Point;
   /** Grid kasar untuk pencarian jalur (klik-untuk-jalan). */
   grid: Grid;
-  /** Kotak halangan tepat (rak + properti) untuk tabrakan gerak manual. */
+  /** Kotak halangan tepat (rak + perabot + properti) untuk tabrakan gerak manual. */
   obstacles: Rect[];
   /** Batas dalam ruangan (dinding). */
   bounds: Rect;
 }
 
-export function buildLayout(stationCount: number): RoomLayout {
+/**
+ * @param stationCount jumlah stasiun RAK (proyek + arsip).
+ * @param fixtureKinds perabot yang dipasang, urut sesuai stasiunnya; stasiun
+ *   perabot ke-i berindeks `stationCount + i` di array stasiun.
+ */
+export function buildLayout(
+  stationCount: number,
+  fixtureKinds: FixtureKind[] = [],
+): RoomLayout {
   const count = Math.min(Math.max(0, stationCount), MAX_STATIONS);
   const rows = Math.max(MIN_ROWS, Math.ceil(count / RACKS_PER_ROW));
 
@@ -203,12 +340,53 @@ export function buildLayout(stationCount: number): RoomLayout {
     const z = frontRowZ - row * ROW_SPACING_Z;
     slots.push({
       index,
+      kind: "rack",
       x,
       z,
       station: index < count ? index : null,
       approach: { x, z: z + RACK.depth / 2 + APPROACH_DISTANCE },
+      face: Math.PI,
     });
   }
+
+  // Perabot berada di lobi (sisi +Z ruangan), jauh dari lorong rak.
+  const fixtures: Fixture[] = fixtureKinds.map((kind, i) => {
+    const base = { index: slots.length + i, kind, station: count + i };
+    if (kind === "terminal") {
+      // Meja menghadap lobi; pemain berdiri di depannya, menghadap monitor.
+      const x = width / 2 - 2.9;
+      const z = depth / 2 - 3.2;
+      return {
+        ...base,
+        x,
+        z,
+        approach: { x, z: z + DESK.depth / 2 + APPROACH_DISTANCE },
+        face: Math.PI,
+      };
+    }
+    if (kind === "wall") {
+      // Papan menempel di dinding barat; pemain menghadap dinding.
+      const z = depth / 2 - 3.9;
+      return {
+        ...base,
+        x: -width / 2,
+        z,
+        approach: { x: -width / 2 + 1.6, z },
+        face: -Math.PI / 2,
+      };
+    }
+    // Kotak surat di dinding depan; pemain datang dari arah rak dan berdiri
+    // menghadap kamera.
+    const x = 0.8;
+    const z = depth / 2 - 0.95;
+    return {
+      ...base,
+      x,
+      z,
+      approach: { x, z: z - MAILBOX.depth / 2 - APPROACH_DISTANCE },
+      face: 0,
+    };
+  });
 
   const props: RoomProp[] = [
     // Sudut kiri-depan: tempat tidur si robot beserta mangkuknya (tapak
@@ -216,7 +394,8 @@ export function buildLayout(stationCount: number): RoomLayout {
     { kind: "bed", x: -width / 2 + 2, z: depth / 2 - 1.5, w: 2, d: 1.1 },
     { kind: "plant", x: width / 2 - 1.1, z: depth / 2 - 1.1, w: 0.7, d: 0.7 },
     { kind: "plant", x: -width / 2 + 0.8, z: frontRowZ + 0.4, w: 0.7, d: 0.7 },
-    { kind: "crates", x: width / 2 - 1.3, z: depth / 2 - 3.1, w: 1.1, d: 1.0 },
+    // Kardus di pojok belakang-kanan (lobi kanan dipakai meja terminal).
+    { kind: "crates", x: width / 2 - 1.2, z: -depth / 2 + 1.2, w: 1.1, d: 1.0 },
     // Unit pendingin menempel dinding kanan, di antara dua baris pertama.
     {
       kind: "cooler",
@@ -236,6 +415,23 @@ export function buildLayout(stationCount: number): RoomLayout {
   const obstacles: Rect[] = [
     ...slots.map((slot) =>
       rectFromCenter(slot.x, slot.z, RACK.width, RACK.depth),
+    ),
+    ...fixtures.flatMap((fixture) =>
+      fixture.kind === "terminal"
+        ? [rectFromCenter(fixture.x, fixture.z, DESK.width, DESK.depth)]
+        : fixture.kind === "mailbox"
+          ? [
+              sealWallGaps(
+                rectFromCenter(
+                  fixture.x,
+                  fixture.z,
+                  MAILBOX.width,
+                  MAILBOX.depth,
+                ),
+                bounds,
+              ),
+            ]
+          : [],
     ),
     ...props.map((prop) =>
       sealWallGaps(rectFromCenter(prop.x, prop.z, prop.w, prop.d), bounds),
@@ -261,6 +457,8 @@ export function buildLayout(stationCount: number): RoomLayout {
     depth,
     rows,
     slots,
+    fixtures,
+    targets: [...slots, ...fixtures],
     props,
     spawn: { x: -width / 2 + 3.6, z: depth / 2 - 1.9 },
     grid,
@@ -279,21 +477,21 @@ function sealWallGaps(rect: Rect, bounds: Rect): Rect {
   };
 }
 
-/** Slot (rak berisi) yang titik berdirinya paling dekat, dalam `maxDistance`. */
+/** Tujuan berstasiun yang titik berdirinya paling dekat, dalam `maxDistance`. */
 export function nearestStationSlot(
   layout: RoomLayout,
   x: number,
   z: number,
   maxDistance = 1.15,
-): RackSlot | null {
-  let best: RackSlot | null = null;
+): Target | null {
+  let best: Target | null = null;
   let bestDist = maxDistance;
-  for (const slot of layout.slots) {
-    if (slot.station === null) continue;
-    const dist = Math.hypot(slot.approach.x - x, slot.approach.z - z);
+  for (const target of layout.targets) {
+    if (target.station === null) continue;
+    const dist = Math.hypot(target.approach.x - x, target.approach.z - z);
     if (dist <= bestDist) {
       bestDist = dist;
-      best = slot;
+      best = target;
     }
   }
   return best;
@@ -302,4 +500,17 @@ export function nearestStationSlot(
 /** Kode rak dua digit untuk papan nama: R01, R02, … */
 export function rackCode(index: number): string {
   return `R${String(index + 1).padStart(2, "0")}`;
+}
+
+const FIXTURE_CODE: Record<FixtureKind, string> = {
+  terminal: "API",
+  wall: "LOG",
+  mailbox: "MSG",
+};
+
+/** Kode pendek sebuah tujuan untuk daftar dan papan nama: R01, API, LOG, MSG. */
+export function targetCode(target: Pick<Target, "index" | "kind">): string {
+  return target.kind === "rack"
+    ? rackCode(target.index)
+    : FIXTURE_CODE[target.kind];
 }

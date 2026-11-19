@@ -6,7 +6,7 @@ import type { Sim } from "@/lib/playground/sim";
 import { useFrame, useThree } from "@react-three/fiber";
 import { CLICK_DRAG_TOLERANCE } from "../input";
 import { type RefObject, useEffect, useRef } from "react";
-import { Vector3 } from "three";
+import { PerspectiveCamera, Vector3 } from "three";
 
 /** Keadaan orbit yang dibagi dengan pengendali WASD (arah relatif kamera). */
 export interface Orbit {
@@ -38,6 +38,15 @@ const DISTANCE_MIN = 6;
 const DISTANCE_MAX = 20;
 /** Titik pandang digeser sedikit ke arah rak (−Z), di depan pemain. */
 const LOOK_AHEAD = 1.7;
+
+/**
+ * Di layar lebar, daftar rak menutupi tepi kiri kanvas (1,5 + 18 rem, kelas
+ * `md:left-6 md:w-72` di PlaygroundShell). Gambar digeser ke kanan separuh
+ * lebar itu supaya pemain berada di tengah area yang TIDAK tertutup — tanpa
+ * ini, dinding barat (papan pengalaman) jatuh tepat di balik daftar.
+ */
+const HUD_LIST_WIDTH_REM = 19.5;
+const HUD_LIST_MIN_VIEWPORT_REM = 48;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -89,6 +98,8 @@ export function CameraRig({
 
   const current = useRef<Orbit | null>(null);
   const focus = useRef<Vector3 | null>(null);
+  /** Ukuran kanvas saat geseran gambar terakhir diterapkan ("lebar×tinggi"). */
+  const viewKey = useRef("");
 
   useEffect(() => {
     const element = gl.domElement;
@@ -204,6 +215,28 @@ export function CameraRig({
     const sim = simRef.current;
     const target = orbitRef.current;
     if (!sim || !target) return;
+
+    // Geser gambar menjauhi daftar rak; dihitung ulang hanya saat ukuran berubah.
+    const { width: viewWidth, height: viewHeight } = state.size;
+    const key = `${viewWidth}x${viewHeight}`;
+    if (viewKey.current !== key && state.camera instanceof PerspectiveCamera) {
+      viewKey.current = key;
+      // Kelas Tailwind memakai rem, jadi ikuti ukuran font akar (bukan 16 px).
+      const rem =
+        parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      if (viewWidth >= HUD_LIST_MIN_VIEWPORT_REM * rem) {
+        state.camera.setViewOffset(
+          viewWidth,
+          viewHeight,
+          (-HUD_LIST_WIDTH_REM * rem) / 2,
+          0,
+          viewWidth,
+          viewHeight,
+        );
+      } else {
+        state.camera.clearViewOffset();
+      }
+    }
 
     const dt = Math.min(delta, 0.1);
     const first = current.current === null || focus.current === null;

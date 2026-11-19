@@ -8,7 +8,6 @@ import {
 } from "@/lib/playground/layout";
 import {
   createSim,
-  FACE_RACK_HEADING,
   isMoving,
   setDestination,
   type Sim,
@@ -28,7 +27,9 @@ import {
   CLICK_DRAG_TOLERANCE,
   isTypingTarget,
 } from "../input";
+import type { Health } from "@/lib/playground/health";
 import { CameraRig, DEFAULT_ORBIT, type Orbit } from "./CameraRig";
+import { Fixtures } from "./Fixtures";
 import { Racks } from "./Racks";
 import { RobotDog } from "./RobotDog";
 import { Room } from "./Room";
@@ -44,6 +45,8 @@ export interface PlaygroundCanvasProps {
   layout: RoomLayout;
   stations: Station[];
   command: WalkCommand | null;
+  /** Status backend terbaru, untuk layar monitor terminal. */
+  health?: Health | null;
   /** Panel terbuka / tab tersembunyi: hentikan render & input. */
   paused: boolean;
   reducedMotion: boolean;
@@ -117,6 +120,7 @@ function World({
   layout,
   stations,
   command,
+  health = null,
   paused,
   reducedMotion,
   shadows,
@@ -167,7 +171,7 @@ function World({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const interactive =
-      hoveredSlot !== null && layout.slots[hoveredSlot]?.station !== null;
+      hoveredSlot !== null && layout.targets[hoveredSlot]?.station !== null;
     canvas.style.cursor = interactive ? "pointer" : "grab";
     return () => {
       canvas.style.cursor = "";
@@ -182,16 +186,18 @@ function World({
   useEffect(() => {
     if (!command || handledNonce.current === command.nonce) return;
     handledNonce.current = command.nonce;
-    const slot = layout.slots[command.slot];
+    const slot = layout.targets[command.slot];
     const sim = simRef.current;
     if (!sim || !slot || slot.station === null) return;
 
     if (reducedMotion) {
-      teleport(sim, slot.approach, FACE_RACK_HEADING);
+      teleport(sim, slot.approach, slot.face);
       handlers.current.onArrive(slot.index);
       return;
     }
-    if (!setDestination(sim, layout.grid, slot.approach, slot.index)) {
+    if (
+      !setDestination(sim, layout.grid, slot.approach, slot.index, slot.face)
+    ) {
       // Tidak ada jalur (seharusnya mustahil) — tetap buka panelnya.
       handlers.current.onArrive(slot.index);
     }
@@ -262,7 +268,7 @@ function World({
     if (
       event?.type === "arrived" &&
       event.slot !== null &&
-      layout.slots[event.slot]?.station !== null
+      layout.targets[event.slot]?.station !== null
     ) {
       handlers.current.onArrive(event.slot);
     }
@@ -289,7 +295,7 @@ function World({
 
   const handleRackSelect = (slotIndex: number) => {
     if (paused || orbitRef.current.dragged) return;
-    const slot = layout.slots[slotIndex];
+    const slot = layout.targets[slotIndex];
     const sim = simRef.current;
     if (!slot || !sim) return;
     setDestination(
@@ -297,6 +303,7 @@ function World({
       layout.grid,
       slot.approach,
       slot.station !== null ? slot.index : null,
+      slot.face,
     );
   };
 
@@ -313,6 +320,15 @@ function World({
         layout={layout}
         stations={stations}
         hoveredSlot={hoveredSlot}
+        reducedMotion={reducedMotion}
+        onHover={setHoveredSlot}
+        onSelect={handleRackSelect}
+      />
+      <Fixtures
+        layout={layout}
+        stations={stations}
+        health={health}
+        hovered={hoveredSlot}
         reducedMotion={reducedMotion}
         onHover={setHoveredSlot}
         onSelect={handleRackSelect}
