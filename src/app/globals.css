@@ -464,3 +464,82 @@
     transform: translateY(8%);
   }
 }
+
+/* ==========================================================================
+   Tur ruang server (/tour) — tata letak perhentian.
+
+   Dua tata letak untuk markup yang sama:
+   - ringkas : kartu bertumpuk di tengah, seperti halaman biasa;
+   - 3D      : tiap perhentian setinggi layar, kartu di kiri, ruang server
+               (kanvas `position: fixed`) terlihat di sisanya.
+
+   Bawaannya ditentukan CSS — bukan JavaScript — supaya HTML dari server sudah
+   berada di tata letak yang benar dan tidak melompat saat React terhidrasi:
+   3D di layar lebar tanpa permintaan pengurangan gerak, ringkas selain itu.
+   `data-mode` pada `.tour` menimpanya: pilihan pengunjung, atau "simple" bila
+   WebGL tidak tersedia. Tanpa JavaScript, blok <noscript> di halaman memaksa
+   tata letak ringkas.
+   ========================================================================== */
+.tour-stop {
+  position: relative;
+  z-index: 10;
+  padding: 1.75rem 1rem;
+  /* Tautan jangkar tidak mendarat di balik bilah atas. */
+  scroll-margin-top: 4.5rem;
+}
+.tour-stop:first-of-type {
+  padding-top: 6.5rem;
+}
+.tour-panel {
+  width: min(100%, 42rem);
+  margin-inline: auto;
+}
+.tour-rail {
+  display: none;
+}
+
+/* Tata letak 3D. Ditulis dua kali (otomatis & paksa) karena CSS tidak punya
+   "atau" antara media query dan atribut. */
+@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+  .tour:not([data-mode="simple"]) .tour-stop {
+    display: flex;
+    min-height: 100svh;
+    align-items: center;
+    padding: 6rem 1rem 3.5rem;
+    scroll-margin-top: 0;
+  }
+  .tour:not([data-mode="simple"]) .tour-panel {
+    width: min(100%, 28rem);
+    margin-inline: clamp(0rem, 3vw, 2.5rem) auto;
+  }
+  .tour:not([data-mode="simple"]) .tour-rail {
+    display: flex;
+  }
+  html:has(.tour:not([data-mode="simple"])) {
+    scroll-behavior: smooth;
+  }
+}
+.tour[data-mode="3d"] .tour-stop {
+  display: flex;
+  min-height: 100svh;
+  /* Layar sempit: kartu di bawah, ruangan terlihat di atasnya. */
+  align-items: flex-end;
+  padding: 6rem 1rem 1.5rem;
+  scroll-margin-top: 0;
+}
+.tour[data-mode="3d"] .tour-panel {
+  width: min(100%, 28rem);
+  margin-inline: 0 auto;
+}
+@media (min-width: 768px) {
+  .tour[data-mode="3d"] .tour-stop {
+    align-items: center;
+    padding-bottom: 3.5rem;
+  }
+  .tour[data-mode="3d"] .tour-panel {
+    margin-inline: clamp(0rem, 3vw, 2.5rem) auto;
+  }
+  .tour[data-mode="3d"] .tour-rail {
+    display: flex;
+  }
+}
