@@ -172,7 +172,9 @@ const FIXTURE_FOR: Record<
   FixtureKind
 > = { status: "terminal", experience: "wall", contact: "mailbox" };
 
-export function isRackStation(station: Station): boolean {
+export function isRackStation(
+  station: Station,
+): station is Extract<Station, { kind: "project" | "archive" }> {
   return station.kind === "project" || station.kind === "archive";
 }
 
@@ -180,8 +182,7 @@ export function isRackStation(station: Station): boolean {
 export function fixtureKindsFor(stations: Station[]): FixtureKind[] {
   const kinds: FixtureKind[] = [];
   for (const station of stations) {
-    if (station.kind === "project" || station.kind === "archive") continue;
-    kinds.push(FIXTURE_FOR[station.kind]);
+    if (!isRackStation(station)) kinds.push(FIXTURE_FOR[station.kind]);
   }
   return kinds;
 }

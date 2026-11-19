@@ -211,10 +211,12 @@ export function PlaygroundShell({
   // Status backend: diperiksa pelan untuk layar monitor di ruangan, dan lebih
   // sering selama panel status terbuka. Berhenti saat tab tersembunyi; tanpa
   // scene tidak ada monitor, jadi hanya diperiksa selama panelnya terbuka.
+  // `sceneActive` (scene benar-benar terpasang), bukan `sceneAvailable`: yang
+  // terakhir bernilai `true` di render hidrasi pertama apa pun perangkatnya.
   const statusOpen = panelOpen && panelStation?.kind === "status";
   const health = useBackendHealth(
     statusOpen,
-    !hidden && (sceneAvailable || statusOpen),
+    !hidden && (sceneActive || statusOpen),
   );
 
   // Klik biasa pada entri daftar = jalan ke sana lalu buka panelnya.
@@ -299,7 +301,8 @@ export function PlaygroundShell({
       </>
     );
     return (
-      <li key={station.id}>
+      // Tanpa JavaScript tombol tidak berguna; seluruh barisnya disembunyikan.
+      <li key={station.id} data-requires-js={station.href ? undefined : ""}>
         {station.href ? (
           <a
             ref={setRef}
@@ -314,7 +317,6 @@ export function PlaygroundShell({
           <button
             ref={setRef}
             type="button"
-            data-requires-js
             onClick={(event) => handleStationClick(event, target.index)}
             aria-current={selected ? "true" : undefined}
             className={className}
@@ -398,7 +400,7 @@ export function PlaygroundShell({
             </p>
             <p className="mt-3 text-base leading-relaxed text-zinc-300">
               This device or browser can&apos;t render the 3D room. Every
-              project is still one click away in the rack list.
+              project and station is still one click away in the list.
             </p>
           </div>
         </div>
@@ -449,7 +451,7 @@ export function PlaygroundShell({
             <button
               type="button"
               onClick={() => setListOpen(false)}
-              aria-label="Close rack list"
+              aria-label="Close list"
               className={`-mr-2 flex h-9 w-9 items-center justify-center rounded-sm text-zinc-400 hover:text-white md:hidden ${focusRing}`}
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -513,7 +515,7 @@ export function PlaygroundShell({
               className={`pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-zinc-700 bg-zinc-950/80 px-4 text-xs font-medium tracking-widest text-zinc-200 uppercase backdrop-blur-md md:hidden ${focusRing}`}
             >
               <List className="h-4 w-4" aria-hidden="true" />
-              Racks
+              Racks<span className="sr-only"> and stations</span>
             </button>
 
             <p

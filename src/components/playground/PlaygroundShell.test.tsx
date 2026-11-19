@@ -1,4 +1,5 @@
 import {
+  act,
   render as rtlRender,
   screen,
   waitFor,
@@ -6,6 +7,8 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -436,13 +439,106 @@ describe("PlaygroundShell (tanpa WebGL)", () => {
     expect(within(dialog).getByLabelText("Message")).toHaveValue("");
   });
 
-  it("mengetik di form kontak tidak memicu pintasan playground (E / Enter)", async () => {
+  it("draf pesan bertahan saat panel ditutup lalu dibuka lagi; kosong setelah terkirim", async () => {
+    vi.mocked(publicClient.post).mockResolvedValue({ data: {} });
     const user = userEvent.setup();
     render(<PlaygroundShell projects={[project(1)]} total={1} />);
-    await user.click(screen.getByRole("link", { name: /Contact/ }));
+    const link = screen.getByRole("link", { name: /Contact/ });
+
+    await user.click(link);
+    let dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "Ada");
+    await user.type(within(dialog).getByLabelText("Message"), "Half a thought");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(link);
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("Ada");
+    expect(within(dialog).getByLabelText("Message")).toHaveValue(
+      "Half a thought",
+    );
+    // Penghitung karakter ikut pulih, bukan kembali ke nol.
+    expect(within(dialog).getByText(/^14 \/ 5000/)).toBeInTheDocument();
+
+    await user.type(within(dialog).getByLabelText("Email"), "ada@example.com");
+    await user.type(within(dialog).getByLabelText("Subject"), "Hello");
+    await user.click(within(dialog).getByRole("button", { name: /submit/i }));
+    await waitFor(() => expect(publicClient.post).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText("Message")).toHaveValue(""),
+    );
+
+    // Setelah terkirim, draf tidak muncul lagi.
+    await user.keyboard("{Escape}");
+    await user.click(link);
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("");
+    expect(within(dialog).getByLabelText("Message")).toHaveValue("");
+  });
+
+  it("hasil pemeriksaan diumumkan (role=status), dan isi panel bisa difokus untuk digulir", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await user.click(screen.getByRole("button", { name: /Live status/ }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Name"), "Eee e");
-    expect(within(dialog).getByLabelText("Name")).toHaveValue("Eee e");
-    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+
+    await waitFor(() =>
+      expect(within(dialog).getByRole("status")).toHaveTextContent(
+        "Operational",
+      ),
+    );
+    const region = within(dialog).getByRole("region", {
+      name: "Station details",
+    });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region.className).toMatch(/overflow-y-auto/);
+  });
+
+  it("tab tersembunyi: status tidak diperiksa walau panelnya terbuka", async () => {
+    const calls = stubHealth();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await user.click(screen.getByRole("button", { name: /Live status/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Checking…");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(calls).toEqual([]);
+  });
+
+  it("hidrasi tanpa WebGL: tidak ada pemeriksaan status sebelum panel dibuka", async () => {
+    const calls = stubHealth();
+    const ui = (
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <PlaygroundShell projects={[project(1)]} total={1} />
+      </SWRConfig>
+    );
+    // HTML dari server dirender dengan anggapan WebGL ada; browser lalu
+    // menghidrasinya dan baru tahu WebGL tidak tersedia.
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    container.innerHTML = renderToString(ui);
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    await act(async () => {
+      root = hydrateRoot(container, ui);
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+
+    expect(
+      within(container).getByText(/3D view unavailable/i),
+    ).toBeInTheDocument();
+    expect(calls).toEqual([]);
+    act(() => root?.unmount());
+    container.remove();
+  });
+
+  it("tanpa JavaScript, baris tombol status ikut disembunyikan (bukan <li> kosong)", () => {
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    const button = screen.getByRole("button", { name: /Live status/ });
+    expect(button.closest("li")).toHaveAttribute("data-requires-js");
+    expect(
+      screen.getByRole("link", { name: /Contact/ }).closest("li"),
+    ).not.toHaveAttribute("data-requires-js");
   });
 });

@@ -190,6 +190,33 @@ describe("PlaygroundShell (scene aktif)", () => {
     expect(within(dialog).getByLabelText("Message")).toBeInTheDocument();
   });
 
+  it("mengetik di form kontak tidak memicu pintasan E / Enter, walau robot berdiri di depan rak", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await screen.findByTestId("scene");
+
+    // Robot di depan rak 0: pintasan E/Enter aktif selama panel tertutup.
+    act(() => scene.props?.onNearChange(0));
+    await user.click(screen.getByRole("link", { name: /Contact/ }));
+    act(() => scene.props?.onArrive(9));
+    const dialog = await screen.findByRole("dialog");
+    act(() => scene.props?.onNearChange(0));
+
+    const name = within(dialog).getByLabelText("Name");
+    await user.type(name, "Eee e{Enter}");
+    expect(name).toHaveValue("Eee e");
+    // Juga saat fokus berada di bagian panel yang bukan kolom ketik (wadah
+    // gulir): E tidak boleh mengganti panel ke rak di belakangnya.
+    within(dialog).getByRole("region", { name: "Station details" }).focus();
+    await user.keyboard("e");
+    // Tetap panel kontak — tidak berganti ke panel proyek rak 0.
+    expect(
+      within(screen.getByRole("dialog")).getByRole("heading", {
+        name: "Send a message",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("memilih rak yang sama dua kali menghasilkan perintah baru (nonce naik)", async () => {
     const user = userEvent.setup();
     render(<PlaygroundShell projects={[project(1)]} total={1} />);

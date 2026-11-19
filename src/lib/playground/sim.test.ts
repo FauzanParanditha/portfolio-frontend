@@ -938,4 +938,62 @@ describe("klik-untuk-jalan ke perabot", () => {
     expect(sim.x).toBeGreaterThan(2.2);
     expect(noseDepth(layout, sim)).toBe(0);
   });
+
+  it("tepat di garis seri sisi sebelah vs sisi seberang: menahan tombol menjauh tidak membuat robot lari di tempat (regresi)", () => {
+    const layout = buildLayout(8, ALL_FIXTURES);
+    // Dua pose cermin di barat dan timur kotak surat, kepala di dalamnya.
+    for (const pose of [
+      { x: 0.22, z: 6.08, heading: Math.PI / 2, moveX: 1 },
+      { x: 1.34, z: 6.08, heading: -Math.PI / 2, moveX: -1 },
+    ]) {
+      const sim = createSim(pose, pose.heading);
+      expect(noseDepth(layout, sim)).toBeGreaterThan(0.3);
+      for (let i = 0; i < 90; i++) {
+        stepSim(sim, layout, DT, { moveX: pose.moveX, moveZ: 0 });
+        expect(isFree(layout, sim.x, sim.z)).toBe(true);
+      }
+      // Dulu: posisi tidak berubah selama tombol ditahan, kepala 0,45 m di
+      // dalam kotak surat, kaki tetap berlari.
+      expect(Math.hypot(sim.x - pose.x, sim.z - pose.z)).toBeGreaterThan(0.3);
+      expect(noseDepth(layout, sim)).toBeLessThan(0.05);
+    }
+  });
+
+  it("sapuan rapat di sekitar kotak surat: pose × arah hadap × arah tombol — kepala tidak pernah tertahan di dalamnya", () => {
+    const layout = buildLayout(8, ALL_FIXTURES);
+    const mailbox = layout.fixtures[2];
+    const stuck: string[] = [];
+    let cases = 0;
+    for (let x = mailbox.x - 1.05; x <= mailbox.x + 1.05; x += 0.07) {
+      for (let z = mailbox.z - 1.2; z <= layout.bounds.maxZ; z += 0.07) {
+        if (!isFree(layout, x, z)) continue;
+        for (let h = 0; h < 24; h++) {
+          const heading = (h / 24) * Math.PI * 2;
+          const start = createSim({ x, z }, heading);
+          // Hanya pose yang kepalanya memang sedang di dalam halangan.
+          if (noseDepth(layout, start) < 0.05) continue;
+          for (let k = 0; k < 8; k++) {
+            cases++;
+            const angle = (k / 8) * Math.PI * 2;
+            const sim = createSim({ x, z }, heading);
+            for (let i = 0; i < 90; i++) {
+              stepSim(sim, layout, DT, {
+                moveX: Math.sin(angle),
+                moveZ: Math.cos(angle),
+              });
+            }
+            // 1,5 dtk menahan tombol: kepala harus sudah bebas — entah karena
+            // robot berbelok mengikuti arah gerak, entah karena didorong keluar.
+            if (noseDepth(layout, sim) > 0.05) {
+              stuck.push(
+                `(${x.toFixed(2)}, ${z.toFixed(2)}) h=${heading.toFixed(2)} tombol=${angle.toFixed(2)}`,
+              );
+            }
+          }
+        }
+      }
+    }
+    expect(cases).toBeGreaterThan(3000);
+    expect(stuck).toEqual([]);
+  });
 });

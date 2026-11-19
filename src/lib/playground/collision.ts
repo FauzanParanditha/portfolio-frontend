@@ -64,7 +64,8 @@ function entrySide(
     edge: number,
   ) => {
     // Hanya sisi yang benar-benar diseberangi dari luar ke dalam.
-    const outside = candidate % 2 === 0 ? start < edge : start > edge;
+    // Jangkar tepat di tepi dihitung di luar (menyeberang pada t = 0).
+    const outside = candidate % 2 === 0 ? start <= edge : start >= edge;
     if (!outside) return;
     const t = (edge - start) / (end - start);
     if (t > latest) {
@@ -142,20 +143,20 @@ export function resolveCircle(
           ex <= bounds.maxX - radius &&
           ez >= bounds.minZ + radius &&
           ez <= bounds.maxZ - radius;
+        // Dengan jangkar: sisi di seberang sisi masuk dicoret sejak awal (bila
+        // sisi masuknya sendiri muat), lalu diambil yang terdekat dari sisanya.
+        // Dicoret — bukan "ditukar setelah terpilih" — supaya pilihan berubah
+        // mulus di garis tempat sisi seberang dan sisi sebelah sama jauhnya;
+        // kalau ditukar, dua pemeriksaan berurutan bisa memilih sisi yang
+        // berlawanan dan pemain macet di antaranya.
+        // Sisi berseberangan berpasangan (0↔1, 2↔3): `entry ^ 1`.
+        const entry = anchor ? entrySide(anchor, px, pz, rect) : null;
+        const barred =
+          entry !== null && fits(exits[entry]) ? exits[entry ^ 1] : null;
         let best: [number, number, number] | null = null;
         for (const exit of exits) {
-          if (fits(exit) && (best === null || exit[0] < best[0])) best = exit;
-        }
-        if (best && anchor) {
-          // Sisi berseberangan berpasangan (0↔1, 2↔3): `entry ^ 1`.
-          const entry = entrySide(anchor, px, pz, rect);
-          if (
-            entry !== null &&
-            best === exits[entry ^ 1] &&
-            fits(exits[entry])
-          ) {
-            best = exits[entry];
-          }
+          if (exit === barred || !fits(exit)) continue;
+          if (best === null || exit[0] < best[0]) best = exit;
         }
         if (best) {
           px = best[1];

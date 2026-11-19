@@ -14,7 +14,7 @@ import {
   type Station,
   targetCode,
 } from "@/lib/playground/layout";
-import { type ThreeEvent, useFrame } from "@react-three/fiber";
+import { type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
   AdditiveBlending,
@@ -216,9 +216,14 @@ function Terminal(props: FixtureProps & { health: Health | null }) {
   const { fixture, health } = props;
   const screen = useMemo(() => createScreenTexture(), []);
   useEffect(() => () => screen.texture.dispose(), [screen]);
+  // Saat panel terbuka scene hanya merender atas permintaan
+  // (`frameloop="demand"`); tanpa `invalidate` monitor baru berubah setelah
+  // panel ditutup, padahal panel di sebelahnya sudah menampilkan status baru.
+  const invalidate = useThree((state) => state.invalidate);
   useEffect(() => {
     screen.draw(screenLines(health));
-  }, [screen, health]);
+    invalidate();
+  }, [screen, health, invalidate]);
 
   const { x, z } = fixture;
   return (

@@ -43,6 +43,20 @@ const CONTACT_FIELD_LABELS = new Map<string, string>([
 export const contactFieldLabel = (key: string): string =>
   CONTACT_FIELD_LABELS.get(key.toLowerCase()) ?? key;
 
+export interface ContactDraft {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+export const EMPTY_CONTACT_DRAFT: ContactDraft = {
+  name: "",
+  email: "",
+  subject: "",
+  message: "",
+};
+
 interface ContactFormProps {
   /**
    * - `section`: tampilan di beranda (berbingkai, dengan judul "Send a Dispatch").
@@ -52,6 +66,13 @@ interface ContactFormProps {
   variant?: "section" | "panel";
   /** Awalan `id` field, supaya dua form tidak bentrok bila sehalaman. */
   idPrefix?: string;
+  /**
+   * Isi awal field. Dipakai induk yang melepas form ini dari DOM (panel yang
+   * bisa ditutup) supaya ketikan pengunjung tidak hilang saat dibuka lagi.
+   */
+  initialDraft?: ContactDraft;
+  /** Dipanggil tiap isi form berubah, dan dengan draf kosong setelah terkirim. */
+  onDraftChange?: (draft: ContactDraft) => void;
 }
 
 const fieldClass =
@@ -64,9 +85,13 @@ const fieldClass =
 export function ContactForm({
   variant = "section",
   idPrefix = "contact",
+  initialDraft = EMPTY_CONTACT_DRAFT,
+  onDraftChange,
 }: ContactFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [messageLength, setMessageLength] = useState(0);
+  const [messageLength, setMessageLength] = useState(
+    initialDraft.message.length,
+  );
   const panel = variant === "panel";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -110,8 +135,10 @@ export function ContactForm({
       });
 
       form.reset();
-      // form.reset() tidak memicu onChange, jadi penghitung direset manual.
+      // form.reset() tidak memicu onChange, jadi penghitung dan draf direset
+      // manual.
       setMessageLength(0);
+      onDraftChange?.(EMPTY_CONTACT_DRAFT);
     } catch (error) {
       // Backend membatasi form kontak 5 pesan/menit per IP. Beri tahu
       // pengunjung kapan bisa mencoba lagi, bukan pesan "gagal" generik.
@@ -171,6 +198,21 @@ export function ContactForm({
   return (
     <form
       onSubmit={handleSubmit}
+      // `change` dari tiap field menggelembung ke sini; cukup satu penangan.
+      onChange={
+        onDraftChange
+          ? (e) => {
+              const data = new FormData(e.currentTarget);
+              const read = (key: string) => (data.get(key) || "").toString();
+              onDraftChange({
+                name: read("name"),
+                email: read("email"),
+                subject: read("subject"),
+                message: read("message"),
+              });
+            }
+          : undefined
+      }
       className={
         panel
           ? "flex w-full flex-col gap-6"
@@ -200,6 +242,7 @@ export function ContactForm({
             type="text"
             required
             maxLength={CONTACT_MAX_LENGTH.name}
+            defaultValue={initialDraft.name}
             className={fieldClass}
             placeholder="John Doe"
           />
@@ -214,6 +257,7 @@ export function ContactForm({
             type="email"
             required
             maxLength={CONTACT_MAX_LENGTH.email}
+            defaultValue={initialDraft.email}
             className={fieldClass}
             placeholder="john@example.com"
           />
@@ -230,6 +274,7 @@ export function ContactForm({
           type="text"
           required
           maxLength={CONTACT_MAX_LENGTH.subject}
+          defaultValue={initialDraft.subject}
           className={fieldClass}
           placeholder="Project Inquiry"
         />
@@ -245,6 +290,7 @@ export function ContactForm({
           required
           rows={4}
           maxLength={CONTACT_MAX_LENGTH.message}
+          defaultValue={initialDraft.message}
           aria-describedby={countId}
           onChange={(e) => setMessageLength(e.target.value.length)}
           className="border-b-border resize-none rounded-none border-x-0 border-t-0 bg-transparent px-0 pt-4 focus-visible:border-b-2 focus-visible:border-b-white"

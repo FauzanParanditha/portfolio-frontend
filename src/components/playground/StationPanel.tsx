@@ -1,6 +1,10 @@
 "use client";
 
-import { ContactForm } from "@/components/contact/ContactForm";
+import {
+  type ContactDraft,
+  ContactForm,
+  EMPTY_CONTACT_DRAFT,
+} from "@/components/contact/ContactForm";
 import { GithubIcon } from "@/components/icons/BrandIcons";
 import { ProjectImage } from "@/components/ProjectImage";
 import {
@@ -27,6 +31,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 interface StationPanelProps {
   open: boolean;
@@ -65,6 +70,12 @@ export function StationPanel({
   onClose,
   onCloseAutoFocus,
 }: StationPanelProps) {
+  // Radix melepas isi panel saat tertutup. Draf pesan disimpan di sini (panel
+  // ini sendiri tetap terpasang) supaya Escape atau klik di luar panel tidak
+  // menghapus ketikan pengunjung.
+  const [contactDraft, setContactDraft] =
+    useState<ContactDraft>(EMPTY_CONTACT_DRAFT);
+
   return (
     <Sheet
       open={open && station !== null}
@@ -85,7 +96,14 @@ export function StationPanel({
         // ada overlay untuk diketuk, jadi tombol itu satu-satunya jalan keluar.
         className="flex w-full flex-col gap-0 overflow-hidden border-zinc-800 bg-zinc-950 p-0 text-zinc-100 sm:max-w-md"
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {/* Wadah gulir bisa difokus: tanpa itu pengguna keyboard tidak bisa
+            menggulir isi panjang (mis. riwayat kerja) di Chrome/Safari. */}
+        <div
+          role="region"
+          aria-label="Station details"
+          tabIndex={0}
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden focus-visible:ring-inset"
+        >
           {station?.kind === "project" ? (
             <ProjectBody station={station} code={code} />
           ) : station?.kind === "archive" ? (
@@ -95,7 +113,7 @@ export function StationPanel({
           ) : station?.kind === "experience" ? (
             <ExperienceBody station={station} />
           ) : station?.kind === "contact" ? (
-            <ContactBody />
+            <ContactBody draft={contactDraft} onDraftChange={setContactDraft} />
           ) : (
             // Radix mewajibkan judul selama konten terpasang (animasi tutup).
             <SheetTitle className="sr-only">Station details</SheetTitle>
@@ -278,7 +296,10 @@ function StatusBody({ health }: { health: Health | null }) {
         answers right now, not a recording.
       </SheetDescription>
 
+      {/* role="status": perubahan "Checking…" → hasil diumumkan pembaca layar.
+          Hanya pil ini — baris "Checked at…" berubah tiap 10 dtk. */}
       <p
+        role="status"
         className={`inline-flex min-h-11 items-center gap-2 self-start rounded-full border px-4 text-sm font-medium ${
           style?.className ?? "border-zinc-600 text-zinc-300"
         }`}
@@ -325,7 +346,14 @@ function StatusBody({ health }: { health: Health | null }) {
                     {CHECK_LABEL[check.state]}
                   </td>
                   <td className="py-3 text-right text-zinc-300">
-                    {check.latencyMs === null ? "—" : `${check.latencyMs} ms`}
+                    {check.latencyMs === null ? (
+                      <>
+                        <span aria-hidden="true">—</span>
+                        <span className="sr-only">not measured</span>
+                      </>
+                    ) : (
+                      `${check.latencyMs} ms`
+                    )}
                   </td>
                 </tr>
               ))}
@@ -334,7 +362,8 @@ function StatusBody({ health }: { health: Health | null }) {
 
           <p className="text-sm leading-relaxed text-zinc-400">
             Checked at {new Date(health.checkedAt).toLocaleTimeString()}.
-            Refreshes every 10 seconds while this panel is open.
+            {health.overall !== "limited" &&
+              " Refreshes every 10 seconds while this panel is open."}
           </p>
           {health.overall === "unavailable" && (
             <p className="text-sm leading-relaxed text-zinc-400">
@@ -344,8 +373,8 @@ function StatusBody({ health }: { health: Health | null }) {
           )}
           {health.overall === "limited" && (
             <p className="text-sm leading-relaxed text-zinc-400">
-              The API asked this browser to slow down. Checks resume on their
-              own.
+              The API asked this browser to slow down. Checking again once a
+              minute until it answers.
             </p>
           )}
         </>
@@ -420,7 +449,13 @@ function ExperienceBody({
   );
 }
 
-function ContactBody() {
+function ContactBody({
+  draft,
+  onDraftChange,
+}: {
+  draft: ContactDraft;
+  onDraftChange: (draft: ContactDraft) => void;
+}) {
   return (
     <div className="flex flex-col gap-6 p-6 pt-14">
       <div className="flex flex-col gap-2">
@@ -431,7 +466,12 @@ function ContactBody() {
         Tell me about the project or role. It goes to the same inbox as the form
         on the main site.
       </SheetDescription>
-      <ContactForm variant="panel" idPrefix="pg-contact" />
+      <ContactForm
+        variant="panel"
+        idPrefix="pg-contact"
+        initialDraft={draft}
+        onDraftChange={onDraftChange}
+      />
     </div>
   );
 }

@@ -40,13 +40,13 @@ const DISTANCE_MAX = 20;
 const LOOK_AHEAD = 1.7;
 
 /**
- * Di layar lebar, daftar rak menutupi tepi kiri kanvas (24 px + 288 px, kelas
+ * Di layar lebar, daftar rak menutupi tepi kiri kanvas (1,5 + 18 rem, kelas
  * `md:left-6 md:w-72` di PlaygroundShell). Gambar digeser ke kanan separuh
  * lebar itu supaya pemain berada di tengah area yang TIDAK tertutup — tanpa
  * ini, dinding barat (papan pengalaman) jatuh tepat di balik daftar.
  */
-const HUD_LIST_WIDTH = 312;
-const HUD_LIST_MIN_VIEWPORT = 768;
+const HUD_LIST_WIDTH_REM = 19.5;
+const HUD_LIST_MIN_VIEWPORT_REM = 48;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -221,11 +221,14 @@ export function CameraRig({
     const key = `${viewWidth}x${viewHeight}`;
     if (viewKey.current !== key && state.camera instanceof PerspectiveCamera) {
       viewKey.current = key;
-      if (viewWidth >= HUD_LIST_MIN_VIEWPORT) {
+      // Kelas Tailwind memakai rem, jadi ikuti ukuran font akar (bukan 16 px).
+      const rem =
+        parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      if (viewWidth >= HUD_LIST_MIN_VIEWPORT_REM * rem) {
         state.camera.setViewOffset(
           viewWidth,
           viewHeight,
-          -HUD_LIST_WIDTH / 2,
+          (-HUD_LIST_WIDTH_REM * rem) / 2,
           0,
           viewWidth,
           viewHeight,

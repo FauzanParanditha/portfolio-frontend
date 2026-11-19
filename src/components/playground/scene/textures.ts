@@ -202,20 +202,7 @@ export function createNameplateTexture(
   ctx.fillStyle = PALETTE.text;
   ctx.font = `600 40px ${UI_FONT}`;
   const maxWidth = width - dividerX - 44;
-  // Dipotong dulu sebelum diukur: loop di bawah memanggil `measureText` sekali
-  // per karakter yang dibuang, jadi judul yang sangat panjang tidak boleh
-  // sampai ke sana apa adanya.
-  // `String(...)`: data API yang cacat (judul bukan string) tidak boleh
-  // menjatuhkan seluruh scene.
-  const raw = String(title ?? "");
-  let text =
-    raw.length > MAX_NAMEPLATE_CHARS ? raw.slice(0, MAX_NAMEPLATE_CHARS) : raw;
-  if (ctx.measureText(text).width > maxWidth) {
-    while (text.length > 1 && ctx.measureText(`${text}…`).width > maxWidth) {
-      text = text.slice(0, -1);
-    }
-    text = `${text.trimEnd()}…`;
-  }
+  const text = clipText(ctx, title, maxWidth);
   ctx.fillText(text, dividerX + 20, height / 2 + 2);
 
   return toTexture(canvas);
@@ -299,7 +286,15 @@ export function createFanTexture(): CanvasTexture {
   return toTexture(canvas);
 }
 
-/** Potong teks dengan elipsis supaya muat di `maxWidth` (font sudah di-set). */
+/**
+ * Potong teks dengan elipsis supaya muat di `maxWidth` (font sudah di-set).
+ *
+ * - `String(...)`: data API yang cacat (bukan string) tidak boleh menjatuhkan
+ *   seluruh scene.
+ * - Dipotong ke `MAX_NAMEPLATE_CHARS` sebelum diukur: loop di bawah memanggil
+ *   `measureText` sekali per karakter yang dibuang, jadi teks raksasa tidak
+ *   boleh sampai ke sana apa adanya.
+ */
 function clipText(
   ctx: CanvasRenderingContext2D,
   value: unknown,

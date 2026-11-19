@@ -86,16 +86,26 @@ Prinsip yang dijaga:
   - Jeda pemeriksaan: 60 dtk untuk monitor di ruangan, 10 dtk selama panel
     status terbuka, berhenti saat tab tersembunyi. Batas backend 60/menit per
     IP; pemakaian terbanyak 12/menit.
-  - Tanpa scene (tanpa WebGL) status baru diperiksa saat panelnya dibuka.
+  - Saat panel dibuka dan hasil terakhir sudah berumur ≥ 5 dtk, status
+    langsung diperiksa ulang — teks panel menyebutnya "right now".
+  - `429` → jeda kembali ke 60 dtk sampai backend menjawab lagi.
+  - Tanpa scene (tanpa WebGL) status baru diperiksa saat panelnya dibuka —
+    termasuk di render hidrasi pertama, saat browser belum tahu WebGL-nya.
   - Backend lama tanpa endpoint itu (404) atau tidak terjangkau → "Unavailable"
     dengan tenang, tanpa toast. `429` → "Checking paused".
-  - Memakai `fetch` langsung (tanpa kredensial, batas waktu 5 dtk), bukan
-    `publicClient`, supaya interceptor axios tidak memunculkan toast galat.
+  - Memakai `fetch` langsung (tanpa kredensial, batas waktu 5 dtk yang
+    mencakup pembacaan isi), bukan `publicClient`, supaya interceptor axios
+    tidak memunculkan toast galat.
+  - Hasil diumumkan ke pembaca layar lewat `role="status"` pada pil status.
 - **Dinding pengalaman** hanya ada bila `/experiences` mengembalikan data;
   paling banyak tiga papan digambar, panelnya memuat semua entri.
 - **Form kontak** adalah komponen yang sama dengan beranda
   (`ContactForm variant="panel"`): batas panjang, 422, dan 429 ditangani di
-  satu tempat.
+  satu tempat. Draf disimpan di `StationPanel` selama halaman terbuka, jadi
+  menutup panel (Escape, klik di luar) tidak menghapus ketikan; draf
+  dikosongkan setelah pesan terkirim.
+- **Isi panel bisa digulir dengan keyboard:** wadah gulirnya `role="region"`
+  ber-`tabIndex={0}` dan menjadi fokus awal saat panel terbuka.
 - **Kamera digeser di layar lebar.** Daftar rak menutupi 312 px di kiri, jadi
   gambar digeser separuhnya ke kanan (`setViewOffset`); tanpa itu dinding barat
   jatuh tepat di balik daftar.
@@ -134,9 +144,16 @@ Prinsip yang dijaga:
 
 - **Kepala keluar di sisi badannya.** Kotak surat hanya setebal 0,5 m: kepala
   yang masuk lebih dari separuhnya punya "sisi keluar terdekat" di seberang.
-  `resolveCircle` menerima jangkar (pusat badan) dan mengganti sisi seberang
-  itu dengan sisi masuk. Ditemukan lewat sapuan 300 benih di ruangan
-  berperabot — enam benih bawaan lolos semua.
+  `resolveCircle` menerima jangkar (pusat badan) dan MENCORET sisi di seberang
+  sisi masuk dari kandidat, lalu mengambil yang terdekat dari sisanya.
+  Dicoret, bukan ditukar setelah terpilih: versi "tukar" membuat dua
+  pemeriksaan berurutan memilih sisi berlawanan tepat di garis seri, dan robot
+  lari di tempat. Ditemukan lewat sapuan 300 benih di ruangan berperabot (enam
+  benih bawaan lolos semua) dan sapuan rapat pose di sekitar kotak surat, yang
+  kini menjadi test tetap.
+- **Belum teruji otomatis:** pemakaian indeks tujuan di dalam
+  `PlaygroundCanvas` (kanvas selalu ditiru di test). Diperiksa lewat
+  verifikasi manual di bawah.
 - **Tidak ada kantong buntu.** Celah properti-ke-dinding yang lebih sempit
   dari 1,2 m ditutup (kotak halangannya diperpanjang sampai dinding). Celah
   seperti itu muat untuk gerak manual tetapi tertutup di grid, sehingga rute
