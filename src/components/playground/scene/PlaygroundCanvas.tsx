@@ -33,6 +33,11 @@ import { Fixtures } from "./Fixtures";
 import { Racks } from "./Racks";
 import { RobotDog } from "./RobotDog";
 import { Room } from "./Room";
+import {
+  AdaptiveResolution,
+  detectLowPower,
+  initialMaxDpr,
+} from "./performance";
 import { PALETTE } from "./textures";
 
 /** Permintaan dari UI DOM: "jalan ke rak ini". `nonce` membedakan klik ulang. */
@@ -69,24 +74,12 @@ const MOVE_KEYS: Record<string, readonly [number, number]> = {
   ArrowLeft: [0, -1],
 };
 
-/** Perangkat yang kemungkinan lemah: lewati bayangan real-time. */
-function detectLowPower(): boolean {
-  if (typeof window === "undefined") return false;
-  const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  const cores = navigator.hardwareConcurrency ?? 8;
-  return coarse || cores <= 4;
-}
-
 export default function PlaygroundCanvas(props: PlaygroundCanvasProps) {
   const [lowPower] = useState(detectLowPower);
   // Batas atas resolusi render. Disimpan di state — bukan dipanggil langsung
   // lewat `setDpr` — karena <Canvas> menerapkan ulang prop `dpr` tiap kali ia
   // render; penurunan yang tidak tercermin di prop akan dibatalkan.
-  const [maxDpr, setMaxDpr] = useState(() =>
-    // Tidak lebih tinggi dari layar itu sendiri: di layar DPR 1, menurunkan
-    // batas dari 2 ke 1,5 tidak mengubah apa pun dan hanya membuang waktu ukur.
-    Math.max(1, Math.min(window.devicePixelRatio || 1, lowPower ? 1.5 : 2)),
-  );
+  const [maxDpr, setMaxDpr] = useState(() => initialMaxDpr(lowPower));
 
   return (
     <Canvas
@@ -375,41 +368,4 @@ function DestinationMarker({
       />
     </mesh>
   );
-}
-
-/**
- * Turunkan resolusi render bila frame rate jatuh. Hanya menurun — tidak naik
- * lagi — supaya tidak berosilasi di perangkat yang pas-pasan.
- */
-function AdaptiveResolution({
-  maxDpr,
-  onLower,
-}: {
-  maxDpr: number;
-  onLower: (dpr: number) => void;
-}) {
-  const stats = useRef({ frames: 0, elapsed: 0, cooldown: 2 });
-
-  useFrame((_, delta) => {
-    const s = stats.current;
-    // Lewati frame "lompat" (tab baru aktif) agar tidak salah menilai.
-    if (delta > 0.25) return;
-    if (s.cooldown > 0) {
-      s.cooldown -= delta;
-      return;
-    }
-    s.frames++;
-    s.elapsed += delta;
-    if (s.frames < 90) return;
-
-    const fps = s.frames / s.elapsed;
-    s.frames = 0;
-    s.elapsed = 0;
-    if (fps < 42 && maxDpr > 1) {
-      onLower(Math.max(1, maxDpr - 0.5));
-      s.cooldown = 2;
-    }
-  });
-
-  return null;
 }

@@ -14,6 +14,9 @@ detail, pintu masuk dari hero & navbar. Tahap 2 menambah tiga stasiun di lobi:
 | Experience  | Papan di dinding barat (`LOG`) | Riwayat kerja dari `/experiences`            | Tautan ke `/#experience`        |
 | Contact     | Kotak surat (`MSG`)            | Form kontak yang sama dengan beranda         | Tautan ke `/#contact`           |
 
+Ruangan dan komponen scene yang sama dipakai tur dengan scroll di `/tour`
+(calon beranda) — lihat [TOUR.md](TOUR.md).
+
 ## Cara pakai
 
 | Aksi                       | Mouse / keyboard                            | Sentuh           |
@@ -32,8 +35,12 @@ src/app/playground/page.tsx          Server: ambil proyek & pengalaman, kirim ke
 src/components/playground/
   PlaygroundShell.tsx                Klien: HUD, daftar rak, fallback, state panel
   StationPanel.tsx                   Panel detail (Radix Dialog, DOM biasa)
+  HealthSummary.tsx                  Pil + tabel status (dipakai juga oleh tur)
+  ExperienceList.tsx                 Daftar riwayat kerja (dipakai juga oleh tur)
+  SceneBoundary.tsx                  Menangkap kegagalan scene → tampilan cadangan
 src/components/contact/ContactForm.tsx  Form kontak; dipakai beranda & panel kotak surat
 src/hooks/use-backend-health.ts      SWR: periksa status backend dari browser
+src/hooks/use-environment.ts         WebGL, gerak dikurangi, tab tersembunyi
   scene/                             Dimuat malas (next/dynamic, ssr: false)
     PlaygroundCanvas.tsx             <Canvas>, loop simulasi, input keyboard
     Room.tsx                         Lantai, dinding, lampu, properti
@@ -42,6 +49,7 @@ src/hooks/use-backend-health.ts      SWR: periksa status backend dari browser
     RobotDog.tsx                     Model & animasi prosedural pemain
     CameraRig.tsx                    Kamera ikut/putar/zoom + hindari halangan
     textures.ts                      Tekstur Canvas 2D (tanpa berkas aset)
+    performance.tsx                  Resolusi adaptif, deteksi perangkat lemah
 src/lib/playground/                  Logika murni, tanpa three.js/DOM
   grid.ts                            Grid navigasi, A*, penghalusan jalur
   collision.ts                       Tabrakan lingkaran-vs-kotak (gerak manual)
@@ -198,4 +206,5 @@ Jalankan backend + `pnpm dev`, buka `/playground`, lalu periksa:
 ## Belum dikerjakan (tahap berikutnya)
 
 - Paket data di kabel dan animasi rak saat status berubah.
-- Teaser 3D di hero.
+- Tur dengan scroll sudah ada di `/tour` (tahap 3); pengukuran di perangkat
+  sungguhan dan keputusan menukar beranda ada di [TOUR.md](TOUR.md).

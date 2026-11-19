@@ -2,6 +2,11 @@
 
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import {
+  useDocumentHidden,
+  useReducedMotion,
+  useWebGLSupport,
+} from "@/hooks/use-environment";
+import {
   buildLayout,
   buildStations,
   fixtureKindsFor,
@@ -15,17 +20,15 @@ import { ArrowLeft, List, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
-  Component,
   type MouseEvent,
-  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import { isPageTarget, isTypingTarget } from "./input";
+import { SceneBoundary } from "./SceneBoundary";
 import type { WalkCommand } from "./scene/PlaygroundCanvas";
 import { StationPanel } from "./StationPanel";
 
@@ -54,67 +57,6 @@ const NOSCRIPT_CSS = `
 
 const focusRing =
   "focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden";
-
-// ── Sumber eksternal (dibaca lewat useSyncExternalStore) ──
-
-const noopSubscribe = () => () => {};
-
-let webglSupport: boolean | null = null;
-function detectWebGL(): boolean {
-  if (webglSupport !== null) return webglSupport;
-  try {
-    const canvas = document.createElement("canvas");
-    const context =
-      canvas.getContext("webgl2") ?? canvas.getContext("webgl") ?? null;
-    webglSupport = context !== null;
-    // Lepas konteks percobaan; browser membatasi jumlah konteks aktif.
-    (context as WebGLRenderingContext | null)
-      ?.getExtension("WEBGL_lose_context")
-      ?.loseContext();
-  } catch {
-    webglSupport = false;
-  }
-  return webglSupport;
-}
-
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-function subscribeReducedMotion(onChange: () => void): () => void {
-  const query = window.matchMedia?.(REDUCED_MOTION_QUERY);
-  query?.addEventListener("change", onChange);
-  return () => query?.removeEventListener("change", onChange);
-}
-function getReducedMotion(): boolean {
-  return window.matchMedia?.(REDUCED_MOTION_QUERY).matches ?? false;
-}
-
-function subscribeVisibility(onChange: () => void): () => void {
-  document.addEventListener("visibilitychange", onChange);
-  return () => document.removeEventListener("visibilitychange", onChange);
-}
-function getHidden(): boolean {
-  return document.visibilityState === "hidden";
-}
-
-/** Menangkap kegagalan scene (mis. konteks WebGL ditolak) → tampilan cadangan. */
-class SceneBoundary extends Component<
-  { onError: () => void; children: ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  componentDidCatch(error: unknown) {
-    console.error("[playground] scene 3D gagal dimuat:", error);
-    this.props.onError();
-  }
-
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
 
 /**
  * Cangkang halaman /playground.
@@ -146,17 +88,9 @@ export function PlaygroundShell({
     [stations],
   );
 
-  const webgl = useSyncExternalStore(noopSubscribe, detectWebGL, () => true);
-  const reducedMotion = useSyncExternalStore(
-    subscribeReducedMotion,
-    getReducedMotion,
-    () => false,
-  );
-  const hidden = useSyncExternalStore(
-    subscribeVisibility,
-    getHidden,
-    () => false,
-  );
+  const webgl = useWebGLSupport();
+  const reducedMotion = useReducedMotion();
+  const hidden = useDocumentHidden();
 
   const [ready, setReady] = useState(false);
   const [sceneFailed, setSceneFailed] = useState(false);

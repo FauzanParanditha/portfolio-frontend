@@ -1,3 +1,5 @@
+import { PROFILE } from "@/content/profile";
+import { groupSkills } from "@/lib/skills";
 import type { ExperienceTag } from "@/types/experience";
 import {
   Binary,
@@ -30,50 +32,16 @@ const ICON_BY_TYPE: Record<string, typeof Code> = {
   runtime: Cpu,
 };
 
-/** Urutan tampil yang diutamakan; tipe lain menyusul secara alfabetis. */
-const TYPE_ORDER = [
-  "language",
-  "backend",
-  "frontend",
-  "framework",
-  "database",
-  "devops",
-  "cloud",
-  "tools",
-];
-
-function groupByType(tags: ExperienceTag[]) {
-  const groups = new Map<string, string[]>();
-  for (const tag of tags) {
-    const key = tag.type?.trim().toLowerCase() || "lainnya";
-    const list = groups.get(key) ?? [];
-    list.push(tag.name);
-    groups.set(key, list);
-  }
-
-  return Array.from(groups.entries())
-    .map(([type, names]) => ({
-      type,
-      names: names.slice().sort((a, b) => a.localeCompare(b)),
-      Icon: ICON_BY_TYPE[type] ?? TagIcon,
-    }))
-    .sort((a, b) => {
-      const ia = TYPE_ORDER.indexOf(a.type);
-      const ib = TYPE_ORDER.indexOf(b.type);
-      if (ia !== -1 && ib !== -1) return ia - ib;
-      if (ia !== -1) return -1;
-      if (ib !== -1) return 1;
-      return a.type.localeCompare(b.type);
-    });
-}
-
 /**
  * Grid keahlian kini disusun dari tag yang dikelola di /admin/tags, bukan lagi
  * daftar yang ditulis manual di berkas ini. Menambah keahlian tidak perlu
  * menyentuh kode maupun deploy ulang.
  */
 export const AboutSection = ({ tags }: { tags: ExperienceTag[] }) => {
-  const skills = groupByType(tags);
+  const skills = groupSkills(tags).map((group) => ({
+    ...group,
+    Icon: ICON_BY_TYPE[group.type] ?? TagIcon,
+  }));
 
   return (
     <section
@@ -97,11 +65,7 @@ export const AboutSection = ({ tags }: { tags: ExperienceTag[] }) => {
           {/* Section Content */}
           <div className="reveal-on-scroll flex flex-col gap-16 md:col-span-7">
             <p className="text-xl leading-relaxed font-medium md:text-3xl">
-              With over 5 years of experience in fullstack development, I build
-              web applications that stay maintainable as they grow. I work
-              across the stack — Go APIs, PostgreSQL, and Next.js interfaces —
-              and care about clean architecture, versioned migrations, and tests
-              that make refactoring safe.
+              {PROFILE.about}
             </p>
 
             {/* Capabilities Grid */}

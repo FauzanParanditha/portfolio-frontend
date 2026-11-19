@@ -464,3 +464,91 @@
     transform: translateY(8%);
   }
 }
+
+/* ==========================================================================
+   Tur ruang server (/tour) — tata letak perhentian.
+
+   Dua tata letak untuk markup yang sama:
+   - ringkas : kartu bertumpuk di tengah, seperti halaman biasa;
+   - 3D      : tiap perhentian setinggi layar, kartu di kiri, ruang server
+               (kanvas `position: fixed`) terlihat di sisanya.
+
+   Bawaannya ditentukan CSS — bukan JavaScript — supaya HTML dari server sudah
+   berada di tata letak yang benar dan tidak melompat saat React terhidrasi:
+   3D di layar lebar DAN cukup tinggi tanpa permintaan pengurangan gerak
+   (laptop, desktop, tablet lanskap); ringkas selain itu (ponsel — juga saat
+   lanskap — dan tablet potret, tempat kartu menutupi ruangan).
+
+   Dua hal menimpanya:
+   - pilihan pengunjung, `data-tour-mode` pada <html>: dipasang sebelum paint
+     oleh skrip di root layout, lalu dijaga `src/lib/tour/mode.ts`;
+   - `data-mode="simple"` pada `.tour`: dipasang React bila WebGL tidak
+     tersedia atau scene gagal dimuat. Ini menang atas pilihan pengunjung.
+   Tanpa JavaScript, blok <noscript> di halaman memaksa tata letak ringkas.
+
+   Kueri media di bawah HARUS sama dengan `AUTO_3D_QUERY` di TourShell.tsx.
+   ========================================================================== */
+html:has(.tour) {
+  /* Bilah atas `position: fixed`: tanpa ini jangkar dan kontrol yang difokus
+     lewat keyboard mendarat di baliknya. */
+  scroll-padding-top: 4.5rem;
+}
+.tour-stop {
+  position: relative;
+  z-index: 10;
+  padding: 1.75rem 1rem;
+  /* Sudah ditangani scroll-padding di atas; aturan global section[id]
+     akan menggandakannya. */
+  scroll-margin-top: 0;
+}
+.tour-stop:first-of-type {
+  padding-top: 6.5rem;
+}
+.tour-panel {
+  width: min(100%, 42rem);
+  margin-inline: auto;
+}
+.tour-rail {
+  display: none;
+}
+
+/* Tata letak 3D. Ditulis dua kali (bawaan & pilihan pengunjung) karena CSS
+   tidak punya "atau" antara media query dan atribut. */
+@media (min-width: 64rem) and (min-height: 37.5rem) and (prefers-reduced-motion: no-preference) {
+  html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-stop {
+    display: flex;
+    min-height: 100svh;
+    align-items: center;
+    padding: 6rem 1rem 3.5rem;
+  }
+  html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-panel {
+    width: min(100%, 28rem);
+    margin-inline: clamp(0rem, 3vw, 2.5rem) auto;
+  }
+  html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-rail {
+    display: flex;
+  }
+}
+html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-stop {
+  display: flex;
+  min-height: 100svh;
+  /* Layar sempit: kartu di bawah, ruangan terlihat di atasnya. */
+  align-items: flex-end;
+  padding: 6rem 1rem 1.5rem;
+}
+html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-panel {
+  width: min(100%, 28rem);
+  margin-inline: 0 auto;
+}
+@media (min-width: 48rem) {
+  html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-stop {
+    align-items: center;
+    padding-bottom: 3.5rem;
+  }
+  html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-panel {
+    margin-inline: clamp(0rem, 3vw, 2.5rem) auto;
+  }
+  html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-rail {
+    display: flex;
+  }
+}
