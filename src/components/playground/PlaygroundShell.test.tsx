@@ -1,9 +1,37 @@
-import { render, screen, within } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
+import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockToast = vi.fn();
+vi.mock("@/hooks/use-toast", () => ({
+  toast: (...args: unknown[]) => mockToast(...args),
+}));
+// Form kontak di panel kotak surat — tidak menyentuh jaringan.
+vi.mock("@/lib/axios/public", () => ({
+  default: { post: vi.fn() },
+}));
+
 import { PlaygroundShell } from "@/components/playground/PlaygroundShell";
-import { MAX_STATIONS, type PlaygroundProject } from "@/lib/playground/layout";
+import publicClient from "@/lib/axios/public";
+import {
+  MAX_STATIONS,
+  type PlaygroundExperience,
+  type PlaygroundProject,
+} from "@/lib/playground/layout";
+
+/** Cache SWR baru tiap render, supaya status tidak bocor antar-test. */
+function render(ui: ReactElement) {
+  return rtlRender(
+    <SWRConfig value={{ provider: () => new Map() }}>{ui}</SWRConfig>,
+  );
+}
 
 // next/image butuh konfigurasi loader; cukup <img> biasa untuk test.
 vi.mock("next/image", () => ({
@@ -24,6 +52,45 @@ function project(n: number, extra: Partial<PlaygroundProject> = {}) {
   } satisfies PlaygroundProject;
 }
 
+function experience(n: number): PlaygroundExperience {
+  return {
+    id: `exp-${n}`,
+    title: `Role ${n}`,
+    company: `Company ${n}`,
+    location: "Jakarta",
+    startDate: "2022",
+    endDate: n === 1 ? undefined : "2024",
+    isCurrent: n === 1,
+    description: `Did things ${n}`,
+    tags: ["Go"],
+    highlights: [`Shipped ${n}`],
+  };
+}
+
+const API = "http://api.test/api/v1";
+/** Tiruan fetch untuk endpoint status; mengembalikan daftar URL yang dipanggil. */
+function stubHealth(readyStatus = 200) {
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      calls.push(url);
+      const healthz = url.endsWith("/healthz");
+      const status = healthz ? 200 : readyStatus;
+      return Promise.resolve({
+        status,
+        json: () =>
+          Promise.resolve(
+            status === 200
+              ? { data: { status: healthz ? "ok" : "ready" } }
+              : { error: { code: "SERVICE_UNAVAILABLE" } },
+          ),
+      });
+    }),
+  );
+  return calls;
+}
+
 /**
  * jsdom tidak punya WebGL, jadi shell berjalan di mode cadangan (tanpa scene).
  * Itu justru jalur yang paling perlu dijaga: tanpa 3D pun, semua proyek harus
@@ -33,8 +100,16 @@ describe("PlaygroundShell (tanpa WebGL)", () => {
   beforeEach(() => {
     // Bungkam "Not implemented: getContext" dari jsdom.
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    vi.stubEnv("NEXT_PUBLIC_API_URL", API);
+    stubHealth();
   });
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.mocked(publicClient.post).mockReset();
+    mockToast.mockReset();
+  });
 
   it("selalu menampilkan tautan kembali ke situs biasa dan judul halaman", () => {
     render(<PlaygroundShell projects={[project(1)]} total={1} />);
@@ -50,11 +125,12 @@ describe("PlaygroundShell (tanpa WebGL)", () => {
 
   it("daftar rak berisi tautan asli ke halaman tiap proyek", () => {
     render(<PlaygroundShell projects={[project(1), project(2)]} total={2} />);
-    const list = screen.getByRole("navigation", { name: "Project racks" });
+    const list = screen.getByRole("navigation", { name: "Racks and stations" });
     const links = within(list).getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
       "/projects/project-1",
       "/projects/project-2",
+      "/#contact",
     ]);
     expect(within(list).getByText("R01")).toBeInTheDocument();
     expect(within(list).getByText("Racks · 2")).toBeInTheDocument();
@@ -170,8 +246,10 @@ describe("PlaygroundShell (tanpa WebGL)", () => {
     );
     render(<PlaygroundShell projects={many} total={40} />);
 
-    const list = screen.getByRole("navigation", { name: "Project racks" });
-    const links = within(list).getAllByRole("link");
+    const list = screen.getByRole("navigation", { name: "Racks and stations" });
+    const links = within(list)
+      .getAllByRole("link")
+      .filter((a) => a.getAttribute("href")?.startsWith("/projects"));
     expect(links).toHaveLength(MAX_STATIONS);
     expect(links[links.length - 1]).toHaveAttribute("href", "/projects");
 
@@ -191,5 +269,180 @@ describe("PlaygroundShell (tanpa WebGL)", () => {
     expect(
       screen.getByRole("link", { name: /see the projects page/i }),
     ).toHaveAttribute("href", "/projects");
+  });
+
+  it("stasiun: status (tombol), pengalaman & kontak (tautan ke beranda), dengan kodenya", () => {
+    render(
+      <PlaygroundShell
+        projects={[project(1)]}
+        total={1}
+        experiences={[experience(1)]}
+      />,
+    );
+    const list = screen.getByRole("navigation", { name: "Racks and stations" });
+    expect(
+      within(list).getByRole("heading", { name: "Stations" }),
+    ).toBeInTheDocument();
+    // Terminal tidak punya halaman padanan → tombol, bukan tautan mati.
+    expect(
+      within(list).getByRole("button", { name: /API\s*Live status/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(list).getByRole("link", { name: /LOG\s*Experience/ }),
+    ).toHaveAttribute("href", "/#experience");
+    expect(
+      within(list).getByRole("link", { name: /MSG\s*Contact/ }),
+    ).toHaveAttribute("href", "/#contact");
+  });
+
+  it("tanpa data pengalaman: stasiun pengalaman tidak ditawarkan", () => {
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    expect(screen.queryByRole("link", { name: /Experience/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Live status/ })).toBeVisible();
+  });
+
+  it("tanpa proyek: terminal dan kotak surat tetap bisa dibuka", () => {
+    render(<PlaygroundShell projects={[]} total={0} />);
+    expect(screen.getByText(/No projects are racked yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Live status/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Contact/ })).toBeInTheDocument();
+  });
+
+  it("tanpa scene, status tidak diperiksa sampai panelnya dibuka; lalu menampilkan hasil nyata", async () => {
+    const calls = stubHealth();
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    expect(calls).toEqual([]);
+
+    await user.click(screen.getByRole("button", { name: /Live status/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Live status" }),
+    ).toBeInTheDocument();
+
+    expect(await within(dialog).findByText("Operational")).toBeInTheDocument();
+    expect(calls).toEqual([`${API}/healthz`, `${API}/readyz`]);
+    const rows = within(dialog).getAllByRole("row");
+    expect(rows).toHaveLength(3);
+    expect(
+      within(rows[1]).getByRole("rowheader", { name: "/api/v1/healthz" }),
+    ).toBeInTheDocument();
+    expect(within(rows[2]).getByText("ok")).toBeInTheDocument();
+    // Origin API tidak ditampilkan — hanya path.
+    expect(dialog.textContent).not.toContain("api.test");
+  });
+
+  it("readyz 503: status Degraded dengan teks (bukan hanya warna), tanpa rincian sebab", async () => {
+    stubHealth(503);
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await user.click(screen.getByRole("button", { name: /Live status/ }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(await within(dialog).findByText("Degraded")).toBeInTheDocument();
+    expect(within(dialog).getByText("degraded")).toBeInTheDocument();
+    expect(dialog.textContent).not.toMatch(/SERVICE_UNAVAILABLE|database/i);
+  });
+
+  it("backend tidak terjangkau: Unavailable dengan penjelasan, tanpa galat", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await user.click(screen.getByRole("button", { name: /Live status/ }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(await within(dialog).findByText("Unavailable")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/can't be reached from here/i),
+    ).toBeInTheDocument();
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  it("panel status ditutup → fokus kembali ke tombol yang membukanya", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    const button = screen.getByRole("button", { name: /Live status/ });
+    await user.click(button);
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(button).toHaveFocus();
+  });
+
+  it("panel pengalaman: tiap peran dengan periode, perusahaan, sorotan, dan teknologi", async () => {
+    const user = userEvent.setup();
+    render(
+      <PlaygroundShell
+        projects={[project(1)]}
+        total={1}
+        experiences={[experience(1), experience(2)]}
+      />,
+    );
+    await user.click(screen.getByRole("link", { name: /Experience/ }));
+    const dialog = await screen.findByRole("dialog");
+
+    expect(
+      within(dialog).getByRole("heading", { name: "Where I've worked" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog)
+        .getAllByRole("heading", { level: 3 })
+        .map((h) => h.textContent),
+    ).toEqual(["Role 1", "Role 2"]);
+    expect(within(dialog).getByText("2022 — Present")).toBeInTheDocument();
+    expect(within(dialog).getByText("2022 — 2024")).toBeInTheDocument();
+    expect(within(dialog).getByText("Company 1 · Jakarta")).toBeInTheDocument();
+    expect(within(dialog).getByText("Shipped 2")).toBeInTheDocument();
+    expect(
+      within(dialog).getAllByRole("list", { name: "Technologies" }),
+    ).toHaveLength(2);
+  });
+
+  it("panel kotak surat: form kontak yang sama, terkirim ke endpoint yang sama", async () => {
+    vi.mocked(publicClient.post).mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await user.click(screen.getByRole("link", { name: /Contact/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Send a message" }),
+    ).toBeInTheDocument();
+
+    await user.type(within(dialog).getByLabelText("Name"), "Ada");
+    await user.type(within(dialog).getByLabelText("Email"), "ada@example.com");
+    await user.type(within(dialog).getByLabelText("Subject"), "Hello");
+    await user.type(within(dialog).getByLabelText("Message"), "From the room");
+    await user.click(within(dialog).getByRole("button", { name: /submit/i }));
+
+    await waitFor(() =>
+      expect(publicClient.post).toHaveBeenCalledWith("/contact-messages", {
+        name: "Ada",
+        email: "ada@example.com",
+        subject: "Hello",
+        message: "From the room",
+      }),
+    );
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "success" }),
+      ),
+    );
+    // Panel tetap terbuka dan form dikosongkan.
+    expect(within(dialog).getByLabelText("Message")).toHaveValue("");
+  });
+
+  it("mengetik di form kontak tidak memicu pintasan playground (E / Enter)", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await user.click(screen.getByRole("link", { name: /Contact/ }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "Eee e");
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("Eee e");
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
   });
 });

@@ -1,7 +1,14 @@
-import { act, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useEffect } from "react";
+import { type ReactElement, useEffect } from "react";
 import { renderToString } from "react-dom/server";
+import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PlaygroundCanvasProps } from "@/components/playground/scene/PlaygroundCanvas";
@@ -41,6 +48,16 @@ vi.mock("next/image", () => ({
 
 import { PlaygroundShell } from "@/components/playground/PlaygroundShell";
 
+/** Cache SWR baru tiap render, supaya status tidak bocor antar-test. */
+function render(ui: ReactElement) {
+  return rtlRender(
+    <SWRConfig value={{ provider: () => new Map() }}>{ui}</SWRConfig>,
+  );
+}
+
+const API = "http://api.test/api/v1";
+const healthCalls: string[] = [];
+
 function project(n: number): PlaygroundProject {
   return {
     id: `id-${n}`,
@@ -69,10 +86,38 @@ describe("PlaygroundShell (scene aktif)", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
       getExtension: () => null,
     } as never);
+    // Endpoint status: tiruan, supaya test tidak menyentuh jaringan.
+    healthCalls.length = 0;
+    vi.stubEnv("NEXT_PUBLIC_API_URL", API);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        healthCalls.push(url);
+        return Promise.resolve({
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              data: { status: url.endsWith("/healthz") ? "ok" : "ready" },
+            }),
+        });
+      }),
+    );
   });
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("status backend diperiksa sekali saat masuk dan diteruskan ke monitor di scene", async () => {
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await screen.findByTestId("scene");
+    await waitFor(() =>
+      expect(scene.props?.health?.overall).toBe("operational"),
+    );
+    expect(healthCalls).toEqual([`${API}/healthz`, `${API}/readyz`]);
+    // Panel tertutup: tidak ada yang tampil di DOM, hanya di layar monitor.
+    expect(screen.queryByText("Operational")).toBeNull();
   });
 
   it("memilih rak mengirim perintah jalan; panel baru terbuka saat robot tiba", async () => {
@@ -100,6 +145,49 @@ describe("PlaygroundShell (scene aktif)", () => {
     // Panel terbuka → scene dijeda, pengumuman dikosongkan.
     expect(scene.props?.paused).toBe(true);
     expect(screen.queryByText(/Walking to rack/)).toBeNull();
+  });
+
+  it("memilih stasiun perabot: robot berjalan ke sana, lalu panelnya terbuka", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1), project(2)]} total={2} />);
+    await screen.findByTestId("scene");
+
+    // 2 proyek → 8 rak (dua baris), jadi perabot mulai dari indeks 8:
+    // terminal (8), kotak surat (9) — tanpa data pengalaman, dinding absen.
+    const layout = scene.props!.layout;
+    expect(layout.fixtures.map((f) => [f.kind, f.index])).toEqual([
+      ["terminal", 8],
+      ["mailbox", 9],
+    ]);
+    expect(scene.props?.stations.map((s) => s.kind)).toEqual([
+      "project",
+      "project",
+      "status",
+      "contact",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: /Live status/ }));
+    expect(scene.commands).toEqual([{ slot: 8, nonce: 1 }]);
+    expect(screen.getByText("Walking to Live status.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    act(() => scene.props?.onArrive(8));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Live status" }),
+    ).toBeInTheDocument();
+    expect(scene.props?.paused).toBe(true);
+  });
+
+  it("robot di depan kotak surat: tombol Inspect menyebut stasiunnya dan membuka form", async () => {
+    const user = userEvent.setup();
+    render(<PlaygroundShell projects={[project(1)]} total={1} />);
+    await screen.findByTestId("scene");
+
+    act(() => scene.props?.onNearChange(9));
+    await user.click(screen.getByRole("button", { name: /Inspect Contact/ }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Message")).toBeInTheDocument();
   });
 
   it("memilih rak yang sama dua kali menghasilkan perintah baru (nonce naik)", async () => {

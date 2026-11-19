@@ -136,7 +136,7 @@ export function Racks({
           texture: createNameplateTexture(
             rackCode(slot.index),
             station.label,
-            station.kind,
+            station.kind === "archive" ? "archive" : "project",
           ),
         };
       }),

@@ -44,8 +44,50 @@ export function distanceToRect(x: number, z: number, rect: Rect): number {
 }
 
 /**
+ * Sisi kotak yang dilewati ruas `from` → (x,z) saat masuk, untuk titik (x,z)
+ * yang berada di dalam kotak: 0 = minX, 1 = maxX, 2 = minZ, 3 = maxZ (urutan
+ * yang sama dengan daftar `exits` di `resolveCircle`). `null` bila `from`
+ * sendiri berada di dalam kotak.
+ */
+function entrySide(
+  from: Point,
+  x: number,
+  z: number,
+  rect: Rect,
+): number | null {
+  let side: number | null = null;
+  let latest = -Infinity;
+  const consider = (
+    candidate: number,
+    start: number,
+    end: number,
+    edge: number,
+  ) => {
+    // Hanya sisi yang benar-benar diseberangi dari luar ke dalam.
+    const outside = candidate % 2 === 0 ? start < edge : start > edge;
+    if (!outside) return;
+    const t = (edge - start) / (end - start);
+    if (t > latest) {
+      latest = t;
+      side = candidate;
+    }
+  };
+  consider(0, from.x, x, rect.minX);
+  consider(1, from.x, x, rect.maxX);
+  consider(2, from.z, z, rect.minZ);
+  consider(3, from.z, z, rect.maxZ);
+  return side;
+}
+
+/**
  * Posisi terdekat dari (x,z) tempat lingkaran ber-`radius` tidak menembus
  * halangan mana pun dan tetap berada di dalam `bounds`.
+ *
+ * `anchor` (opsional): titik di sisi bebas yang "memegang" lingkaran ini —
+ * pusat badan, untuk lingkaran hidung. Lingkaran yang pusatnya sudah lewat
+ * separuh tebal halangan tipis (mis. kotak surat) punya sisi keluar terdekat
+ * di SEBERANG halangan; badan tidak bisa mengikutinya ke sana. Dengan jangkar,
+ * sisi seberang itu diganti sisi tempat ia masuk.
  */
 export function resolveCircle(
   x: number,
@@ -53,6 +95,7 @@ export function resolveCircle(
   radius: number,
   obstacles: readonly Rect[],
   bounds: Rect,
+  anchor?: Point,
 ): Point {
   let px = x;
   let pz = z;
@@ -94,15 +137,25 @@ export function resolveCircle(
           [pz - rect.minZ, inX, rect.minZ - radius],
           [rect.maxZ - pz, inX, rect.maxZ + radius],
         ];
+        const fits = ([, ex, ez]: [number, number, number]) =>
+          ex >= bounds.minX + radius &&
+          ex <= bounds.maxX - radius &&
+          ez >= bounds.minZ + radius &&
+          ez <= bounds.maxZ - radius;
         let best: [number, number, number] | null = null;
         for (const exit of exits) {
-          const [cost, ex, ez] = exit;
-          const inside =
-            ex >= bounds.minX + radius &&
-            ex <= bounds.maxX - radius &&
-            ez >= bounds.minZ + radius &&
-            ez <= bounds.maxZ - radius;
-          if (inside && (best === null || cost < best[0])) best = exit;
+          if (fits(exit) && (best === null || exit[0] < best[0])) best = exit;
+        }
+        if (best && anchor) {
+          // Sisi berseberangan berpasangan (0↔1, 2↔3): `entry ^ 1`.
+          const entry = entrySide(anchor, px, pz, rect);
+          if (
+            entry !== null &&
+            best === exits[entry ^ 1] &&
+            fits(exits[entry])
+          ) {
+            best = exits[entry];
+          }
         }
         if (best) {
           px = best[1];

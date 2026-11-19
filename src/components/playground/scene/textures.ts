@@ -298,3 +298,92 @@ export function createFanTexture(): CanvasTexture {
 
   return toTexture(canvas);
 }
+
+/** Potong teks dengan elipsis supaya muat di `maxWidth` (font sudah di-set). */
+function clipText(
+  ctx: CanvasRenderingContext2D,
+  value: unknown,
+  maxWidth: number,
+): string {
+  const raw = String(value ?? "");
+  let text =
+    raw.length > MAX_NAMEPLATE_CHARS ? raw.slice(0, MAX_NAMEPLATE_CHARS) : raw;
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  while (text.length > 1 && ctx.measureText(`${text}…`).width > maxWidth) {
+    text = text.slice(0, -1);
+  }
+  return `${text.trimEnd()}…`;
+}
+
+/** Satu papan di dinding pengalaman: periode, jabatan, perusahaan. */
+export function createBoardTexture(
+  period: string,
+  title: string,
+  company: string,
+): CanvasTexture {
+  const width = 512;
+  const height = 430;
+  const [canvas, ctx] = createCanvas(width, height);
+
+  ctx.fillStyle = "#1c1c21";
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "#3f3f46";
+  ctx.lineWidth = 4;
+  ctx.strokeRect(2, 2, width - 4, height - 4);
+
+  ctx.fillStyle = PALETTE.accent;
+  ctx.fillRect(40, 46, 110, 10);
+  ctx.textBaseline = "alphabetic";
+  ctx.font = `500 34px ${MONO_FONT}`;
+  ctx.fillText(clipText(ctx, period, width - 80), 40, 122);
+
+  ctx.fillStyle = PALETTE.text;
+  ctx.font = `600 52px ${UI_FONT}`;
+  ctx.fillText(clipText(ctx, title, width - 80), 40, 206);
+
+  ctx.fillStyle = PALETTE.textDim;
+  ctx.font = `400 38px ${UI_FONT}`;
+  ctx.fillText(clipText(ctx, company, width - 80), 40, 266);
+
+  // Garis-garis samar: isyarat "ada rinciannya" tanpa teks yang tak terbaca.
+  ctx.fillStyle = "#3f3f46";
+  ctx.fillRect(40, 316, 380, 10);
+  ctx.fillRect(40, 346, 300, 10);
+  ctx.fillRect(40, 376, 340, 10);
+
+  return toTexture(canvas);
+}
+
+export interface ScreenLine {
+  text: string;
+  color: string;
+}
+
+/**
+ * Layar monitor terminal. Teksturnya digambar ulang saat status berubah —
+ * tanpa membuat tekstur baru tiap kali.
+ */
+export function createScreenTexture(): {
+  texture: CanvasTexture;
+  draw: (lines: ScreenLine[]) => void;
+} {
+  const width = 512;
+  const height = 304;
+  const [canvas, ctx] = createCanvas(width, height);
+  const texture = toTexture(canvas);
+
+  const draw = (lines: ScreenLine[]) => {
+    ctx.fillStyle = "#06181d";
+    ctx.fillRect(0, 0, width, height);
+    ctx.textBaseline = "alphabetic";
+    ctx.font = `500 30px ${MONO_FONT}`;
+    lines.slice(0, 6).forEach((line, index) => {
+      ctx.fillStyle = line.color;
+      ctx.fillText(clipText(ctx, line.text, width - 48), 24, 56 + index * 44);
+    });
+    texture.needsUpdate = true;
+  };
+  draw([]);
+
+  return { texture, draw };
+}
