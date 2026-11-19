@@ -13,24 +13,13 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  CHECK_LABEL,
-  type Health,
-  OVERALL_LABEL,
-  type OverallState,
-} from "@/lib/playground/health";
-import { experiencePeriod, type Station } from "@/lib/playground/layout";
+import type { Health } from "@/lib/playground/health";
+import type { Station } from "@/lib/playground/layout";
 import { safeHttpUrl } from "@/lib/safeUrl";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  CircleCheck,
-  CircleX,
-  Clock,
-  ExternalLink,
-  TriangleAlert,
-} from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { ExperienceList } from "./ExperienceList";
+import { HealthSummary } from "./HealthSummary";
 import { useState } from "react";
 
 interface StationPanelProps {
@@ -264,27 +253,8 @@ const titleClass =
   "text-2xl leading-tight font-medium tracking-tight text-white";
 
 // Keadaan disampaikan dengan ikon + teks, tidak hanya warna.
-const OVERALL_STYLE: Record<
-  OverallState,
-  { icon: typeof CircleCheck; className: string }
-> = {
-  operational: {
-    icon: CircleCheck,
-    className: "border-emerald-400/60 text-emerald-300",
-  },
-  degraded: {
-    icon: TriangleAlert,
-    className: "border-amber-400/60 text-amber-300",
-  },
-  limited: { icon: Clock, className: "border-zinc-500 text-zinc-300" },
-  unavailable: { icon: CircleX, className: "border-zinc-500 text-zinc-300" },
-};
-
 /** Terminal: status backend yang sebenarnya, diperiksa dari browser ini. */
 function StatusBody({ health }: { health: Health | null }) {
-  const style = health ? OVERALL_STYLE[health.overall] : null;
-  const Icon = style?.icon ?? Clock;
-
   return (
     <div className="flex flex-col gap-5 p-6 pt-14">
       <div className="flex flex-col gap-2">
@@ -295,90 +265,7 @@ function StatusBody({ health }: { health: Health | null }) {
         Your browser is calling the API that serves this site. These are its
         answers right now, not a recording.
       </SheetDescription>
-
-      {/* role="status": perubahan "Checking…" → hasil diumumkan pembaca layar.
-          Hanya pil ini — baris "Checked at…" berubah tiap 10 dtk. */}
-      <p
-        role="status"
-        className={`inline-flex min-h-11 items-center gap-2 self-start rounded-full border px-4 text-sm font-medium ${
-          style?.className ?? "border-zinc-600 text-zinc-300"
-        }`}
-      >
-        <Icon className="h-4 w-4" aria-hidden="true" />
-        {health ? OVERALL_LABEL[health.overall] : "Checking…"}
-      </p>
-
-      {health && (
-        <>
-          <table className="w-full border-collapse font-mono text-sm tabular-nums">
-            <caption className="sr-only">Health checks</caption>
-            <thead>
-              <tr className="text-left text-xs tracking-widest text-zinc-400 uppercase">
-                <th scope="col" className="pb-2 font-normal">
-                  Endpoint
-                </th>
-                <th scope="col" className="pb-2 font-normal">
-                  Result
-                </th>
-                <th scope="col" className="pb-2 text-right font-normal">
-                  Round trip
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {health.checks.map((check) => (
-                <tr key={check.name} className="border-t border-zinc-800">
-                  <th
-                    scope="row"
-                    className="py-3 pr-3 text-left font-normal break-all text-zinc-200"
-                  >
-                    {check.path}
-                  </th>
-                  <td
-                    className={`py-3 pr-3 ${
-                      check.state === "ok"
-                        ? "text-emerald-300"
-                        : check.state === "degraded"
-                          ? "text-amber-300"
-                          : "text-zinc-300"
-                    }`}
-                  >
-                    {CHECK_LABEL[check.state]}
-                  </td>
-                  <td className="py-3 text-right text-zinc-300">
-                    {check.latencyMs === null ? (
-                      <>
-                        <span aria-hidden="true">—</span>
-                        <span className="sr-only">not measured</span>
-                      </>
-                    ) : (
-                      `${check.latencyMs} ms`
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <p className="text-sm leading-relaxed text-zinc-400">
-            Checked at {new Date(health.checkedAt).toLocaleTimeString()}.
-            {health.overall !== "limited" &&
-              " Refreshes every 10 seconds while this panel is open."}
-          </p>
-          {health.overall === "unavailable" && (
-            <p className="text-sm leading-relaxed text-zinc-400">
-              The status endpoint can&apos;t be reached from here. The rest of
-              the site may still work.
-            </p>
-          )}
-          {health.overall === "limited" && (
-            <p className="text-sm leading-relaxed text-zinc-400">
-              The API asked this browser to slow down. Checking again once a
-              minute until it answers.
-            </p>
-          )}
-        </>
-      )}
+      <HealthSummary health={health} />
     </div>
   );
 }
@@ -398,53 +285,7 @@ function ExperienceBody({
         </SheetDescription>
       </div>
 
-      <ol className="flex flex-col gap-6">
-        {station.experiences.map((experience) => (
-          <li
-            key={experience.id}
-            className="flex flex-col gap-2 border-l border-zinc-700 pl-4"
-          >
-            <p className="font-mono text-xs tracking-widest text-cyan-400 uppercase">
-              {experiencePeriod(experience)}
-            </p>
-            <h3 className="text-lg leading-snug font-medium text-white">
-              {experience.title}
-            </h3>
-            <p className="text-sm text-zinc-400">
-              {[experience.company, experience.location]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            {experience.description && (
-              <p className="text-sm leading-relaxed text-zinc-300">
-                {experience.description}
-              </p>
-            )}
-            {experience.highlights.length > 0 && (
-              <ul className="flex list-disc flex-col gap-1 pl-5 text-sm leading-relaxed text-zinc-300">
-                {experience.highlights.map((highlight, index) => (
-                  <li key={index}>{highlight}</li>
-                ))}
-              </ul>
-            )}
-            {experience.tags.length > 0 && (
-              <ul
-                aria-label="Technologies"
-                className="flex flex-wrap gap-2 pt-1"
-              >
-                {experience.tags.map((tag) => (
-                  <li
-                    key={tag}
-                    className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300"
-                  >
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ol>
+      <ExperienceList experiences={station.experiences} />
     </div>
   );
 }

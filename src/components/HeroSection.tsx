@@ -1,4 +1,5 @@
 import { GithubIcon, LinkedinIcon } from "@/components/icons/BrandIcons";
+import { CV_URL, PROFILE } from "@/content/profile";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -14,20 +15,6 @@ import Link from "next/link";
  * Jeda antar-elemen memakai `animationDelay`, meniru `staggerChildren: 0.15`
  * yang sebelumnya dipakai.
  */
-
-// Tautan profil — nilainya sama dengan yang dipakai Footer.
-const GITHUB_URL = "https://github.com/FauzanParanditha";
-const LINKEDIN_URL = "https://www.linkedin.com/in/paranditha/";
-
-/**
- * URL CV. Diambil dari env supaya berkasnya bisa diganti tanpa menyentuh kode
- * — dan supaya tombolnya TIDAK tampil bila berkasnya belum ada, alih-alih
- * mengirim recruiter ke halaman 404.
- *
- * Isi `NEXT_PUBLIC_CV_URL` di `.env.local`, mis. `/cv/fauzan-paranditha.pdf`
- * setelah menaruh berkasnya di `public/cv/`.
- */
-const CV_URL = process.env.NEXT_PUBLIC_CV_URL;
 
 if (!CV_URL && process.env.NODE_ENV !== "production") {
   console.warn(
@@ -48,13 +35,12 @@ export const HeroSection = () => {
           {/* Main Headline */}
           <div className="rise-in relative z-10 max-w-3xl">
             <h1 className="text-4xl leading-[1.05] font-medium tracking-tight sm:text-5xl md:text-5xl lg:text-[4rem]">
-              Building reliable web
-              <br />
-              applications with clean
-              <br />
-              architecture, strong
-              <br />
-              performance, and real impact.
+              {PROFILE.headlineLines.map((line, index) => (
+                <span key={line}>
+                  {index > 0 && <br />}
+                  {line}
+                </span>
+              ))}
             </h1>
           </div>
 
@@ -87,7 +73,7 @@ export const HeroSection = () => {
 
             <div className="flex items-center gap-3">
               <a
-                href={GITHUB_URL}
+                href={PROFILE.githubUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Profil GitHub"
@@ -97,7 +83,7 @@ export const HeroSection = () => {
                 <span className="hidden sm:inline">GitHub</span>
               </a>
               <a
-                href={LINKEDIN_URL}
+                href={PROFILE.linkedinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Profil LinkedIn"
@@ -127,18 +113,15 @@ export const HeroSection = () => {
               outcomes.
             </p>
             <div className="grid grid-cols-3 gap-3 pt-2 text-center">
-              <div className="flex flex-col justify-between border border-zinc-300 p-3">
-                <p className="stat-num text-xl font-bold">5+</p>
-                <p className="eyebrow text-zinc-600">Years</p>
-              </div>
-              <div className="flex flex-col justify-between border border-zinc-300 p-3">
-                <p className="stat-num text-xl font-bold">Go·TS</p>
-                <p className="eyebrow text-zinc-600">Core stack</p>
-              </div>
-              <div className="flex flex-col justify-between border border-zinc-300 p-3">
-                <p className="stat-num text-xl font-bold">76%</p>
-                <p className="eyebrow text-zinc-600">Handler tests</p>
-              </div>
+              {PROFILE.stats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex flex-col justify-between border border-zinc-300 p-3"
+                >
+                  <p className="stat-num text-xl font-bold">{stat.value}</p>
+                  <p className="eyebrow text-zinc-600">{stat.label}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
