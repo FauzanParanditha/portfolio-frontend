@@ -172,6 +172,10 @@ saat berhenti.
   (`scroll-padding-top` pada `<html>` selama halaman tur terpasang).
 - **Render berhenti saat tab tersembunyi**; resolusi turun otomatis bila FPS
   jatuh (sama dengan playground).
+- **Tidak ada pekerjaan berat di tengah gulir.** Hasil status yang tiba tidak
+  mengubah tinggi kartunya dan tidak memanggil `Intl`; geometri dan tekstur
+  seluruh adegan diunggah ke GPU sebelum kanvas tampil (`warmUpScene`), bukan
+  saat objeknya pertama kali masuk pandangan.
 
 ## Verifikasi manual
 
@@ -277,6 +281,9 @@ laju frame saat diam dan saat bergulir. Cara membacanya:
   cache browser (kunjungan kedua, atau setelah muat ulang), jadi angkanya
   bukan ukuran unduhan penuh. Ukuran unduhan yang sah ada di tabel lab di
   atas; untuk mengukurnya di ponsel, buka di tab samaran yang baru.
+- **scroll … worst N ms at P%** = frame terlama terjadi di P% perjalanan
+  gulir. Uji bergulir dengan laju tetap, jadi P menunjuk tempatnya di halaman
+  — titik awal untuk mencari penyebab sebuah sendatan.
 - **LCP, CLS, blocked** hanya ada bila browser melaporkannya. Safari iOS
   tidak melaporkan semuanya; yang kosong ditulis `n/a`.
 - Panel **tidak mengukur daya atau baterai**. Untuk itu amati sendiri: suhu
@@ -300,36 +307,59 @@ teksnya tetap bisa dipilih manual dari kotak laporan.
 
 ### Hasil ponsel sungguhan
 
-Satu ponsel, 20 November 2026: GPU Adreno 740 (kelas atas), Chrome Android,
-layar 384×686 @ dpr 2,81, kanvas 576×1028, lewat Wi-Fi lokal ke build
-produksi. Baris `scroll` dari `/tour?perf`:
+Dua ponsel, 20 November 2026, Chrome Android, lewat Wi-Fi lokal ke build
+produksi. Baris `scroll` dari `/tour?perf`, ruangan terisi maksimum (24 rak +
+arsip) kecuali disebut lain:
 
-| Isi ruangan    | Tampilan | Rata-rata | 1% low   | Frame terlama | Frame lambat |
-| -------------- | -------- | --------- | -------- | ------------- | ------------ |
-| 1 rak          | ringkas  | 59,9 fps  | 53,0 fps | 25 ms         | 0,0%         |
-| 1 rak          | 3D       | 59,9 fps  | 52,9 fps | 25 ms         | 0,0%         |
-| 24 rak + arsip | ringkas  | 59,9 fps  | 50,3 fps | 33 ms         | 0,0%         |
-| 24 rak + arsip | 3D       | 60,0 fps  | 53,1 fps | 25 ms         | 0,0%         |
+| Ponsel (GPU)            | Tampilan  | Rata-rata | 1% low   | Frame terlama | Frame lambat |
+| ----------------------- | --------- | --------- | -------- | ------------- | ------------ |
+| Kelas atas (Adreno 740) | ringkas   | 59,9 fps  | 50,3 fps | 33 ms         | 0,0%         |
+| Kelas atas (Adreno 740) | 3D        | 60,0 fps  | 53,1 fps | 25 ms         | 0,0%         |
+| Kelas atas (Adreno 740) | 3D, 1 rak | 59,9 fps  | 52,9 fps | 25 ms         | 0,0%         |
+| Menengah (Adreno 710)   | ringkas   | 59,1 fps  | 28,2 fps | 50 ms         | 0,3%         |
+| Menengah (Adreno 710)   | 3D        | 58,3 fps  | 16,1 fps | 242 ms        | 0,4%         |
+
+Kedua baris ponsel menengah diukur **sebelum** perbaikan sendatan di bawah;
+angka sesudahnya belum ada.
 
 Yang bisa disimpulkan:
 
-- **Di ponsel ini 3D sama mulusnya dengan HTML saat bergulir**, juga dengan
-  ruangan terisi maksimum. Angkanya mentok di laju layar (60 Hz), jadi sisa
-  tenaganya tidak terukur.
+- **Rata-rata lolos patokan di kedua ponsel**, juga dengan ruangan penuh
+  (≥ 40 fps, frame lambat ≤ 5%). Di ponsel kelas atas angkanya mentok di laju
+  layar (60 Hz).
 - **Jumlah rak menambah sendatan awal, bukan beban saat bergulir.** Waktu
-  blokir saat adegan pertama digambar: 86 ms dengan 1 rak, 219 ms dengan 24
-  rak; frame terlama pada detik-detik pertama 183 ms lalu 300 ms. Terjadi
-  sekali, setelah teks tampil.
-- CLS 0 di keempat uji.
+  blokir saat adegan pertama digambar di ponsel kelas atas: 86 ms dengan 1
+  rak, 219 ms dengan 24 rak. Di ponsel menengah 388–457 ms, dengan satu frame
+  membeku ±0,5 detik. Terjadi sekali, setelah teks tampil, dan hanya bila
+  pengunjung ponsel memilih "3D version".
+- **Kunjungan pertama di ponsel menengah:** 239 KB JavaScript dan 347 KB total
+  (cocok dengan lab), LCP 944 ms lewat Wi-Fi.
+- CLS 0 di semua uji.
+
+#### Sendatan di tengah gulir (ditemukan dari ponsel menengah)
+
+Ponsel menengah menunjukkan satu frame 242 ms saat bergulir di 3D. Di lab
+(CPU diperlambat 6×) sendatan itu muncul di kedua tampilan, selalu di ±40%
+gulir — saat pengunjung mendekati kartu status dan hasil pemeriksaan pertama
+tiba. Tiga penyebab, semuanya diperbaiki:
+
+| Penyebab                                                                                                     | Perbaikan                                                                    |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `toLocaleTimeString()` di baris "Checked at …": panggilan pertamanya memuat data lokal browser (±100 ms @6×) | `formatClock` — jam `HH:MM:SS` tanpa `Intl`                                  |
+| Kartu status memanjang saat hasil tiba, memaksa seluruh halaman ditata ulang (±120 ms @6×)                   | Tabel dan baris waktu sudah dirender berisi tanda tunggu; tinggi kartu tetap |
+| Geometri dan tekstur objek yang baru masuk pandangan diunggah ke GPU saat itu juga (60 buffer, 4 tekstur)    | `warmUpScene`: satu render tanpa pemangkasan frustum sebelum kanvas tampil   |
+
+Sesudahnya, di lab: tidak ada frame di atas 40 ms di kedua tampilan (sebelumnya
+100 ms di 3D dan sampai 360 ms di ringkas, @6×), dan satu-satunya unggahan GPU
+di tengah gulir adalah layar terminal yang digambar ulang. Lab memakai GPU
+laptop, jadi bagian GPU-nya baru terbukti lewat hitungan unggahan, bukan lewat
+waktu; angka ponsel menengah sesudah perbaikan masih harus diambil.
 
 Yang **belum** terjawab:
 
-- **Ponsel kelas menengah atau lama.** Patokan di bawah ditulis untuk kelas
-  itu; satu ponsel kelas atas hanya menunjukkan batas atasnya.
+- **Ponsel menengah sesudah perbaikan**, dan ponsel yang lebih lemah lagi.
 - **Panas dan baterai** setelah beberapa menit di 3D (uji hanya 12 detik).
-- **LCP dan ukuran unduhan di ponsel.** Lewat Wi-Fi lokal LCP 116–204 ms dan
-  sebagian besar berkas datang dari cache; keduanya tidak mewakili kunjungan
-  pertama di jaringan seluler.
+- **LCP di jaringan seluler.** Lewat Wi-Fi lokal angkanya tidak mewakili.
 
 ### Usulan patokan keputusan (tahap 5)
 

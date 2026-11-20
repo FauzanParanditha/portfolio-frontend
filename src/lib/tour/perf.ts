@@ -32,6 +32,12 @@ export interface FrameSummary {
   lowFps: number;
   /** Frame terlama, dalam milidetik. */
   worstMs: number;
+  /**
+   * Di mana frame terlama terjadi, 0..1 dari awal sampai akhir rekaman. Uji
+   * gulir bergerak dengan laju tetap, jadi ini sekaligus posisi gulirnya —
+   * petunjuk utama untuk mencari penyebab sebuah sendatan.
+   */
+  worstAt: number;
   /** Bagian frame yang lebih lama dari 34 ms (di bawah 30 fps), 0..1. */
   slowShare: number;
 }
@@ -43,12 +49,21 @@ export interface FrameSummary {
 export function summarizeFrames(times: readonly number[]): FrameSummary | null {
   if (times.length < 2) return null;
   const gaps: number[] = [];
+  let worst = 0;
+  let worstEnd = times[0];
   for (let i = 1; i < times.length; i++) {
     const gap = times[i] - times[i - 1];
     // Cap waktu yang mundur atau sama (jam disetel, frame ganda) diabaikan.
-    if (gap > 0 && Number.isFinite(gap)) gaps.push(gap);
+    if (gap > 0 && Number.isFinite(gap)) {
+      gaps.push(gap);
+      if (gap > worst) {
+        worst = gap;
+        worstEnd = times[i];
+      }
+    }
   }
   if (gaps.length === 0) return null;
+  const span = times[times.length - 1] - times[0];
 
   const total = gaps.reduce((sum, gap) => sum + gap, 0);
   const sorted = gaps.slice().sort((a, b) => a - b);
@@ -60,6 +75,10 @@ export function summarizeFrames(times: readonly number[]): FrameSummary | null {
     avgFps: 1000 / (total / gaps.length),
     lowFps: 1000 / low,
     worstMs: sorted[sorted.length - 1],
+    worstAt:
+      span > 0 && Number.isFinite(span)
+        ? Math.min(1, Math.max(0, (worstEnd - times[0]) / span))
+        : 0,
     slowShare: gaps.filter((gap) => gap > SLOW_FRAME_MS).length / gaps.length,
   };
 }
@@ -145,9 +164,14 @@ const dash = "n/a";
 const round = (value: number | null, digits = 0) =>
   value === null || !Number.isFinite(value) ? dash : value.toFixed(digits);
 
-function frameLine(label: string, summary: FrameSummary | null): string {
+function frameLine(
+  label: string,
+  summary: FrameSummary | null,
+  withPosition = false,
+): string {
   if (!summary) return `${label}: ${dash}`;
-  return `${label}: avg ${summary.avgFps.toFixed(1)} fps, 1% low ${summary.lowFps.toFixed(1)} fps, worst ${summary.worstMs.toFixed(0)} ms, slow frames ${(summary.slowShare * 100).toFixed(1)}% (${summary.frames} frames / ${summary.seconds.toFixed(1)} s)`;
+  const at = withPosition ? ` at ${(summary.worstAt * 100).toFixed(0)}%` : "";
+  return `${label}: avg ${summary.avgFps.toFixed(1)} fps, 1% low ${summary.lowFps.toFixed(1)} fps, worst ${summary.worstMs.toFixed(0)} ms${at}, slow frames ${(summary.slowShare * 100).toFixed(1)}% (${summary.frames} frames / ${summary.seconds.toFixed(1)} s)`;
 }
 
 /** Catatan di baris `idle` bila jendelanya belum penuh saat uji dimulai. */
@@ -178,7 +202,7 @@ export function formatReport(report: PerfReport): string {
     `LCP: ${round(report.lcpMs)} ms | CLS (sum since load): ${round(report.cls, 3)} | blocked: ${round(report.blockedMs)} ms`,
     `download: scripts ${round(report.scriptKb)} KB, total ${round(report.totalKb)} KB${cacheNote(report)}`,
     frameLine("idle", report.idle) + idleNote(report.idle),
-    frameLine("scroll", report.scroll),
+    frameLine("scroll", report.scroll, true),
     `ua: ${report.userAgent}`,
   ].join("\n");
 }

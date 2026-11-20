@@ -4,6 +4,7 @@ import {
   AdaptiveResolution,
   detectLowPower,
   initialMaxDpr,
+  warmUpScene,
 } from "@/components/playground/scene/performance";
 import { Fixtures } from "@/components/playground/scene/Fixtures";
 import { Racks } from "@/components/playground/scene/Racks";
@@ -19,7 +20,7 @@ import {
   type Sim,
 } from "@/lib/playground/sim";
 import { type Tour, type TourState, tourState } from "@/lib/tour/tour";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { PerspectiveCamera } from "three";
 
@@ -147,7 +148,18 @@ function World({
   const shown = useRef<number | null>(null);
   const viewKey = useRef("");
 
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
+  // Efek induk berjalan setelah efek semua anaknya, jadi tekstur yang digambar
+  // di efek anak (layar terminal) sudah berisi saat adegan dipanaskan.
   useEffect(() => {
+    try {
+      warmUpScene(gl, scene, camera);
+    } catch {
+      // Pemanasan hanya optimasi; kegagalan render yang sungguhan akan muncul
+      // lagi di frame pertama dan ditangani batas galat scene.
+    }
     onReady();
     // Hanya sekali saat scene terpasang.
     // eslint-disable-next-line react-hooks/exhaustive-deps

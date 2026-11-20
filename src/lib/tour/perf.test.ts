@@ -90,6 +90,34 @@ describe("summarizeFrames", () => {
   });
 });
 
+describe("summarizeFrames: posisi frame terlama", () => {
+  it("melaporkan di mana frame terlama terjadi, 0..1 dari rekaman", () => {
+    // 12 dtk @ 60 fps dengan satu bekuan 240 ms yang berakhir di detik ke-4,8.
+    const times: number[] = [];
+    for (let t = 0; t <= 12_000; t += 1000 / 60) {
+      if (t > 4560 && t < 4800) continue;
+      times.push(t);
+    }
+    const summary = summarizeFrames(times)!;
+    expect(summary.worstMs).toBeGreaterThan(230);
+    expect(summary.worstAt).toBeCloseTo(0.4, 2);
+  });
+
+  it("bekuan di awal dan di akhir: 0 dan 1, tidak keluar rentang", () => {
+    const early = summarizeFrames([0, 300, 316, 332, 348])!;
+    expect(early.worstAt).toBeCloseTo(300 / 348);
+    const late = summarizeFrames([0, 16, 32, 48, 348])!;
+    expect(late.worstAt).toBe(1);
+    const first = summarizeFrames([0, 300, 1300, 2300, 3000])!;
+    expect(first.worstAt).toBeGreaterThanOrEqual(0);
+    expect(first.worstAt).toBeLessThanOrEqual(1);
+  });
+
+  it("frame yang sama panjang: yang pertama yang dilaporkan", () => {
+    expect(summarizeFrames([0, 100, 200, 300, 400])!.worstAt).toBe(0.25);
+  });
+});
+
 describe("formatReport", () => {
   const base: PerfReport = {
     mode: "3d",
@@ -126,8 +154,13 @@ describe("formatReport", () => {
     expect(lines.find((line) => line.startsWith("idle:"))).toMatch(
       /^idle: avg 60\.0 fps, 1% low 60\.0 fps, worst 17 ms, slow frames 0\.0% \(300 frames \/ 5\.0 s\)$/,
     );
+    // Hanya baris scroll yang menyebut posisi frame terlama: uji gulir
+    // bergerak dengan laju tetap, jadi posisinya = posisi gulir.
     expect(lines.find((line) => line.startsWith("scroll:"))).toMatch(
-      /^scroll: avg 30\.0 fps/,
+      /^scroll: avg 30\.0 fps, 1% low 30\.0 fps, worst 33 ms at \d+%, slow frames/,
+    );
+    expect(lines.find((line) => line.startsWith("idle:"))).not.toMatch(
+      / at \d+%/,
     );
     expect(lines[lines.length - 1]).toBe("ua: TestBrowser/1.0");
   });
