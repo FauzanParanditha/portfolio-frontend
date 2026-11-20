@@ -245,10 +245,12 @@ Yang **tidak** bisa disimpulkan dari lab:
 tidak ada data yang dikirim ke mana pun):
 
 1. Buka `/tour?perf` di ponsel. Panel di kiri-bawah menampilkan laju frame.
-2. Untuk mengukur 3D: tekan **3D version** di kanan atas, tunggu ruangan
-   tampil, lalu **tunggu sekitar 5 detik** supaya jendela ukur saat diam
-   terisi penuh.
-3. Tekan **Run scroll test**. Halaman bergulir sendiri selama 12 detik.
+2. Untuk mengukur 3D: tekan **3D version** di kanan atas dan tunggu ruangan
+   tampil.
+3. Tekan **Run scroll test**. Tombolnya baru aktif 5 detik setelah halaman
+   dimuat atau tampilan diganti (panel menulis "Warming up"), supaya sendatan
+   awal tidak terekam sebagai sendatan saat bergulir. Halaman lalu bergulir
+   sendiri selama 12 detik.
 4. Tekan **Copy** (atau salin teks di kotaknya) dan simpan laporannya.
 5. Untuk pembanding tanpa 3D: **muat ulang halaman** lebih dulu, lalu ulangi
    langkah 3–4. Angka CLS dijumlahkan sejak halaman dimuat, jadi tanpa muat
@@ -267,10 +269,10 @@ laju frame saat diam dan saat bergulir. Cara membacanya:
 - **CLS (sum since load)** = jumlah semua pergeseran sejak halaman dimuat,
   tidak termasuk yang dipicu ketukan. Ini bukan definisi CLS standar (jendela
   sesi) dan tidak pernah lebih kecil darinya.
-- **idle … [short window …]** = uji ditekan sebelum jendela diam (5 detik)
-  penuh. Barisnya lalu didominasi sendatan saat halaman dan adegan 3D baru
-  dimuat, jadi 1% low dan worst di baris itu bukan keadaan diam. Baris
-  `scroll` tidak terpengaruh.
+- **idle … [short window …]** = jendela diam (5 detik) belum penuh saat uji
+  dimulai, jadi 1% low dan worst di baris itu didominasi sendatan awal.
+  Tombol uji menunggu 5 detik, jadi catatan ini seharusnya tidak muncul lagi;
+  bila muncul, frame sempat terhenti (mis. tab baru kembali dari latar).
 - **download … [N of M files from cache …]** = sebagian berkas diambil dari
   cache browser (kunjungan kedua, atau setelah muat ulang), jadi angkanya
   bukan ukuran unduhan penuh. Ukuran unduhan yang sah ada di tabel lab di

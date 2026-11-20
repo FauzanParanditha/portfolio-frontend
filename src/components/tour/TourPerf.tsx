@@ -13,6 +13,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Lama uji gulir otomatis. */
 const SCROLL_TEST_MS = 12_000;
+/** Lama menunggu sebelum uji boleh dimulai: satu jendela diam penuh. */
+const WARM_UP_SECONDS = IDLE_WINDOW_MS / 1000;
 
 interface Vitals {
   lcpMs: number | null;
@@ -91,6 +93,25 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   const [note, setNote] = useState<string | null>(null);
   const [report, setReport] = useState("");
   const [copied, setCopied] = useState(false);
+  /**
+   * Detik tersisa sebelum uji boleh dimulai (0 = siap). Uji yang ditekan tepat
+   * setelah halaman dimuat atau tampilan diganti ikut merekam sendatan awal
+   * (hidrasi, kompilasi shader) sebagai sendatan saat bergulir. Di uji ponsel
+   * sungguhan hampir semua laporan dimulai terlalu cepat walau petunjuknya
+   * meminta menunggu, jadi tombolnya yang menunggu sampai jendela diam penuh.
+   */
+  const [wait, setWait] = useState(WARM_UP_SECONDS);
+  const warmSince = useRef(0);
+  // Ganti tampilan: hitung mundur dari awal, sejak render ini juga (bukan
+  // menunggu detak berikutnya) supaya tombol tidak sempat ditekan.
+  const [shownMode, setShownMode] = useState(show3d);
+  if (shownMode !== show3d) {
+    setShownMode(show3d);
+    setWait(WARM_UP_SECONDS);
+  }
+  useEffect(() => {
+    warmSince.current = performance.now();
+  }, [show3d]);
 
   // Cap waktu tiap frame, disimpan untuk jendela terakhir saja.
   useEffect(() => {
@@ -109,6 +130,12 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   useEffect(() => {
     const timer = setInterval(() => {
       const now = performance.now();
+      setWait(
+        Math.max(
+          0,
+          Math.ceil((IDLE_WINDOW_MS - (now - warmSince.current)) / 1000),
+        ),
+      );
       setIdle(
         summarizeFrames(
           frames.current.filter((time) => now - time <= IDLE_WINDOW_MS),
@@ -275,9 +302,11 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
         {note ??
           (testing
             ? "Scrolling the page for 12 s…"
-            : idle
-              ? `idle ${idle.avgFps.toFixed(0)} fps · worst ${idle.worstMs.toFixed(0)} ms`
-              : "Measuring…")}
+            : wait > 0
+              ? `Warming up: test ready in ${wait} s`
+              : idle
+                ? `idle ${idle.avgFps.toFixed(0)} fps · worst ${idle.worstMs.toFixed(0)} ms`
+                : "Measuring…")}
         {scroll && !testing && !note
           ? ` · scroll ${scroll.avgFps.toFixed(0)} fps (1% low ${scroll.lowFps.toFixed(0)})`
           : ""}
@@ -286,7 +315,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
         <button
           type="button"
           onClick={runScrollTest}
-          disabled={testing}
+          disabled={testing || wait > 0}
           className="min-h-11 flex-1 rounded-md bg-white px-3 font-sans text-xs font-medium tracking-widest text-zinc-950 uppercase disabled:opacity-50"
         >
           Run scroll test

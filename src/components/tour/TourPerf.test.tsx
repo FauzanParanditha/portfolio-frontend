@@ -26,6 +26,11 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     );
     vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
   });
+  /** Lewati masa tunggu 5 dtk sebelum tombol uji aktif. */
+  const warmUp = () => act(() => vi.advanceTimersByTimeAsync(5000));
+  const runButton = () =>
+    screen.getByRole("button", { name: "Run scroll test" });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -35,9 +40,9 @@ describe("TourPerf (panel ukur di perangkat)", () => {
   it("menampilkan mode dan, setelah beberapa detik, laju frame saat diam", async () => {
     render(<TourPerf show3d={false} />);
     expect(screen.getByText("Perf · simple")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Measuring…");
+    expect(screen.getByRole("status")).toHaveTextContent(/Warming up/);
 
-    await act(() => vi.advanceTimersByTimeAsync(3000));
+    await act(() => vi.advanceTimersByTimeAsync(6000));
     expect(screen.getByRole("status")).toHaveTextContent(/idle \d+ fps/);
     // Belum ada laporan sebelum uji dijalankan.
     expect(screen.getByRole("button", { name: "Copy" })).toBeDisabled();
@@ -48,7 +53,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
 
   it("uji gulir: menggulir seluruh halaman selama 12 dtk, kembali ke atas, lalu menyajikan laporan", async () => {
     render(<TourPerf show3d />);
-    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await warmUp();
 
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     expect(screen.getByRole("status")).toHaveTextContent(/Scrolling the page/);
@@ -86,6 +91,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
     render(<TourPerf show3d={false} />);
+    await warmUp();
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     await act(() => vi.advanceTimersByTimeAsync(13000));
 
@@ -126,6 +132,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
   it("Close di tengah uji: halaman berhenti digulir dan gulir halus dipulihkan", async () => {
     document.documentElement.style.scrollBehavior = "smooth";
     render(<TourPerf show3d />);
+    await warmUp();
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     await act(() => vi.advanceTimersByTimeAsync(3000));
     const before = scrollTo.mock.calls.length;
@@ -140,6 +147,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
 
   it("panel dilepas di tengah uji (pindah halaman): tidak terus menggulir halaman berikutnya", async () => {
     const { unmount } = render(<TourPerf show3d />);
+    await warmUp();
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     await act(() => vi.advanceTimersByTimeAsync(3000));
     const before = scrollTo.mock.calls.length;
@@ -152,6 +160,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
 
   it("dua klik beruntun hanya memulai satu uji", async () => {
     render(<TourPerf show3d />);
+    await warmUp();
     const button = screen.getByRole("button", { name: "Run scroll test" });
     // Dua klik dalam satu tugas, sebelum React sempat menonaktifkan tombol.
     act(() => {
@@ -168,6 +177,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
 
   it("tab disembunyikan di tengah uji: uji dibatalkan, tidak melaporkan jeda itu sebagai sendatan", async () => {
     render(<TourPerf show3d />);
+    await warmUp();
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     await act(() => vi.advanceTimersByTimeAsync(3000));
     const before = scrollTo.mock.calls.length;
@@ -191,6 +201,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
       800,
     );
     render(<TourPerf show3d={false} />);
+    await warmUp();
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     expect(screen.getByRole("status")).toHaveTextContent(/Nothing to scroll/);
     await act(() => vi.advanceTimersByTimeAsync(13000));
@@ -222,6 +233,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     vi.stubGlobal("PerformanceObserver", FakeObserver);
 
     render(<TourPerf show3d={false} />);
+    await warmUp();
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     await act(() => vi.advanceTimersByTimeAsync(13000));
     const text = (
@@ -233,7 +245,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     );
   });
 
-  it("laporan menandai uji yang dimulai terlalu cepat dan berkas yang datang dari cache", async () => {
+  it("laporan menyebut berkas yang datang dari cache, dan baris idle-nya berasal dari jendela penuh", async () => {
     vi.spyOn(performance, "getEntriesByType").mockImplementation(
       (type) =>
         (type === "navigation"
@@ -260,28 +272,63 @@ describe("TourPerf (panel ukur di perangkat)", () => {
               },
             ]) as unknown as PerformanceEntryList,
     );
-    const reportAfter = async (waitMs: number) => {
-      const view = render(<TourPerf show3d />);
-      await act(() => vi.advanceTimersByTimeAsync(waitMs));
-      fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
-      await act(() => vi.advanceTimersByTimeAsync(13000));
-      const text = (
-        screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement
-      ).value;
-      view.unmount();
-      return text;
-    };
-
-    // Uji ditekan 1 dtk setelah panel muncul: jendela diamnya belum penuh.
-    const early = await reportAfter(1000);
-    expect(early).toMatch(/\nidle: [^\n]* \[short window: [^\n]*\]\n/);
-    expect(early).toContain(
+    render(<TourPerf show3d />);
+    await warmUp();
+    fireEvent.click(runButton());
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    const text = (
+      screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement
+    ).value;
+    expect(text).toContain(
       "download: scripts 2 KB, total 2 KB [2 of 3 files from cache: not the full download]",
     );
-    // Menunggu lebih dari 5 dtk: baris idle tanpa catatan.
-    const later = await reportAfter(6000);
-    expect(later).toMatch(/\nidle: avg /);
-    expect(later).not.toContain("short window");
+    // Tombol baru aktif setelah jendela diam penuh, jadi baris idle bersih.
+    expect(text).toMatch(/\nidle: avg [^\n]*\(\d+ frames \/ [45]\.\d s\)\n/);
+    expect(text).not.toContain("short window");
+  });
+
+  it("tombol uji menunggu 5 dtk: uji yang ditekan terlalu cepat ikut merekam sendatan awal", async () => {
+    render(<TourPerf show3d />);
+    expect(runButton()).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Warming up: test ready in 5 s",
+    );
+
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Warming up: test ready in 2 s",
+    );
+    expect(runButton()).toBeDisabled();
+    fireEvent.click(runButton());
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(runButton()).toBeDisabled();
+
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(runButton()).toBeEnabled();
+    expect(screen.getByRole("status")).toHaveTextContent(/idle \d+ fps/);
+    expect(screen.getByRole("status")).not.toHaveTextContent(/Warming up/);
+  });
+
+  it("ganti tampilan: masa tunggu mulai dari awal, saat itu juga", async () => {
+    const view = render(<TourPerf show3d={false} />);
+    await warmUp();
+    expect(runButton()).toBeEnabled();
+
+    // Adegan 3D baru dimuat: sendatan awalnya tidak boleh masuk uji.
+    view.rerender(<TourPerf show3d />);
+    expect(runButton()).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Warming up: test ready in 5 s",
+    );
+    await act(() => vi.advanceTimersByTimeAsync(4000));
+    expect(runButton()).toBeDisabled();
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(runButton()).toBeEnabled();
+
+    // Render ulang tanpa ganti tampilan tidak mengulang masa tunggu.
+    view.rerender(<TourPerf show3d />);
+    expect(runButton()).toBeEnabled();
   });
 
   it("tinggi panel tetap: status dan kotak laporan berukuran sama sebelum dan sesudah uji", async () => {
@@ -293,8 +340,11 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     ];
     const before = shape();
     expect(before[0]).toMatch(/\bh-8\b/);
-    fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+    await warmUp();
+    expect(shape()).toEqual(before);
+    fireEvent.click(runButton());
     await act(() => vi.advanceTimersByTimeAsync(13000));
+    expect(screen.getByRole("textbox", { name: "Report" })).not.toHaveValue("");
     expect(shape()).toEqual(before);
   });
 });
