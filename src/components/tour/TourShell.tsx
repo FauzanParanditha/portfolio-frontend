@@ -55,10 +55,12 @@ const TourCanvas = dynamic(() => import("./TourCanvas"), { ssr: false });
 const TourPerf = dynamic(() => import("./TourPerf"), { ssr: false });
 
 const noopSubscribe = () => () => {};
-/** Alamat memuat `?perf`. Dibaca dari `location` — `useSearchParams` akan
- * memaksa halaman statis ini keluar dari prerender. */
-const hasPerfFlag = () =>
-  new URLSearchParams(window.location.search).has("perf");
+/** Alamat memuat `?perf` (bukan `?perf=0`). Dibaca dari `location` —
+ * `useSearchParams` akan memaksa halaman statis ini keluar dari prerender. */
+const hasPerfFlag = () => {
+  const value = new URLSearchParams(window.location.search).get("perf");
+  return value !== null && value !== "0";
+};
 
 interface TourShellProps {
   /** Proyek yang mengisi rak (urutan API), sama seperti di /playground. */
@@ -94,7 +96,8 @@ const NOSCRIPT_CSS = `
 .tour .tour-stop { display: block !important; min-height: 0 !important; padding: 1.75rem 1rem !important; }
 .tour .tour-stop:first-of-type { padding-top: 6.5rem !important; }
 .tour .tour-panel { width: min(100%, 42rem) !important; margin-inline: auto !important; }
-.tour .tour-rail, .tour .tour-only-3d { display: none !important; }`;
+.tour .tour-rail { display: none !important; }
+.tour .tour-only-3d { display: none !important; }`;
 
 const focusRing =
   "focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden";
@@ -485,7 +488,7 @@ export function TourShell({
           <p
             data-requires-js
             aria-hidden="true"
-            className="font-mono text-xs text-zinc-400 tabular-nums md:hidden"
+            className="shrink-0 font-mono text-xs whitespace-nowrap text-zinc-400 tabular-nums md:hidden"
           >
             {pad(active + 1)} / {pad(stopIds.length)}
           </p>
@@ -501,11 +504,21 @@ export function TourShell({
               type="button"
               data-requires-js
               onClick={() => writeTourMode(show3d ? "simple" : "3d")}
-              // Lebar tetap: teksnya baru benar setelah hidrasi, dan tombol
-              // yang melebar akan menggeser tautan di sebelahnya.
-              className={`inline-flex min-h-11 min-w-44 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 px-4 text-xs font-medium tracking-widest text-zinc-200 uppercase transition-colors hover:border-white hover:text-white ${focusRing}`}
+              // Lebar tetap HANYA di layar lebar: di sanalah teksnya berganti
+              // setelah hidrasi (bawaan 3D), dan tombol yang melebar akan
+              // menggeser tautan di sebelahnya. Di ponsel bawaannya sama
+              // sebelum dan sesudah hidrasi, dan lebar tetap membuat bilah
+              // atas tidak muat di layar 360 px.
+              className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 px-4 text-xs font-medium tracking-widest whitespace-nowrap text-zinc-200 uppercase transition-colors hover:border-white hover:text-white lg:min-w-[9.75rem] ${focusRing}`}
             >
-              {show3d ? "Simple version" : "3D version"}
+              {/* Satu pembungkus inline: di dalam tombol `inline-flex`, spasi
+                  di antara dua anak langsung akan hilang. Di layar sempit kata
+                  "version" hanya untuk pembaca layar, supaya logo, penghitung,
+                  dan tombol muat sebaris. */}
+              <span>
+                {show3d ? "Simple" : "3D"}{" "}
+                <span className="max-sm:sr-only">version</span>
+              </span>
             </button>
           )}
         </div>

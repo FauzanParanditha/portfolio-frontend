@@ -553,6 +553,52 @@ describe("TourShell (3D tersedia)", () => {
       'html:not([data-tour-mode]) .tour:not([data-mode="simple"])',
       'html[data-tour-mode="3d"] .tour:not([data-mode="simple"])',
     ]);
+
+    // Jalur bawaan harus berada DI DALAM kueri media 3D: di luar itu petunjuk
+    // akan tampil di ponsel, yang tidak punya ruangan untuk dijelajahi.
+    const start = css.indexOf(`@media ${AUTO_3D_QUERY}`);
+    expect(start).toBeGreaterThan(-1);
+    // Blok @media berakhir di "}" pertama yang berdiri di awal baris.
+    const block = css.slice(start, css.indexOf("\n}", start));
+    expect(block).toContain(
+      'html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-only-3d',
+    );
+    expect(css.slice(0, start)).not.toMatch(
+      /html:not\(\[data-tour-mode\]\)[^{]*\.tour-only-3d/,
+    );
+  });
+
+  it("skrip pilihan tampilan ada di <head> root layout sebagai <script> inline biasa", () => {
+    // Sumbernya yang diperiksa: root layout memuat next/font dan tidak bisa
+    // dirender di jsdom. <Script beforeInteractive> baru jalan setelah paint
+    // pertama (terukur CLS 0,146), jadi bentuknya dijaga di sini.
+    const layout = readFileSync(
+      join(process.cwd(), "src/app/layout.tsx"),
+      "utf8",
+    );
+    const head = layout.slice(
+      layout.indexOf("<head>"),
+      layout.indexOf("</head>"),
+    );
+    expect(head).toContain(
+      "<script dangerouslySetInnerHTML={{ __html: TOUR_MODE_SCRIPT }} />",
+    );
+    expect(layout).not.toMatch(/<Script[^>]*>\s*\{TOUR_MODE_SCRIPT\}/);
+    expect(layout.indexOf("<head>")).toBeLessThan(layout.indexOf("<body"));
+  });
+
+  it("panel ukur dan scene dimuat malas, tidak diimpor langsung ke bundel awal", () => {
+    const shell = readFileSync(
+      join(process.cwd(), "src/components/tour/TourShell.tsx"),
+      "utf8",
+    );
+    expect(shell).toMatch(
+      /dynamic\(\(\) => import\("\.\/TourPerf"\), \{ ssr: false \}\)/,
+    );
+    expect(shell).toMatch(
+      /dynamic\(\(\) => import\("\.\/TourCanvas"\), \{ ssr: false \}\)/,
+    );
+    expect(shell).not.toMatch(/^import .* from "\.\/Tour(Perf|Canvas)";/m);
   });
 
   it("HTML dari server: isi lengkap, tanpa atribut pemaksa, dan gaya <noscript> untuk tata letak ringkas", () => {
@@ -567,5 +613,9 @@ describe("TourShell (3D tersedia)", () => {
       /<noscript><style>[^<]*\.tour \.tour-stop \{ display: block !important;/,
     );
     expect(html).toMatch(/<noscript><style>[^<]*\[data-requires-js\]/);
+    // Tanpa JS tidak ada ruangan: petunjuk gulir ikut disembunyikan.
+    expect(html).toMatch(
+      /<noscript><style>[^<]*\.tour \.tour-only-3d \{ display: none !important;/,
+    );
   });
 });

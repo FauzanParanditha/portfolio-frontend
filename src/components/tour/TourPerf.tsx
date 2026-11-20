@@ -51,7 +51,13 @@ function downloadSizes(): { scriptKb: number | null; totalKb: number | null } {
   let total = navigation?.transferSize ?? 0;
   for (const resource of resources) {
     total += resource.transferSize;
-    if (resource.initiatorType === "script") script += resource.transferSize;
+    // Berkas .js yang dimuat lewat <link rel="preload"> ber-inisiator "link".
+    if (
+      resource.initiatorType === "script" ||
+      /\.js(\?|$)/.test(resource.name)
+    ) {
+      script += resource.transferSize;
+    }
   }
   return { scriptKb: script / 1024, totalKb: total / 1024 };
 }
@@ -77,16 +83,27 @@ function gpuName(): string | null {
  *
  * Semua angka dihitung di perangkat itu sendiri dan tidak dikirim ke mana pun;
  * tombol "Copy" menyalin teks laporan supaya bisa ditempel ke catatan.
+ *
+ * "Close" melepas panelnya sungguhan (bukan sekadar menyembunyikan), sehingga
+ * pengukuran dan uji gulir yang sedang berjalan ikut berhenti.
  */
 export default function TourPerf({ show3d }: { show3d: boolean }) {
+  const [closed, setClosed] = useState(false);
+  const close = useCallback(() => setClosed(true), []);
+  return closed ? null : <Panel show3d={show3d} onClose={close} />;
+}
+
+function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   const frames = useRef<number[]>([]);
   const vitals = useRef<Vitals>({ lcpMs: null, cls: null, blockedMs: null });
+  /** Membatalkan uji gulir yang sedang berjalan; `null` bila tidak ada. */
+  const cancelTest = useRef<(() => void) | null>(null);
   const [idle, setIdle] = useState<FrameSummary | null>(null);
   const [scroll, setScroll] = useState<FrameSummary | null>(null);
   const [testing, setTesting] = useState(false);
-  const [report, setReport] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [report, setReport] = useState("");
   const [copied, setCopied] = useState(false);
-  const [closed, setClosed] = useState(false);
 
   // Cap waktu tiap frame, disimpan untuk jendela terakhir saja.
   useEffect(() => {
@@ -125,8 +142,11 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
           value: number;
           hadRecentInput: boolean;
         };
-        if (!shift.hadRecentInput)
+        // Pergeseran akibat ketukan pengunjung (mis. ganti tampilan) tidak
+        // dihitung, sama seperti CLS standar.
+        if (!shift.hadRecentInput) {
           current.cls = (current.cls ?? 0) + shift.value;
+        }
       }),
       observe("longtask", (entry) => {
         current.blockedMs =
@@ -139,6 +159,24 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
     return () => {
       for (const observer of observers) observer?.disconnect();
     };
+  }, []);
+
+  // Panel dilepas (Close, pindah halaman): hentikan uji yang masih berjalan.
+  // Tanpa ini halaman berikutnya terus digulir sendiri sampai 12 dtk habis.
+  useEffect(() => () => cancelTest.current?.(), []);
+
+  // Tab disembunyikan di tengah uji: browser menghentikan frame, dan jeda
+  // panjang itu akan terbaca sebagai sendatan. Batalkan saja.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden" && cancelTest.current) {
+        cancelTest.current();
+        setTesting(false);
+        setNote("Test cancelled: the tab was hidden. Run it again.");
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
   const buildReport = useCallback(
@@ -167,10 +205,18 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
 
   // Gulir seluruh halaman dengan laju tetap, lalu ringkas frame selama itu.
   const runScrollTest = () => {
-    if (testing) return;
+    // Ref, bukan state: dua klik dalam satu tugas tidak boleh memulai dua uji.
+    if (cancelTest.current) return;
+    const root = document.documentElement;
+    const distance = root.scrollHeight - window.innerHeight;
+    if (!(distance > 0)) {
+      setNote("Nothing to scroll on this page, so there is nothing to test.");
+      return;
+    }
+
     setTesting(true);
     setCopied(false);
-    const root = document.documentElement;
+    setNote(null);
     const previous = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
     const idleBefore = summarizeFrames(
@@ -179,26 +225,32 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
       ),
     );
     const start = performance.now();
-    const distance = root.scrollHeight - window.innerHeight;
+    let frame = 0;
+    const stop = () => {
+      cancelAnimationFrame(frame);
+      root.style.scrollBehavior = previous;
+      cancelTest.current = null;
+    };
+    cancelTest.current = stop;
 
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / SCROLL_TEST_MS);
       window.scrollTo(0, distance * t);
       if (t < 1) {
-        requestAnimationFrame(step);
+        frame = requestAnimationFrame(step);
         return;
       }
       const summary = summarizeFrames(
         frames.current.filter((time) => time >= start),
       );
-      root.style.scrollBehavior = previous;
+      stop();
       window.scrollTo(0, 0);
       setScroll(summary);
       setReport(buildReport(summary, idleBefore));
       setTesting(false);
     };
     window.scrollTo(0, 0);
-    requestAnimationFrame(step);
+    frame = requestAnimationFrame(step);
   };
 
   const copy = async () => {
@@ -213,8 +265,6 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
     }
   };
 
-  if (closed) return null;
-
   return (
     <aside
       aria-label="Performance test"
@@ -226,19 +276,22 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
         </p>
         <button
           type="button"
-          onClick={() => setClosed(true)}
+          onClick={onClose}
           className="min-h-9 rounded px-2 text-zinc-400 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden"
         >
           Close
         </button>
       </div>
-      <p role="status" className="tabular-nums">
-        {testing
-          ? "Scrolling the page for 12 s…"
-          : idle
-            ? `idle ${idle.avgFps.toFixed(0)} fps · worst ${idle.worstMs.toFixed(0)} ms`
-            : "Measuring…"}
-        {scroll && !testing
+      {/* Tinggi tetap (dua baris): teks status yang memanjang tidak boleh
+          mengubah tinggi panel — pergeseran itu ikut terhitung sebagai CLS. */}
+      <p role="status" className="h-8 overflow-hidden leading-4 tabular-nums">
+        {note ??
+          (testing
+            ? "Scrolling the page for 12 s…"
+            : idle
+              ? `idle ${idle.avgFps.toFixed(0)} fps · worst ${idle.worstMs.toFixed(0)} ms`
+              : "Measuring…")}
+        {scroll && !testing && !note
           ? ` · scroll ${scroll.avgFps.toFixed(0)} fps (1% low ${scroll.lowFps.toFixed(0)})`
           : ""}
       </p>
@@ -260,16 +313,17 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      {report && (
-        <textarea
-          readOnly
-          aria-label="Report"
-          value={report}
-          rows={7}
-          onFocus={(event) => event.currentTarget.select()}
-          className="w-full resize-none rounded border border-zinc-800 bg-black p-2 text-[0.7rem] leading-snug text-zinc-300"
-        />
-      )}
+      {/* Selalu dirender, dengan tinggi tetap: kotak yang baru muncul setelah
+          uji akan menggeser isi panel dan mencemari angka CLS uji berikutnya. */}
+      <textarea
+        readOnly
+        aria-label="Report"
+        value={report}
+        placeholder="Run the scroll test to get a report."
+        rows={7}
+        onFocus={(event) => event.currentTarget.select()}
+        className="w-full resize-none rounded border border-zinc-800 bg-black p-2 text-[0.7rem] leading-snug text-zinc-300 placeholder:text-zinc-500"
+      />
     </aside>
   );
 }

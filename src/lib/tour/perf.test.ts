@@ -23,9 +23,39 @@ describe("summarizeFrames", () => {
     for (let i = 0; i < 3; i++) times.push((t += 100));
     const summary = summarizeFrames(times)!;
     expect(summary.avgFps).toBeGreaterThan(55);
+    // 1% dari 300 frame = 3 frame terlama, semuanya 100 ms.
     expect(summary.lowFps).toBeCloseTo(10);
     expect(summary.worstMs).toBeCloseTo(100);
     expect(summary.slowShare).toBeCloseTo(3 / 300);
+  });
+
+  it("satu bekuan di antara ratusan frame mulus tetap terlihat di 1% terendah", () => {
+    // 720 frame 60 fps (uji gulir 12 dtk) dengan satu frame 500 ms. Persentil
+    // ke-99 akan membuang frame itu dan melaporkan 60 fps.
+    const times = steady(720, 1000 / 60);
+    times.push(times[times.length - 1] + 500);
+    const summary = summarizeFrames(times)!;
+    expect(summary.worstMs).toBeCloseTo(500);
+    expect(summary.lowFps).toBeLessThan(15);
+    expect(summary.lowFps).toBeLessThan(summary.avgFps);
+  });
+
+  it("1% terendah tidak pernah lebih tinggi dari rata-rata, dan frame terlama tidak lebih cepat darinya", () => {
+    for (const times of [
+      steady(11, 20),
+      [0, 16, 32, 200, 216, 232],
+      [...steady(200, 16), 200 * 16 + 90, 200 * 16 + 106],
+    ]) {
+      const summary = summarizeFrames(times)!;
+      expect(summary.lowFps).toBeLessThanOrEqual(summary.avgFps + 1e-9);
+      expect(1000 / summary.worstMs).toBeLessThanOrEqual(summary.lowFps + 1e-9);
+    }
+  });
+
+  it("jeda tak hingga (cap waktu rusak) diabaikan", () => {
+    const summary = summarizeFrames([0, 16, Infinity, 32, 48])!;
+    expect(Number.isFinite(summary.avgFps)).toBe(true);
+    expect(Number.isFinite(summary.worstMs)).toBe(true);
   });
 
   it("20 fps: semua frame terhitung lambat", () => {
@@ -81,7 +111,9 @@ describe("formatReport", () => {
     expect(lines).toContain("canvas: 780x1688");
     expect(lines).toContain("gpu: Adreno 610");
     expect(lines).toContain("cpu cores: 8 | memory: 4 GB");
-    expect(lines).toContain("LCP: 1234 ms | CLS: 0.012 | blocked: 310 ms");
+    expect(lines).toContain(
+      "LCP: 1234 ms | CLS (sum since load): 0.012 | blocked: 310 ms",
+    );
     expect(lines).toContain("download: scripts 484 KB, total 586 KB");
     expect(lines.find((line) => line.startsWith("idle:"))).toMatch(
       /^idle: avg 60\.0 fps, 1% low 60\.0 fps, worst 17 ms, slow frames 0\.0% \(120 frames \/ 2\.0 s\)$/,
@@ -111,10 +143,38 @@ describe("formatReport", () => {
     expect(text).toContain("canvas: n/a");
     expect(text).toContain("gpu: n/a");
     expect(text).toContain("cpu cores: n/a | memory: n/a");
-    expect(text).toContain("LCP: n/a ms | CLS: n/a | blocked: n/a ms");
+    expect(text).toContain(
+      "LCP: n/a ms | CLS (sum since load): n/a | blocked: n/a ms",
+    );
     expect(text).toContain("download: scripts n/a KB, total n/a KB");
     expect(text).toContain("idle: n/a");
     expect(text).toContain("scroll: n/a");
     expect(text).not.toMatch(/NaN|undefined|null/);
+  });
+
+  it("angka rusak (NaN, tak hingga) dari browser ditulis n/a di SEMUA kolom", () => {
+    const text = formatReport({
+      ...base,
+      dpr: NaN,
+      cores: NaN,
+      memoryGb: Infinity,
+      lcpMs: NaN,
+      cls: -Infinity,
+      blockedMs: NaN,
+      scriptKb: NaN,
+      totalKb: Infinity,
+    });
+    expect(text).not.toMatch(/NaN|Infinity|undefined|null/);
+    expect(text).toContain("@ dpr n/a");
+    expect(text).toContain("cpu cores: n/a | memory: n/a");
+    expect(text).not.toContain("n/a GB");
+  });
+
+  it("dpr dan memori pecahan ditulis apa adanya, tanpa nol di belakang", () => {
+    const text = formatReport({ ...base, dpr: 2.625, memoryGb: 0.5 });
+    expect(text).toContain("@ dpr 2.63");
+    expect(text).toContain("memory: 0.5 GB");
+    expect(formatReport(base)).toContain("@ dpr 3\n");
+    expect(formatReport(base)).toContain("memory: 4 GB");
   });
 });

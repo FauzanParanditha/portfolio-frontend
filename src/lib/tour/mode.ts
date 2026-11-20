@@ -11,7 +11,8 @@ export type TourMode = "3d" | "simple";
 const KEY = "tour-mode";
 /**
  * Atribut pada <html> yang dibaca CSS tata letak (globals.css). Dipasang
- * SEBELUM paint oleh skrip inline di <head> root layout (`TOUR_MODE_SCRIPT`), sehingga
+ * SEBELUM paint oleh skrip inline di <head> root layout
+ * (`TOUR_MODE_SCRIPT`), sehingga
  * pengunjung yang pernah memilih tidak melihat tata letak bawaan sekejap lalu
  * melompat saat React terhidrasi. Modul ini menjaganya tetap sinkron sesudahnya.
  */

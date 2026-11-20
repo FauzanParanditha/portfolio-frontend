@@ -316,10 +316,20 @@ describe("TourShell (tanpa WebGL)", () => {
   });
 
   it("panel ukur hanya ada bila alamatnya memuat ?perf", async () => {
-    const { unmount } = render(<TourShell {...base} />);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByRole("complementary")).toBeNull();
-    unmount();
+    // Bukan dengan parameter lain yang kebetulan memuat kata itu, dan bukan
+    // dengan ?perf=0.
+    for (const url of [
+      "/tour",
+      "/tour?x=perf",
+      "/tour?perfx=1",
+      "/tour?perf=0",
+    ]) {
+      window.history.replaceState({}, "", url);
+      const { unmount } = render(<TourShell {...base} />);
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(screen.queryByRole("complementary"), url).toBeNull();
+      unmount();
+    }
 
     window.history.replaceState({}, "", "/tour?perf=1");
     try {

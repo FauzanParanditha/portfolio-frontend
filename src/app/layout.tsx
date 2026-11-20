@@ -107,8 +107,9 @@ export default function RootLayout({
 }>) {
   return (
     // suppressHydrationWarning HANYA untuk atribut <html> itu sendiri, bukan
-    // isinya. Dibutuhkan karena skrip di IntroOverlay menyetel
-    // `data-intro="seen"` pada <html> saat HTML di-parse — sebelum React
+    // isinya. Dibutuhkan karena dua skrip menyetel atribut pada <html>
+    // sebelum React hidrasi: `data-tour-mode` (skrip inline di <head> di
+    // bawah) dan `data-intro="seen"` (skrip di IntroOverlay) — sebelum React
     // hidrasi — sehingga atribut di klien memang sengaja berbeda dari yang
     // dirender server. Ini pola yang sama dipakai skrip anti-kedip tema.
     // Cakupannya satu tingkat, jadi ketidakcocokan sungguhan di dalam pohon
@@ -123,7 +124,8 @@ export default function RootLayout({
             baru dijalankan saat runtime Next menyala — SETELAH paint pertama
             (terukur: CLS 0,146 di desktop dengan pilihan "simple"). Skrip
             inline di <head> dijalankan parser sebelum <body> digambar.
-            Beberapa byte, sinkron, tanpa efek di halaman lain. Root layout
+            Beberapa byte, sinkron. Atributnya terpasang di semua halaman,
+            tetapi CSS yang membacanya berlingkup `.tour`. Root layout
             tidak dirender ulang di klien, jadi skrip ini tidak pernah
             disisipkan React (yang tidak akan mengeksekusinya). */}
         <script dangerouslySetInnerHTML={{ __html: TOUR_MODE_SCRIPT }} />

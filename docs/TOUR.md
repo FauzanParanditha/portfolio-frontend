@@ -75,7 +75,9 @@ Urutannya mengikuti letak di ruangan, bukan urutan beranda.
   JavaScript dan baru benar setelah hidrasi; lebarnya dibuat tetap supaya
   pergantian teks tidak menggeser apa pun.
 - Bila bundel JavaScript gagal dimuat — bukan dimatikan — layar lebar
-  tertinggal di tata letak tinggi tanpa kanvas; isinya tetap terbaca.
+  tertinggal di tata letak tinggi tanpa kanvas, dengan baris petunjuk gulir
+  tetap tampil dan tombol ganti tampilan tidak berfungsi; isinya tetap
+  terbaca.
 
 ## Arsitektur
 
@@ -211,20 +213,31 @@ perlambatan.
 
 Yang bisa disimpulkan:
 
-- **Di ponsel, tur bawaan setara beranda:** +18 KB unduhan, LCP dan CLS sama.
-  Pengunjung ponsel tidak membayar apa pun untuk 3D yang tidak mereka minta.
-- **3D menambah ±250 KB JavaScript** dan, di CPU yang diperlambat, ±250 ms
-  waktu blokir. Teks sudah tampil sebelum itu (LCP tidak berubah).
-- **Tidak ada lompatan tata letak** (CLS 0) di semua jalur, termasuk dengan
-  pilihan tampilan tersimpan.
+- **Di ponsel, tur bawaan mendekati beranda:** +18 KB unduhan (di antaranya
+  +25 KB JavaScript, sekitar +12%). Pengunjung ponsel tidak mengunduh three.js
+  maupun scene-nya kecuali menekan tombol "3D version".
+- **LCP ketiga halaman berada dalam batas derau** (700–720 ms; median tiga
+  kali muat, tanpa sebaran). Tidak ada tanda tur lebih lambat tampil.
+- **3D menambah ±250 KB JavaScript** dan, di mesin lab dengan CPU diperlambat,
+  ±250 ms waktu blokir. Teks sudah tampil sebelum itu.
+- **Tidak ada lompatan tata letak (CLS 0) di enam jalur yang diukur**, juga
+  dengan pilihan tampilan tersimpan. Diukur saat muat saja.
 
 Yang **tidak** bisa disimpulkan dari lab:
 
 - **Laju frame di ponsel.** Chrome di mesin pengukur memakai GPU laptop;
   angkanya (60 fps) tidak berkata apa-apa soal ponsel. Ini hanya bisa diukur
   di perangkat sungguhan.
+- **Waktu blokir 3D di ponsel.** Sebagian besar adalah kompilasi shader dan
+  unggah tekstur, yang bergantung pada GPU dan driver. Angka ±250 ms berlaku
+  untuk mesin lab; di GPU lain bisa berlipat.
 - **LCP di jaringan nyata.** Server lab berada di mesin yang sama; angka di
   atas berguna untuk MEMBANDINGKAN halaman, bukan sebagai angka mutlak.
+- **Jalur tanpa WebGL.** Di sana tata letak memang berganti setelah hidrasi
+  (lihat "Dua tampilan, satu markup"): di desktop tanpa WebGL lompatannya
+  besar (peninjau mengukur CLS 0,37). Jalur ini jarang, dan belum diperbaiki.
+- **Layar selain 390×844.** Hanya satu ukuran ponsel yang diukur muatnya;
+  bilah atas diperiksa terpisah di 320, 360, dan 375 px.
 
 ### Uji di ponsel sungguhan
 
@@ -235,13 +248,28 @@ tidak ada data yang dikirim ke mana pun):
 2. Untuk mengukur 3D: tekan **3D version** di kanan atas, tunggu ruangan
    tampil.
 3. Tekan **Run scroll test**. Halaman bergulir sendiri selama 12 detik.
-4. Tekan **Copy** (atau salin teks di kotaknya) dan simpan laporannya. Ulangi
-   sekali tanpa 3D sebagai pembanding.
+4. Tekan **Copy** (atau salin teks di kotaknya) dan simpan laporannya.
+5. Untuk pembanding tanpa 3D: **muat ulang halaman** lebih dulu, lalu ulangi
+   langkah 3–4. Angka CLS dijumlahkan sejak halaman dimuat, jadi tanpa muat
+   ulang angka uji kedua tercampur uji pertama.
 
-Laporannya memuat: mode, ukuran layar dan kanvas, GPU, LCP/CLS/waktu blokir
-(yang didukung browser itu — Safari tidak melaporkan semuanya, ditulis `n/a`),
-ukuran unduhan, dan laju frame saat diam dan saat bergulir (rata-rata, 1%
-terendah, frame terlama, porsi frame di bawah 30 fps).
+Uji batal sendiri bila tab disembunyikan di tengah jalan (browser menghentikan
+frame, dan jedanya akan terbaca sebagai sendatan). "Close" menghentikan uji
+dan melepas panel.
+
+Laporannya memuat: mode, ukuran layar dan kanvas, GPU, ukuran unduhan, dan
+laju frame saat diam dan saat bergulir. Cara membacanya:
+
+- **1% low** = laju rata-rata pada 1% frame terlama. Satu bekuan setengah
+  detik di antara ratusan frame mulus menjatuhkan angka ini, walau rata-ratanya
+  tetap tinggi. **worst** = frame terlama.
+- **CLS (sum since load)** = jumlah semua pergeseran sejak halaman dimuat,
+  tidak termasuk yang dipicu ketukan. Ini bukan definisi CLS standar (jendela
+  sesi) dan tidak pernah lebih kecil darinya.
+- **LCP, CLS, blocked** hanya ada bila browser melaporkannya. Safari iOS
+  tidak melaporkan semuanya; yang kosong ditulis `n/a`.
+- Panel **tidak mengukur daya atau baterai**. Untuk itu amati sendiri: suhu
+  ponsel dan turunnya baterai setelah beberapa menit di tampilan 3D.
 
 Agar ponsel bisa menjangkau mesin pengembang di jaringan yang sama, alamat API
 harus memakai IP mesin itu, bukan `localhost`:
@@ -264,16 +292,22 @@ teksnya tetap bisa dipilih manual dari kotak laporan.
 Usulan, belum disepakati. Diukur di ponsel kelas menengah dan satu laptop
 tanpa GPU khusus:
 
-| Yang diukur                              | Lolos bila                                     | Bila gagal                                  |
-| ---------------------------------------- | ---------------------------------------------- | ------------------------------------------- |
-| Ponsel, tur bawaan (ringkas)             | LCP ≤ 2,5 dtk di 4G, CLS ≤ 0,1                 | Beranda tidak ditukar                       |
-| Laptop, tur 3D saat bergulir             | rata-rata ≥ 50 fps, 1% terendah ≥ 30           | Beranda tidak ditukar, atau 3D jadi pilihan |
-| Ponsel, 3D atas permintaan saat bergulir | rata-rata ≥ 40 fps, frame di bawah 30 fps ≤ 5% | Tombol "3D version" disembunyikan di ponsel |
+| Yang diukur                              | Dengan apa                                                            | Lolos bila                                          | Bila gagal                                  |
+| ---------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------- |
+| Laptop, tur 3D saat bergulir             | `/tour?perf`, baris `scroll`                                          | rata-rata ≥ 50 fps, 1% low ≥ 30 fps, worst ≤ 150 ms | Beranda tidak ditukar, atau 3D jadi pilihan |
+| Ponsel, 3D atas permintaan saat bergulir | `/tour?perf`, baris `scroll`                                          | rata-rata ≥ 40 fps, slow frames ≤ 5%                | Tombol "3D version" disembunyikan di ponsel |
+| Ponsel, tur bawaan (ringkas)             | PageSpeed Insights / Lighthouse pada alamat pratinjau yang ter-deploy | LCP ≤ 2,5 dtk, CLS ≤ 0,1                            | Beranda tidak ditukar                       |
+
+Baris terakhir tidak bisa diukur lewat jaringan lokal (ponsel ke laptop di
+Wi-Fi yang sama bukan 4G, dan Safari tidak melaporkan CLS); ia butuh alamat
+yang bisa dijangkau dari internet.
 
 ## Belum dikerjakan
 
-- **Tahap 4:** angka dari ponsel dan laptop sungguhan (laju frame, daya)
-  lewat `/tour?perf`, lalu putuskan apakah beranda ditukar.
+- **Tahap 4:** angka laju frame dari ponsel dan laptop sungguhan lewat
+  `/tour?perf`, LCP/CLS dari alamat yang ter-deploy, lalu putuskan apakah
+  beranda ditukar.
+- Jalur tanpa WebGL di layar lebar masih melompat setelah hidrasi.
 - **Bila ditukar (tahap 5):** cabut `noindex`, pindahkan data terstruktur dan
   intro beranda, arahkan `/tour` ke `/`.
 - Belum ada objek khusus untuk "About" (sekarang pandangan dari atas ke

@@ -41,7 +41,9 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/idle \d+ fps/);
     // Belum ada laporan sebelum uji dijalankan.
     expect(screen.getByRole("button", { name: "Copy" })).toBeDisabled();
-    expect(screen.queryByRole("textbox", { name: "Report" })).toBeNull();
+    // Kotak laporan sudah ada (kosong) sejak awal: kotak yang baru muncul
+    // setelah uji akan menggeser panel dan mencemari CLS uji berikutnya.
+    expect(screen.getByRole("textbox", { name: "Report" })).toHaveValue("");
   });
 
   it("uji gulir: menggulir seluruh halaman selama 12 dtk, kembali ke atas, lalu menyajikan laporan", async () => {
@@ -50,6 +52,8 @@ describe("TourPerf (panel ukur di perangkat)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
     expect(screen.getByRole("status")).toHaveTextContent(/Scrolling the page/);
+    // Gulir halus dimatikan selama uji, supaya posisi mengikuti tiap frame.
+    expect(document.documentElement.style.scrollBehavior).toBe("auto");
     expect(
       screen.getByRole("button", { name: "Run scroll test" }),
     ).toBeDisabled();
@@ -106,9 +110,140 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     expect(screen.getByRole("textbox", { name: "Report" })).toBeInTheDocument();
   });
 
-  it("Close menyingkirkan panel", () => {
+  it("Close menyingkirkan panel DAN menghentikan pengukurannya", async () => {
+    const cancel = vi.spyOn(globalThis, "cancelAnimationFrame");
+    const clear = vi.spyOn(globalThis, "clearInterval");
     render(<TourPerf show3d={false} />);
+    await act(() => vi.advanceTimersByTimeAsync(500));
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("complementary")).toBeNull();
+    // Loop frame dan interval ringkasan dilepas, bukan dibiarkan jalan.
+    expect(cancel).toHaveBeenCalled();
+    expect(clear).toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("Close di tengah uji: halaman berhenti digulir dan gulir halus dipulihkan", async () => {
+    document.documentElement.style.scrollBehavior = "smooth";
+    render(<TourPerf show3d />);
+    fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    const before = scrollTo.mock.calls.length;
+    expect(before).toBeGreaterThan(50);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(document.documentElement.style.scrollBehavior).toBe("smooth");
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+    expect(scrollTo.mock.calls.length).toBe(before);
+    document.documentElement.style.scrollBehavior = "";
+  });
+
+  it("panel dilepas di tengah uji (pindah halaman): tidak terus menggulir halaman berikutnya", async () => {
+    const { unmount } = render(<TourPerf show3d />);
+    fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    const before = scrollTo.mock.calls.length;
+    unmount();
+    expect(document.documentElement.style.scrollBehavior).toBe("");
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(scrollTo.mock.calls.length).toBe(before);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("dua klik beruntun hanya memulai satu uji", async () => {
+    render(<TourPerf show3d />);
+    const button = screen.getByRole("button", { name: "Run scroll test" });
+    // Dua klik dalam satu tugas, sebelum React sempat menonaktifkan tombol.
+    act(() => {
+      button.click();
+      button.click();
+    });
+    scrollTo.mockClear();
+    await act(() => vi.advanceTimersByTimeAsync(160));
+    // ±10 frame dalam 160 ms; dua loop akan menggandakannya.
+    expect(scrollTo.mock.calls.length).toBeLessThanOrEqual(11);
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    expect(document.documentElement.style.scrollBehavior).toBe("");
+  });
+
+  it("tab disembunyikan di tengah uji: uji dibatalkan, tidak melaporkan jeda itu sebagai sendatan", async () => {
+    render(<TourPerf show3d />);
+    fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    const before = scrollTo.mock.calls.length;
+
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/Test cancelled/);
+    expect(
+      screen.getByRole("button", { name: "Run scroll test" }),
+    ).toBeEnabled();
+    expect(document.documentElement.style.scrollBehavior).toBe("");
+    await act(() => vi.advanceTimersByTimeAsync(12000));
+    expect(scrollTo.mock.calls.length).toBe(before);
+    expect(screen.getByRole("textbox", { name: "Report" })).toHaveValue("");
+  });
+
+  it("halaman yang tidak bisa digulir: uji ditolak, tidak melaporkan 'gulir' palsu", async () => {
+    vi.spyOn(document.documentElement, "scrollHeight", "get").mockReturnValue(
+      800,
+    );
+    render(<TourPerf show3d={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+    expect(screen.getByRole("status")).toHaveTextContent(/Nothing to scroll/);
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Report" })).toHaveValue("");
+  });
+
+  it("CLS: pergeseran akibat ketukan pengunjung tidak dihitung; LCP dan waktu blokir ikut dilaporkan", async () => {
+    // Tiruan PerformanceObserver: menyerahkan entri begitu diamati.
+    const entries: Record<string, object[]> = {
+      "largest-contentful-paint": [{ startTime: 812.4 }],
+      "layout-shift": [
+        { value: 0.02, hadRecentInput: false },
+        { value: 0.5, hadRecentInput: true },
+        { value: 0.03, hadRecentInput: false },
+      ],
+      longtask: [{ duration: 180 }, { duration: 40 }],
+    };
+    class FakeObserver {
+      static supportedEntryTypes = Object.keys(entries);
+      constructor(
+        private callback: (list: { getEntries(): object[] }) => void,
+      ) {}
+      observe({ type }: { type: string }) {
+        this.callback({ getEntries: () => entries[type] ?? [] });
+      }
+      disconnect() {}
+    }
+    vi.stubGlobal("PerformanceObserver", FakeObserver);
+
+    render(<TourPerf show3d={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    const text = (
+      screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement
+    ).value;
+    // 0,02 + 0,03; yang 0,5 terjadi tepat setelah ketukan. 180 − 50 = 130 ms.
+    expect(text).toContain(
+      "LCP: 812 ms | CLS (sum since load): 0.050 | blocked: 130 ms",
+    );
+  });
+
+  it("tinggi panel tetap: status dan kotak laporan berukuran sama sebelum dan sesudah uji", async () => {
+    render(<TourPerf show3d={false} />);
+    const shape = () => [
+      screen.getByRole("status").className,
+      screen.getByRole("textbox", { name: "Report" }).getAttribute("rows"),
+      screen.getByRole("complementary").children.length,
+    ];
+    const before = shape();
+    expect(before[0]).toMatch(/\bh-8\b/);
+    fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    expect(shape()).toEqual(before);
   });
 });

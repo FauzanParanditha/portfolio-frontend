@@ -14,7 +14,12 @@ export interface FrameSummary {
   seconds: number;
   /** Rata-rata frame per detik. */
   avgFps: number;
-  /** "1% terendah": laju pada 1% frame terlambat — terasa sebagai sendatan. */
+  /**
+   * "1% terendah": laju rata-rata pada 1% frame TERLAMA (minimal satu frame)
+   * — terasa sebagai sendatan. Sengaja rata-rata, bukan persentil ke-99:
+   * persentil membuang frame terlama, sehingga satu bekuan setengah detik di
+   * antara ratusan frame mulus tetap terbaca "60 fps".
+   */
   lowFps: number;
   /** Frame terlama, dalam milidetik. */
   worstMs: number;
@@ -38,9 +43,8 @@ export function summarizeFrames(times: readonly number[]): FrameSummary | null {
 
   const total = gaps.reduce((sum, gap) => sum + gap, 0);
   const sorted = gaps.slice().sort((a, b) => a - b);
-  // Persentil ke-99 jeda antar-frame; untuk sampel kecil = frame terlama.
-  const low =
-    sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.99))];
+  const slowest = sorted.slice(-Math.max(1, Math.ceil(sorted.length * 0.01)));
+  const low = slowest.reduce((sum, gap) => sum + gap, 0) / slowest.length;
   return {
     frames: gaps.length,
     seconds: total / 1000,
@@ -87,11 +91,13 @@ export function formatReport(report: PerfReport): string {
   return [
     "Tour perf report",
     `mode: ${report.mode}`,
-    `viewport: ${report.viewport} @ dpr ${report.dpr}`,
+    `viewport: ${report.viewport} @ dpr ${round(report.dpr, 2).replace(/\.?0+$/, "")}`,
     `canvas: ${report.canvas ?? dash}`,
     `gpu: ${report.gpu ?? dash}`,
-    `cpu cores: ${round(report.cores)} | memory: ${report.memoryGb === null ? dash : `${report.memoryGb} GB`}`,
-    `LCP: ${round(report.lcpMs)} ms | CLS: ${round(report.cls, 3)} | blocked: ${round(report.blockedMs)} ms`,
+    `cpu cores: ${round(report.cores)} | memory: ${round(report.memoryGb, 1).replace(/\.0$/, "")}${report.memoryGb === null || !Number.isFinite(report.memoryGb) ? "" : " GB"}`,
+    // CLS di sini = jumlah semua pergeseran sejak halaman dimuat (bukan
+    // jendela sesi seperti CLS standar), jadi tidak pernah lebih kecil darinya.
+    `LCP: ${round(report.lcpMs)} ms | CLS (sum since load): ${round(report.cls, 3)} | blocked: ${round(report.blockedMs)} ms`,
     `download: scripts ${round(report.scriptKb)} KB, total ${round(report.totalKb)} KB`,
     frameLine("idle", report.idle),
     frameLine("scroll", report.scroll),
