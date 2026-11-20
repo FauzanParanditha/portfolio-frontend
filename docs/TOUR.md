@@ -296,6 +296,39 @@ Pakai build produksi, bukan `pnpm dev` — mode pengembangan jauh lebih lambat
 dan angkanya menyesatkan. Tombol Copy bisa ditolak browser di `http://`;
 teksnya tetap bisa dipilih manual dari kotak laporan.
 
+### Hasil ponsel sungguhan
+
+Satu ponsel, 20 November 2026: GPU Adreno 740 (kelas atas), Chrome Android,
+layar 384×686 @ dpr 2,81, kanvas 576×1028, lewat Wi-Fi lokal ke build
+produksi. Baris `scroll` dari `/tour?perf`:
+
+| Isi ruangan    | Tampilan | Rata-rata | 1% low   | Frame terlama | Frame lambat |
+| -------------- | -------- | --------- | -------- | ------------- | ------------ |
+| 1 rak          | ringkas  | 59,9 fps  | 53,0 fps | 25 ms         | 0,0%         |
+| 1 rak          | 3D       | 59,9 fps  | 52,9 fps | 25 ms         | 0,0%         |
+| 24 rak + arsip | ringkas  | 59,9 fps  | 50,3 fps | 33 ms         | 0,0%         |
+| 24 rak + arsip | 3D       | 60,0 fps  | 53,1 fps | 25 ms         | 0,0%         |
+
+Yang bisa disimpulkan:
+
+- **Di ponsel ini 3D sama mulusnya dengan HTML saat bergulir**, juga dengan
+  ruangan terisi maksimum. Angkanya mentok di laju layar (60 Hz), jadi sisa
+  tenaganya tidak terukur.
+- **Jumlah rak menambah sendatan awal, bukan beban saat bergulir.** Waktu
+  blokir saat adegan pertama digambar: 86 ms dengan 1 rak, 219 ms dengan 24
+  rak; frame terlama pada detik-detik pertama 183 ms lalu 300 ms. Terjadi
+  sekali, setelah teks tampil.
+- CLS 0 di keempat uji.
+
+Yang **belum** terjawab:
+
+- **Ponsel kelas menengah atau lama.** Patokan di bawah ditulis untuk kelas
+  itu; satu ponsel kelas atas hanya menunjukkan batas atasnya.
+- **Panas dan baterai** setelah beberapa menit di 3D (uji hanya 12 detik).
+- **LCP dan ukuran unduhan di ponsel.** Lewat Wi-Fi lokal LCP 116–204 ms dan
+  sebagian besar berkas datang dari cache; keduanya tidak mewakili kunjungan
+  pertama di jaringan seluler.
+
 ### Usulan patokan keputusan (tahap 5)
 
 Usulan, belum disepakati. Diukur di ponsel kelas menengah dan satu laptop
@@ -313,9 +346,9 @@ yang bisa dijangkau dari internet.
 
 ## Belum dikerjakan
 
-- **Tahap 4:** angka laju frame dari ponsel dan laptop sungguhan lewat
-  `/tour?perf`, LCP/CLS dari alamat yang ter-deploy, lalu putuskan apakah
-  beranda ditukar.
+- **Tahap 4:** laju frame di ponsel kelas menengah dan di laptop tanpa GPU
+  khusus lewat `/tour?perf` (baru satu ponsel kelas atas yang diukur),
+  LCP/CLS dari alamat yang ter-deploy, lalu putuskan apakah beranda ditukar.
 - Jalur tanpa WebGL di layar lebar masih melompat setelah hidrasi.
 - **Bila ditukar (tahap 5):** cabut `noindex`, pindahkan data terstruktur dan
   intro beranda, arahkan `/tour` ke `/`.
