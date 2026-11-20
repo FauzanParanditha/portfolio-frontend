@@ -9,6 +9,15 @@
  */
 const SLOW_FRAME_MS = 34;
 
+/** Jendela ukur saat diam, milidetik. */
+export const IDLE_WINDOW_MS = 5_000;
+/**
+ * Jendela diam yang lebih pendek dari ini ditandai di laporan: uji dimulai
+ * sebelum jendelanya penuh, jadi isinya didominasi sendatan saat halaman (dan
+ * adegan 3D) baru dimuat — bukan keadaan diam.
+ */
+const SHORT_IDLE_SECONDS = (IDLE_WINDOW_MS / 1000) * 0.8;
+
 export interface FrameSummary {
   frames: number;
   seconds: number;
@@ -55,6 +64,58 @@ export function summarizeFrames(times: readonly number[]): FrameSummary | null {
   };
 }
 
+/** Bagian `PerformanceResourceTiming` yang dipakai untuk menghitung unduhan. */
+export interface ResourceSample {
+  name: string;
+  initiatorType: string;
+  transferSize: number;
+  decodedBodySize: number;
+}
+
+export interface DownloadSummary {
+  /** Byte yang benar-benar lewat jaringan, `null` bila tidak dilaporkan. */
+  scriptKb: number | null;
+  totalKb: number | null;
+  /** Jumlah berkas (termasuk dokumennya), dan berapa yang datang dari cache. */
+  files: number | null;
+  cachedFiles: number | null;
+}
+
+/**
+ * Jumlahkan byte yang diunduh halaman ini. Berkas dari cache browser
+ * ber-`transferSize` 0 walau isinya ada — dihitung terpisah supaya laporan
+ * dari kunjungan kedua tidak terbaca sebagai "halaman ini hanya 26 KB".
+ */
+export function summarizeDownloads(
+  resources: readonly ResourceSample[],
+  navigation?: ResourceSample,
+): DownloadSummary {
+  if (resources.length === 0 || typeof resources[0].transferSize !== "number") {
+    return { scriptKb: null, totalKb: null, files: null, cachedFiles: null };
+  }
+  let script = 0;
+  let total = 0;
+  let cached = 0;
+  const all = navigation ? [navigation, ...resources] : resources;
+  for (const resource of all) {
+    total += resource.transferSize;
+    if (resource.transferSize === 0 && resource.decodedBodySize > 0) cached++;
+    // Berkas .js yang dimuat lewat <link rel="preload"> ber-inisiator "link".
+    if (
+      resource.initiatorType === "script" ||
+      /\.js(\?|$)/.test(resource.name)
+    ) {
+      script += resource.transferSize;
+    }
+  }
+  return {
+    scriptKb: script / 1024,
+    totalKb: total / 1024,
+    files: all.length,
+    cachedFiles: cached,
+  };
+}
+
 export interface PerfReport {
   mode: "3d" | "simple";
   viewport: string;
@@ -72,6 +133,9 @@ export interface PerfReport {
   /** Byte yang diunduh, `null` bila tidak dilaporkan. */
   scriptKb: number | null;
   totalKb: number | null;
+  /** Jumlah berkas dan berapa yang dari cache; `null` bila tidak dilaporkan. */
+  files: number | null;
+  cachedFiles: number | null;
   idle: FrameSummary | null;
   scroll: FrameSummary | null;
   userAgent: string;
@@ -86,6 +150,20 @@ function frameLine(label: string, summary: FrameSummary | null): string {
   return `${label}: avg ${summary.avgFps.toFixed(1)} fps, 1% low ${summary.lowFps.toFixed(1)} fps, worst ${summary.worstMs.toFixed(0)} ms, slow frames ${(summary.slowShare * 100).toFixed(1)}% (${summary.frames} frames / ${summary.seconds.toFixed(1)} s)`;
 }
 
+/** Catatan di baris `idle` bila jendelanya belum penuh saat uji dimulai. */
+function idleNote(summary: FrameSummary | null): string {
+  return summary && summary.seconds < SHORT_IDLE_SECONDS
+    ? " [short window: includes start-up, wait 5 s before testing]"
+    : "";
+}
+
+/** Catatan di baris `download` bila sebagian berkas tidak lewat jaringan. */
+function cacheNote(report: PerfReport): string {
+  const { cachedFiles, files } = report;
+  if (!cachedFiles || !files || !Number.isFinite(cachedFiles)) return "";
+  return ` [${cachedFiles} of ${files} files from cache: not the full download]`;
+}
+
 /** Teks laporan untuk disalin dari ponsel. Satu fakta per baris. */
 export function formatReport(report: PerfReport): string {
   return [
@@ -98,8 +176,8 @@ export function formatReport(report: PerfReport): string {
     // CLS di sini = jumlah semua pergeseran sejak halaman dimuat (bukan
     // jendela sesi seperti CLS standar), jadi tidak pernah lebih kecil darinya.
     `LCP: ${round(report.lcpMs)} ms | CLS (sum since load): ${round(report.cls, 3)} | blocked: ${round(report.blockedMs)} ms`,
-    `download: scripts ${round(report.scriptKb)} KB, total ${round(report.totalKb)} KB`,
-    frameLine("idle", report.idle),
+    `download: scripts ${round(report.scriptKb)} KB, total ${round(report.totalKb)} KB${cacheNote(report)}`,
+    frameLine("idle", report.idle) + idleNote(report.idle),
     frameLine("scroll", report.scroll),
     `ua: ${report.userAgent}`,
   ].join("\n");

@@ -246,7 +246,8 @@ tidak ada data yang dikirim ke mana pun):
 
 1. Buka `/tour?perf` di ponsel. Panel di kiri-bawah menampilkan laju frame.
 2. Untuk mengukur 3D: tekan **3D version** di kanan atas, tunggu ruangan
-   tampil.
+   tampil, lalu **tunggu sekitar 5 detik** supaya jendela ukur saat diam
+   terisi penuh.
 3. Tekan **Run scroll test**. Halaman bergulir sendiri selama 12 detik.
 4. Tekan **Copy** (atau salin teks di kotaknya) dan simpan laporannya.
 5. Untuk pembanding tanpa 3D: **muat ulang halaman** lebih dulu, lalu ulangi
@@ -266,6 +267,14 @@ laju frame saat diam dan saat bergulir. Cara membacanya:
 - **CLS (sum since load)** = jumlah semua pergeseran sejak halaman dimuat,
   tidak termasuk yang dipicu ketukan. Ini bukan definisi CLS standar (jendela
   sesi) dan tidak pernah lebih kecil darinya.
+- **idle … [short window …]** = uji ditekan sebelum jendela diam (5 detik)
+  penuh. Barisnya lalu didominasi sendatan saat halaman dan adegan 3D baru
+  dimuat, jadi 1% low dan worst di baris itu bukan keadaan diam. Baris
+  `scroll` tidak terpengaruh.
+- **download … [N of M files from cache …]** = sebagian berkas diambil dari
+  cache browser (kunjungan kedua, atau setelah muat ulang), jadi angkanya
+  bukan ukuran unduhan penuh. Ukuran unduhan yang sah ada di tabel lab di
+  atas; untuk mengukurnya di ponsel, buka di tab samaran yang baru.
 - **LCP, CLS, blocked** hanya ada bila browser melaporkannya. Safari iOS
   tidak melaporkan semuanya; yang kosong ditulis `n/a`.
 - Panel **tidak mengukur daya atau baterai**. Untuk itu amati sendiri: suhu

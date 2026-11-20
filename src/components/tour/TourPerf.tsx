@@ -1,16 +1,18 @@
 "use client";
 
 import {
+  type DownloadSummary,
   formatReport,
   type FrameSummary,
+  IDLE_WINDOW_MS,
   type PerfReport,
+  summarizeDownloads,
   summarizeFrames,
 } from "@/lib/tour/perf";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Lama uji gulir otomatis dan jendela ukur saat diam. */
+/** Lama uji gulir otomatis. */
 const SCROLL_TEST_MS = 12_000;
-const IDLE_WINDOW_MS = 5_000;
 
 interface Vitals {
   lcpMs: number | null;
@@ -36,30 +38,15 @@ function observe(
   return observer;
 }
 
-/** Byte yang diunduh halaman ini (0 = dari cache atau tidak dilaporkan). */
-function downloadSizes(): { scriptKb: number | null; totalKb: number | null } {
+/** Unduhan halaman ini menurut browser (lihat `summarizeDownloads`). */
+function downloadSizes(): DownloadSummary {
   const resources = performance.getEntriesByType(
     "resource",
   ) as PerformanceResourceTiming[];
   const [navigation] = performance.getEntriesByType(
     "navigation",
   ) as PerformanceNavigationTiming[];
-  if (resources.length === 0 || typeof resources[0].transferSize !== "number") {
-    return { scriptKb: null, totalKb: null };
-  }
-  let script = 0;
-  let total = navigation?.transferSize ?? 0;
-  for (const resource of resources) {
-    total += resource.transferSize;
-    // Berkas .js yang dimuat lewat <link rel="preload"> ber-inisiator "link".
-    if (
-      resource.initiatorType === "script" ||
-      /\.js(\?|$)/.test(resource.name)
-    ) {
-      script += resource.transferSize;
-    }
-  }
-  return { scriptKb: script / 1024, totalKb: total / 1024 };
+  return summarizeDownloads(resources, navigation);
 }
 
 function gpuName(): string | null {

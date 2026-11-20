@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatReport, type PerfReport, summarizeFrames } from "./perf";
+import {
+  formatReport,
+  type PerfReport,
+  type ResourceSample,
+  summarizeDownloads,
+  summarizeFrames,
+} from "./perf";
 
 /** Cap waktu frame dengan jeda tetap. */
 const steady = (count: number, gap: number, start = 0) =>
@@ -98,7 +104,9 @@ describe("formatReport", () => {
     blockedMs: 310.2,
     scriptKb: 484,
     totalKb: 586,
-    idle: summarizeFrames(steady(121, 1000 / 60)),
+    files: 30,
+    cachedFiles: 0,
+    idle: summarizeFrames(steady(301, 1000 / 60)),
     scroll: summarizeFrames(steady(61, 1000 / 30)),
     userAgent: "TestBrowser/1.0",
   };
@@ -116,7 +124,7 @@ describe("formatReport", () => {
     );
     expect(lines).toContain("download: scripts 484 KB, total 586 KB");
     expect(lines.find((line) => line.startsWith("idle:"))).toMatch(
-      /^idle: avg 60\.0 fps, 1% low 60\.0 fps, worst 17 ms, slow frames 0\.0% \(120 frames \/ 2\.0 s\)$/,
+      /^idle: avg 60\.0 fps, 1% low 60\.0 fps, worst 17 ms, slow frames 0\.0% \(300 frames \/ 5\.0 s\)$/,
     );
     expect(lines.find((line) => line.startsWith("scroll:"))).toMatch(
       /^scroll: avg 30\.0 fps/,
@@ -137,6 +145,8 @@ describe("formatReport", () => {
       blockedMs: null,
       scriptKb: null,
       totalKb: null,
+      files: null,
+      cachedFiles: null,
       idle: null,
       scroll: null,
     });
@@ -163,6 +173,8 @@ describe("formatReport", () => {
       blockedMs: NaN,
       scriptKb: NaN,
       totalKb: Infinity,
+      files: NaN,
+      cachedFiles: NaN,
     });
     expect(text).not.toMatch(/NaN|Infinity|undefined|null/);
     expect(text).toContain("@ dpr n/a");
@@ -176,5 +188,129 @@ describe("formatReport", () => {
     expect(text).toContain("memory: 0.5 GB");
     expect(formatReport(base)).toContain("@ dpr 3\n");
     expect(formatReport(base)).toContain("memory: 4 GB");
+  });
+
+  it("jendela diam yang belum penuh ditandai: isinya sendatan awal, bukan keadaan diam", () => {
+    // Laporan dari ponsel sungguhan: uji dimulai 1,1 dtk setelah halaman
+    // dimuat, dan baris idle-nya (1% low 5,5 fps) terbaca seperti masalah.
+    const short = formatReport({
+      ...base,
+      idle: summarizeFrames(steady(60, 1000 / 60)),
+    });
+    expect(short).toMatch(
+      /\nidle: .*\(59 frames \/ 1\.0 s\) \[short window: includes start-up, wait 5 s before testing\]\n/,
+    );
+    // Jendela penuh (5 dtk) dan hampir penuh (4 dtk) tidak ditandai.
+    for (const count of [301, 241]) {
+      const full = formatReport({
+        ...base,
+        idle: summarizeFrames(steady(count, 1000 / 60)),
+      });
+      expect(full).not.toContain("short window");
+    }
+    // Sedikit di bawah 4 dtk sudah ditandai.
+    expect(
+      formatReport({ ...base, idle: summarizeFrames(steady(235, 1000 / 60)) }),
+    ).toContain("short window");
+  });
+
+  it("catatan jendela pendek hanya untuk baris idle, tidak untuk scroll", () => {
+    const text = formatReport({
+      ...base,
+      scroll: summarizeFrames(steady(31, 1000 / 30)),
+    });
+    expect(text.split("\n").find((line) => line.startsWith("scroll:"))).toMatch(
+      /\(30 frames \/ 1\.0 s\)$/,
+    );
+  });
+
+  it("berkas dari cache disebut di baris download, supaya angkanya tidak dibaca sebagai unduhan penuh", () => {
+    const text = formatReport({
+      ...base,
+      scriptKb: 0,
+      totalKb: 26,
+      files: 31,
+      cachedFiles: 28,
+    });
+    expect(text).toContain(
+      "download: scripts 0 KB, total 26 KB [28 of 31 files from cache: not the full download]\n",
+    );
+    // Tanpa berkas dari cache, atau bila tidak dilaporkan: tanpa catatan.
+    expect(formatReport(base)).toContain(
+      "download: scripts 484 KB, total 586 KB\n",
+    );
+    expect(formatReport({ ...base, files: null, cachedFiles: null })).toContain(
+      "download: scripts 484 KB, total 586 KB\n",
+    );
+  });
+});
+
+describe("summarizeDownloads", () => {
+  const file = (
+    name: string,
+    initiatorType: string,
+    transferSize: number,
+    decodedBodySize = transferSize * 3,
+  ): ResourceSample => ({ name, initiatorType, transferSize, decodedBodySize });
+
+  it("menjumlahkan byte jaringan; skrip dikenali dari inisiator atau akhiran .js", () => {
+    const summary = summarizeDownloads(
+      [
+        file("https://x.test/a.js", "script", 2048),
+        // .js lewat <link rel="preload">: inisiatornya "link".
+        file("https://x.test/b.js?v=1", "link", 1024),
+        file("https://x.test/style.css", "link", 4096),
+        file("https://x.test/photo.jpg", "img", 8192),
+      ],
+      file("https://x.test/tour", "navigation", 1024),
+    );
+    expect(summary.scriptKb).toBe(3);
+    // Dokumennya ikut di total, tetapi bukan skrip.
+    expect(summary.totalKb).toBe(16);
+    expect(summary.files).toBe(5);
+    expect(summary.cachedFiles).toBe(0);
+  });
+
+  it("berkas dari cache (0 byte lewat jaringan, isinya ada) dihitung terpisah", () => {
+    const summary = summarizeDownloads(
+      [
+        file("https://x.test/a.js", "script", 0, 90_000),
+        file("https://x.test/b.js", "script", 0, 50_000),
+        file("https://x.test/c.js", "script", 2048),
+        // Lintas-origin tanpa Timing-Allow-Origin: 0 dan 0 — tidak diketahui,
+        // jadi tidak diklaim "dari cache".
+        file("https://cdn.test/font.woff2", "css", 0, 0),
+      ],
+      file("https://x.test/tour", "navigation", 0, 40_000),
+    );
+    expect(summary.scriptKb).toBe(2);
+    expect(summary.totalKb).toBe(2);
+    expect(summary.files).toBe(5);
+    expect(summary.cachedFiles).toBe(3);
+  });
+
+  it("tanpa entri, atau browser tanpa transferSize: tidak dilaporkan (null), bukan 0", () => {
+    const none = {
+      scriptKb: null,
+      totalKb: null,
+      files: null,
+      cachedFiles: null,
+    };
+    expect(summarizeDownloads([])).toEqual(none);
+    expect(
+      summarizeDownloads([
+        { name: "a.js", initiatorType: "script" } as ResourceSample,
+      ]),
+    ).toEqual(none);
+  });
+
+  it("tanpa entri navigasi tetap menjumlahkan berkasnya", () => {
+    const summary = summarizeDownloads([file("a.js", "script", 1024)]);
+    expect(summary).toEqual({
+      scriptKb: 1,
+      totalKb: 1,
+      files: 1,
+      cachedFiles: 0,
+    });
   });
 });

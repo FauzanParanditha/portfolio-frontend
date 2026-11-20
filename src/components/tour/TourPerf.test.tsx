@@ -233,6 +233,57 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     );
   });
 
+  it("laporan menandai uji yang dimulai terlalu cepat dan berkas yang datang dari cache", async () => {
+    vi.spyOn(performance, "getEntriesByType").mockImplementation(
+      (type) =>
+        (type === "navigation"
+          ? [
+              {
+                name: "/tour",
+                initiatorType: "navigation",
+                transferSize: 0,
+                decodedBodySize: 40_000,
+              },
+            ]
+          : [
+              {
+                name: "/a.js",
+                initiatorType: "script",
+                transferSize: 0,
+                decodedBodySize: 90_000,
+              },
+              {
+                name: "/b.js",
+                initiatorType: "script",
+                transferSize: 2048,
+                decodedBodySize: 6000,
+              },
+            ]) as unknown as PerformanceEntryList,
+    );
+    const reportAfter = async (waitMs: number) => {
+      const view = render(<TourPerf show3d />);
+      await act(() => vi.advanceTimersByTimeAsync(waitMs));
+      fireEvent.click(screen.getByRole("button", { name: "Run scroll test" }));
+      await act(() => vi.advanceTimersByTimeAsync(13000));
+      const text = (
+        screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement
+      ).value;
+      view.unmount();
+      return text;
+    };
+
+    // Uji ditekan 1 dtk setelah panel muncul: jendela diamnya belum penuh.
+    const early = await reportAfter(1000);
+    expect(early).toMatch(/\nidle: [^\n]* \[short window: [^\n]*\]\n/);
+    expect(early).toContain(
+      "download: scripts 2 KB, total 2 KB [2 of 3 files from cache: not the full download]",
+    );
+    // Menunggu lebih dari 5 dtk: baris idle tanpa catatan.
+    const later = await reportAfter(6000);
+    expect(later).toMatch(/\nidle: avg /);
+    expect(later).not.toContain("short window");
+  });
+
   it("tinggi panel tetap: status dan kotak laporan berukuran sama sebelum dan sesudah uji", async () => {
     render(<TourPerf show3d={false} />);
     const shape = () => [
