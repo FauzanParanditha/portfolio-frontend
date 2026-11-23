@@ -51,6 +51,16 @@ import {
 
 // three.js + scene hanya diunduh bila tampilan 3D benar-benar dipakai.
 const TourCanvas = dynamic(() => import("./TourCanvas"), { ssr: false });
+// Panel ukur untuk uji di perangkat sungguhan; hanya diunduh dengan `?perf`.
+const TourPerf = dynamic(() => import("./TourPerf"), { ssr: false });
+
+const noopSubscribe = () => () => {};
+/** Alamat memuat `?perf` (bukan `?perf=0`). Dibaca dari `location` —
+ * `useSearchParams` akan memaksa halaman statis ini keluar dari prerender. */
+const hasPerfFlag = () => {
+  const value = new URLSearchParams(window.location.search).get("perf");
+  return value !== null && value !== "0";
+};
 
 interface TourShellProps {
   /** Proyek yang mengisi rak (urutan API), sama seperti di /playground. */
@@ -86,7 +96,8 @@ const NOSCRIPT_CSS = `
 .tour .tour-stop { display: block !important; min-height: 0 !important; padding: 1.75rem 1rem !important; }
 .tour .tour-stop:first-of-type { padding-top: 6.5rem !important; }
 .tour .tour-panel { width: min(100%, 42rem) !important; margin-inline: auto !important; }
-.tour .tour-rail { display: none !important; }`;
+.tour .tour-rail { display: none !important; }
+.tour .tour-only-3d { display: none !important; }`;
 
 const focusRing =
   "focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 focus-visible:outline-hidden";
@@ -142,6 +153,7 @@ export function TourShell({
     () => null,
   );
   const [sceneFailed, setSceneFailed] = useState(false);
+  const perf = useSyncExternalStore(noopSubscribe, hasPerfFlag, () => false);
 
   const canRender3d = webgl && !sceneFailed;
   const show3d = canRender3d && (chosen ? chosen === "3d" : auto3d);
@@ -304,11 +316,12 @@ export function TourShell({
             </div>
           ))}
         </dl>
-        {show3d && (
-          <p className="text-sm text-zinc-400">
-            Scroll to walk through the room.
-          </p>
-        )}
+        {/* Tampil-tidaknya ditentukan CSS (`.tour-only-3d`), bukan `show3d`:
+            baris yang baru muncul setelah hidrasi menggeser isi kartu
+            (terukur sebagai layout shift). */}
+        <p className="tour-only-3d text-sm text-zinc-400">
+          Scroll to walk through the room.
+        </p>
       </>
     ),
     about: (
@@ -464,7 +477,7 @@ export function TourShell({
       )}
 
       {/* ── Bilah atas ── */}
-      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2.5 backdrop-blur-md sm:px-6">
+      <header className="tour-glass fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-2.5 sm:px-6">
         <Link
           href="/"
           className={`rounded-sm text-lg font-semibold tracking-tight text-white ${focusRing}`}
@@ -475,7 +488,7 @@ export function TourShell({
           <p
             data-requires-js
             aria-hidden="true"
-            className="font-mono text-xs text-zinc-400 tabular-nums md:hidden"
+            className="shrink-0 font-mono text-xs whitespace-nowrap text-zinc-400 tabular-nums md:hidden"
           >
             {pad(active + 1)} / {pad(stopIds.length)}
           </p>
@@ -491,9 +504,21 @@ export function TourShell({
               type="button"
               data-requires-js
               onClick={() => writeTourMode(show3d ? "simple" : "3d")}
-              className={`inline-flex min-h-11 items-center rounded-full border border-zinc-700 bg-zinc-950 px-4 text-xs font-medium tracking-widest text-zinc-200 uppercase transition-colors hover:border-white hover:text-white ${focusRing}`}
+              // Lebar tetap HANYA di layar lebar: di sanalah teksnya berganti
+              // setelah hidrasi (bawaan 3D), dan tombol yang melebar akan
+              // menggeser tautan di sebelahnya. Di ponsel bawaannya sama
+              // sebelum dan sesudah hidrasi, dan lebar tetap membuat bilah
+              // atas tidak muat di layar 360 px.
+              className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-950 px-4 text-xs font-medium tracking-widest whitespace-nowrap text-zinc-200 uppercase transition-colors hover:border-white hover:text-white lg:min-w-[9.75rem] ${focusRing}`}
             >
-              {show3d ? "Simple version" : "3D version"}
+              {/* Satu pembungkus inline: di dalam tombol `inline-flex`, spasi
+                  di antara dua anak langsung akan hilang. Di layar sempit kata
+                  "version" hanya untuk pembaca layar, supaya logo, penghitung,
+                  dan tombol muat sebaris. */}
+              <span>
+                {show3d ? "Simple" : "3D"}{" "}
+                <span className="max-sm:sr-only">version</span>
+              </span>
             </button>
           )}
         </div>
@@ -502,7 +527,7 @@ export function TourShell({
       {/* ── Rel perhentian (layar lebar) ── */}
       <nav
         aria-label="Tour stops"
-        className="tour-rail fixed top-1/2 right-4 z-20 -translate-y-1/2 flex-col gap-1 rounded-lg border border-zinc-800 bg-zinc-950/85 p-2 backdrop-blur-md"
+        className="tour-rail tour-glass fixed top-1/2 right-4 z-20 -translate-y-1/2 flex-col gap-1 rounded-lg border border-zinc-800 p-2"
       >
         {stopIds.map((id, index) => (
           <a
@@ -530,7 +555,7 @@ export function TourShell({
             aria-labelledby={`${id}-heading`}
             className="tour-stop"
           >
-            <div className="tour-panel flex flex-col gap-5 rounded-lg border border-zinc-800 bg-zinc-950/85 p-6 backdrop-blur-md">
+            <div className="tour-panel tour-glass flex flex-col gap-5 rounded-lg border border-zinc-800 p-6">
               {cards[id]}
             </div>
           </section>
@@ -543,6 +568,8 @@ export function TourShell({
       <div className="relative z-20">
         <Footer />
       </div>
+
+      {perf && <TourPerf show3d={show3d} />}
 
       {/* Tanpa JavaScript tidak ada kanvas: pakai tata letak ringkas dan
           sembunyikan kontrol yang butuh JS. */}

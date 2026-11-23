@@ -73,6 +73,14 @@ describe("pilihan tampilan tur", () => {
     });
   });
 
+  it("berlangganan memasang atribut dari pilihan tersimpan (navigasi sisi klien, tanpa skrip pra-paint)", () => {
+    window.localStorage.setItem("tour-mode", "simple");
+    expect(rootMode()).toBeNull();
+    const unsubscribe = subscribeTourMode(() => {});
+    expect(rootMode()).toBe("simple");
+    unsubscribe();
+  });
+
   it("nilai tak dikenal di storage diabaikan", () => {
     window.localStorage.setItem("tour-mode", "<script>");
     expect(readTourMode()).toBeNull();

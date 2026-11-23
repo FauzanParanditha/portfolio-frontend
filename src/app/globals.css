@@ -508,8 +508,23 @@ html:has(.tour) {
   width: min(100%, 42rem);
   margin-inline: auto;
 }
-.tour-rail {
+.tour-rail,
+.tour-only-3d {
   display: none;
+}
+/* Permukaan kartu, bilah atas, dan rel: hampir pekat, TANPA blur latar.
+   `backdrop-filter` di atas kanvas yang terus bergerak harus dihitung ulang
+   tiap frame. Di ponsel kelas menengah (Adreno 710) itu terukur sebagai frame
+   100–240 ms tiap kali kartu tinggi memenuhi layar; tanpa blur ponsel yang
+   sama berjalan 60 fps tanpa satu pun frame panjang. Di tata letak ringkas
+   tidak ada apa-apa di belakang kartu, jadi blur di sana hanya biaya. */
+.tour-glass {
+  background-color: color-mix(in oklab, var(--color-zinc-950) 95%, transparent);
+}
+/* Bilah atas: pekat penuh. Isi kartu lewat tepat di bawahnya saat digulir, dan
+   tanpa blur tulisan itu tetap terbaca samar di balik bilah 95%. */
+.tour > header.tour-glass {
+  background-color: var(--color-zinc-950);
 }
 
 /* Tata letak 3D. Ditulis dua kali (bawaan & pilihan pengunjung) karena CSS
@@ -528,6 +543,34 @@ html:has(.tour) {
   html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-rail {
     display: flex;
   }
+  html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-only-3d {
+    display: block;
+  }
+}
+/* Kaca buram hanya di tempat ia terlihat dan murah: tata letak 3D di perangkat
+   berpenunjuk halus (mouse, trackpad). Ponsel dan tablet tidak mendapatkannya,
+   juga bila pengunjungnya memilih 3D. */
+@media (min-width: 64rem) and (min-height: 37.5rem) and (prefers-reduced-motion: no-preference) and (pointer: fine) {
+  html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-glass {
+    background-color: color-mix(
+      in oklab,
+      var(--color-zinc-950) 85%,
+      transparent
+    );
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+@media (pointer: fine) {
+  html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-glass {
+    background-color: color-mix(
+      in oklab,
+      var(--color-zinc-950) 85%,
+      transparent
+    );
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
 }
 html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-stop {
   display: flex;
@@ -539,6 +582,9 @@ html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-stop {
 html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-panel {
   width: min(100%, 28rem);
   margin-inline: 0 auto;
+}
+html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-only-3d {
+  display: block;
 }
 @media (min-width: 48rem) {
   html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-stop {

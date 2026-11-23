@@ -1,6 +1,10 @@
 import {
   CHECK_LABEL,
+  CHECK_NAMES,
+  type CheckState,
+  formatClock,
   type Health,
+  healthPath,
   OVERALL_LABEL,
   type OverallState,
 } from "@/lib/playground/health";
@@ -27,6 +31,11 @@ const OVERALL_STYLE: Record<
  * periksa. Dipakai panel terminal di /playground dan kartu status di tur.
  *
  * Status selalu disampaikan dengan ikon + teks, tidak hanya warna.
+ *
+ * Tabel dan baris waktu sudah dirender (berisi tanda tunggu) sebelum hasil
+ * pertama tiba, supaya tinggi kartu tidak berubah saat hasilnya datang: kartu
+ * yang memanjang menggeser semua isi di bawahnya dan memaksa seluruh halaman
+ * ditata ulang di tengah pengunjung menggulir.
  */
 export function HealthSummary({
   health,
@@ -38,6 +47,19 @@ export function HealthSummary({
 }) {
   const style = health ? OVERALL_STYLE[health.overall] : null;
   const Icon = style?.icon ?? Clock;
+  const rows: {
+    name: string;
+    path: string;
+    state: CheckState | null;
+    latencyMs: number | null;
+  }[] =
+    health?.checks ??
+    CHECK_NAMES.map((name) => ({
+      name,
+      path: healthPath(process.env.NEXT_PUBLIC_API_URL, name),
+      state: null,
+      latencyMs: null,
+    }));
 
   return (
     <>
@@ -53,62 +75,65 @@ export function HealthSummary({
         {health ? OVERALL_LABEL[health.overall] : "Checking…"}
       </p>
 
+      <table className="w-full border-collapse font-mono text-sm tabular-nums">
+        <caption className="sr-only">Health checks</caption>
+        <thead>
+          <tr className="text-left text-xs tracking-widest text-zinc-400 uppercase">
+            <th scope="col" className="pb-2 font-normal">
+              Endpoint
+            </th>
+            <th scope="col" className="pb-2 font-normal">
+              Result
+            </th>
+            <th scope="col" className="pb-2 text-right font-normal">
+              Round trip
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((check) => (
+            <tr key={check.name} className="border-t border-zinc-800">
+              <th
+                scope="row"
+                className="py-3 pr-3 text-left font-normal break-all text-zinc-200"
+              >
+                {check.path}
+              </th>
+              <td
+                className={`py-3 pr-3 ${
+                  check.state === "ok"
+                    ? "text-emerald-300"
+                    : check.state === "degraded"
+                      ? "text-amber-300"
+                      : "text-zinc-300"
+                }`}
+              >
+                {check.state === null ? "checking…" : CHECK_LABEL[check.state]}
+              </td>
+              <td className="py-3 text-right text-zinc-300">
+                {check.latencyMs === null ? (
+                  <>
+                    <span aria-hidden="true">—</span>
+                    <span className="sr-only">not measured</span>
+                  </>
+                ) : (
+                  `${check.latencyMs} ms`
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p className="text-sm leading-relaxed text-zinc-400">
+        {health
+          ? `Checked at ${formatClock(health.checkedAt)}.`
+          : "Waiting for the first answer."}
+        {health?.overall !== "limited" && ` ${refreshHint}`}
+      </p>
+
       {health && (
         <>
-          <table className="w-full border-collapse font-mono text-sm tabular-nums">
-            <caption className="sr-only">Health checks</caption>
-            <thead>
-              <tr className="text-left text-xs tracking-widest text-zinc-400 uppercase">
-                <th scope="col" className="pb-2 font-normal">
-                  Endpoint
-                </th>
-                <th scope="col" className="pb-2 font-normal">
-                  Result
-                </th>
-                <th scope="col" className="pb-2 text-right font-normal">
-                  Round trip
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {health.checks.map((check) => (
-                <tr key={check.name} className="border-t border-zinc-800">
-                  <th
-                    scope="row"
-                    className="py-3 pr-3 text-left font-normal break-all text-zinc-200"
-                  >
-                    {check.path}
-                  </th>
-                  <td
-                    className={`py-3 pr-3 ${
-                      check.state === "ok"
-                        ? "text-emerald-300"
-                        : check.state === "degraded"
-                          ? "text-amber-300"
-                          : "text-zinc-300"
-                    }`}
-                  >
-                    {CHECK_LABEL[check.state]}
-                  </td>
-                  <td className="py-3 text-right text-zinc-300">
-                    {check.latencyMs === null ? (
-                      <>
-                        <span aria-hidden="true">—</span>
-                        <span className="sr-only">not measured</span>
-                      </>
-                    ) : (
-                      `${check.latencyMs} ms`
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <p className="text-sm leading-relaxed text-zinc-400">
-            Checked at {new Date(health.checkedAt).toLocaleTimeString()}.
-            {health.overall !== "limited" && ` ${refreshHint}`}
-          </p>
           {health.overall === "unavailable" && (
             <p className="text-sm leading-relaxed text-zinc-400">
               The status endpoint can&apos;t be reached from here. The rest of

@@ -40,7 +40,8 @@ export interface Health {
 }
 
 const EXPECTED: Record<CheckName, string> = { healthz: "ok", readyz: "ready" };
-const NAMES: CheckName[] = ["healthz", "readyz"];
+/** Pemeriksaan yang dijalankan, berurutan. */
+export const CHECK_NAMES: readonly CheckName[] = ["healthz", "readyz"];
 
 /** Klasifikasikan satu jawaban. `status === null` berarti permintaan gagal. */
 export function classifyCheck(
@@ -107,7 +108,7 @@ export async function probeHealth(
   wallClock: () => number = Date.now,
 ): Promise<Health> {
   const checks: HealthCheck[] = [];
-  for (const name of NAMES) {
+  for (const name of CHECK_NAMES) {
     const url = healthUrl(base, name);
     const path = healthPath(base, name);
     if (!url) {
@@ -152,3 +153,17 @@ export const CHECK_LABEL: Record<CheckState, string> = {
   limited: "rate limited",
   unavailable: "unavailable",
 };
+
+/**
+ * Jam lokal `HH:MM:SS` untuk baris "Checked at …".
+ *
+ * Sengaja tanpa `toLocaleTimeString`/`Intl`: panggilan pertamanya memuat data
+ * lokal browser dan memblokir utas utama — terukur ±100 ms di CPU yang
+ * diperlambat 6×, tepat saat hasil pertama tiba di tengah pengunjung menggulir.
+ */
+export function formatClock(timestamp: number): string {
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.getTime())) return "--:--:--";
+  const two = (value: number) => String(value).padStart(2, "0");
+  return `${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
+}

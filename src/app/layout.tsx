@@ -107,13 +107,29 @@ export default function RootLayout({
 }>) {
   return (
     // suppressHydrationWarning HANYA untuk atribut <html> itu sendiri, bukan
-    // isinya. Dibutuhkan karena skrip di IntroOverlay menyetel
-    // `data-intro="seen"` pada <html> saat HTML di-parse — sebelum React
+    // isinya. Dibutuhkan karena dua skrip menyetel atribut pada <html>
+    // sebelum React hidrasi: `data-tour-mode` (skrip inline di <head> di
+    // bawah) dan `data-intro="seen"` (skrip di IntroOverlay) — sebelum React
     // hidrasi — sehingga atribut di klien memang sengaja berbeda dari yang
     // dirender server. Ini pola yang sama dipakai skrip anti-kedip tema.
     // Cakupannya satu tingkat, jadi ketidakcocokan sungguhan di dalam pohon
     // tetap dilaporkan.
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <head>
+        {/* Pilihan tampilan tur (3D / ringkas) dipasang pada <html> SEBELUM
+            paint, supaya /tour tidak tampil di tata letak bawaan lalu melompat.
+
+            Sengaja <script> inline biasa, bukan <Script beforeInteractive>:
+            di App Router yang terakhir hanya mengantre ke `self.__next_s` dan
+            baru dijalankan saat runtime Next menyala — SETELAH paint pertama
+            (terukur: CLS 0,146 di desktop dengan pilihan "simple"). Skrip
+            inline di <head> dijalankan parser sebelum <body> digambar.
+            Beberapa byte, sinkron. Atributnya terpasang di semua halaman,
+            tetapi CSS yang membacanya berlingkup `.tour`. Root layout
+            tidak dirender ulang di klien, jadi skrip ini tidak pernah
+            disisipkan React (yang tidak akan mengeksekusinya). */}
+        <script dangerouslySetInnerHTML={{ __html: TOUR_MODE_SCRIPT }} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -123,12 +139,6 @@ export default function RootLayout({
             React tidak akan dieksekusi pada navigasi sisi klien. */}
         <Script id="intro-session" strategy="beforeInteractive">
           {INTRO_SESSION_SCRIPT}
-        </Script>
-        {/* Pilihan tampilan tur (3D / ringkas) dipasang pada <html> sebelum
-            paint, supaya /tour tidak tampil di tata letak bawaan lalu melompat
-            saat React terhidrasi. Beberapa byte, tanpa efek di halaman lain. */}
-        <Script id="tour-mode" strategy="beforeInteractive">
-          {TOUR_MODE_SCRIPT}
         </Script>
         <Providers>{children}</Providers>
       </body>

@@ -94,3 +94,24 @@ describe("moveDog", () => {
     expect(sim.speed).toBe(0);
   });
 });
+
+describe("pemanasan adegan (berbasis sumber: jsdom tidak punya WebGL)", () => {
+  it("adegan dipanaskan sebelum dinyatakan siap, dan kegagalannya tidak menahan tur", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(resolve(__dirname, "TourCanvas.tsx"), "utf8");
+    const warm = source.indexOf("warmUpScene(gl, scene, camera);");
+    const ready = source.indexOf("onReady();", warm);
+    expect(warm).toBeGreaterThan(-1);
+    expect(ready).toBeGreaterThan(warm);
+    // Satu-satunya panggilan: tidak ada `onReady()` lain yang mendahuluinya
+    // (kanvas memudar masuk begitu siap; jeda pemanasan harus sudah lewat).
+    expect(source.split("onReady();")).toHaveLength(2);
+    // Pemanasan dibungkus try/catch; `onReady` berada di luar blok itu.
+    const between = source.slice(warm, ready);
+    expect(between).toMatch(/\} catch \{/);
+    expect(source.slice(source.lastIndexOf("try {", warm), warm)).toMatch(
+      /^try \{\s*$/,
+    );
+  });
+});

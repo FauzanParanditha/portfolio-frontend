@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  CHECK_NAMES,
   classifyCheck,
+  formatClock,
   healthPath,
   healthUrl,
   probeHealth,
@@ -214,5 +216,44 @@ describe("probeHealth", () => {
       () => (t -= 5),
     );
     expect(health.checks[0].latencyMs).toBe(0);
+  });
+});
+
+describe("formatClock", () => {
+  it("jam lokal HH:MM:SS, dengan nol di depan", () => {
+    expect(formatClock(new Date(2026, 10, 20, 9, 5, 7).getTime())).toBe(
+      "09:05:07",
+    );
+    expect(formatClock(new Date(2026, 10, 20, 23, 59, 0).getTime())).toBe(
+      "23:59:00",
+    );
+    expect(formatClock(new Date(2026, 0, 1, 0, 0, 0).getTime())).toBe(
+      "00:00:00",
+    );
+  });
+
+  it("cap waktu rusak tidak menghasilkan NaN di layar", () => {
+    expect(formatClock(NaN)).toBe("--:--:--");
+    expect(formatClock(Infinity)).toBe("--:--:--");
+  });
+
+  it("tidak memakai Intl: panggilan pertamanya memblokir utas utama saat pengunjung menggulir", () => {
+    const locale = vi.spyOn(Date.prototype, "toLocaleTimeString");
+    const format = vi.spyOn(Intl, "DateTimeFormat");
+    formatClock(Date.now());
+    expect(locale).not.toHaveBeenCalled();
+    expect(format).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+});
+
+describe("CHECK_NAMES", () => {
+  it("urutan pemeriksaan sama dengan urutan hasil probeHealth", async () => {
+    const health = await probeHealth(
+      () => reply(200, { data: { status: "ok" } }),
+      "http://api.test/api/v1",
+      clock(1),
+    );
+    expect(health.checks.map((check) => check.name)).toEqual([...CHECK_NAMES]);
   });
 });

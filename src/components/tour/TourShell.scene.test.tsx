@@ -253,7 +253,7 @@ describe("TourShell (3D tersedia)", () => {
       "status",
       "contact",
     ]);
-    expect(screen.getByText(/Scroll to walk/i)).toBeInTheDocument();
+    expect(screen.getByText(/Scroll to walk/i)).toHaveClass("tour-only-3d");
   });
 
   it("menggulir memindahkan posisi tur dan menandai perhentian aktif", async () => {
@@ -428,7 +428,6 @@ describe("TourShell (3D tersedia)", () => {
     expect(window.localStorage.getItem("tour-mode")).toBe("simple");
     expect(container.querySelector(".tour")).not.toHaveAttribute("data-mode");
     expect(screen.getByRole("button", { name: "3D version" })).toBeVisible();
-    expect(screen.queryByText(/Scroll to walk/i)).toBeNull();
 
     // Kunjungan berikutnya: pilihan masih berlaku.
     unmount();
@@ -535,7 +534,124 @@ describe("TourShell (3D tersedia)", () => {
     const media = [
       ...css.matchAll(/@media ([^{]+)\{\s*html:not\(\[data-tour-mode\]\)/g),
     ].map((match) => match[1].trim());
-    expect(media).toEqual([AUTO_3D_QUERY]);
+    // Dua blok memakai kueri itu: tata letak 3D, dan kaca buram (kueri yang
+    // sama, dipersempit ke penunjuk halus).
+    expect(media).toEqual([
+      AUTO_3D_QUERY,
+      `${AUTO_3D_QUERY} and (pointer: fine)`,
+    ]);
+  });
+
+  it("blur latar: tidak ada di perangkat sentuh maupun tata letak ringkas — hanya 3D dengan penunjuk halus", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    const tour = css.slice(css.indexOf("Tur ruang server (/tour)"));
+    const shell = readFileSync(
+      join(process.cwd(), "src/components/tour/TourShell.tsx"),
+      "utf8",
+    );
+    // Tidak ada blur lewat kelas utilitas: itu berlaku di SEMUA perangkat.
+    expect(shell).not.toMatch(/backdrop-(blur|filter)/);
+    expect(shell.match(/\btour-glass\b/g)).toHaveLength(3);
+
+    // Bawaan: hampir pekat, tanpa blur.
+    const base = tour.match(/\n\.tour-glass \{([^}]*)\}/)?.[1] ?? "";
+    expect(base).toMatch(/var\(--color-zinc-950\) 95%/);
+    expect(base).not.toContain("backdrop-filter");
+    // Bilah atas pekat penuh: isi kartu lewat di bawahnya saat digulir.
+    expect(tour).toMatch(
+      /\.tour > header\.tour-glass \{\s*background-color: var\(--color-zinc-950\);\s*\}/,
+    );
+
+    // Setiap `backdrop-filter` berada di dalam @media ber-`(pointer: fine)`,
+    // pada pemilih tata letak 3D yang tidak dipaksa ringkas.
+    const blocks = [
+      ...tour.matchAll(/@media ([^{]+)\{((?:[^{}]|\{[^{}]*\})*)\}/g),
+    ].filter((match) => match[2].includes("backdrop-filter"));
+    expect(blocks).toHaveLength(2);
+    for (const [, query, body] of blocks) {
+      expect(query).toContain("(pointer: fine)");
+      const selectors = [
+        ...body.matchAll(/([^{}]+)\{[^{}]*backdrop-filter/g),
+      ].map((match) => match[1].trim());
+      expect(selectors).toHaveLength(1);
+      expect(selectors[0]).toMatch(
+        /^html(:not\(\[data-tour-mode\]\)|\[data-tour-mode="3d"\]) \.tour:not\(\[data-mode="simple"\]\) \.tour-glass$/,
+      );
+    }
+    const inBlocks = blocks.reduce(
+      (sum, match) => sum + (match[2].match(/backdrop-filter:/g)?.length ?? 0),
+      0,
+    );
+    // Deklarasinya saja (komentar boleh menyebut namanya).
+    expect(tour.match(/backdrop-filter:/g)?.length).toBe(inBlocks);
+    expect(inBlocks).toBe(4);
+  });
+
+  it("petunjuk gulir: tersembunyi secara bawaan, tampil hanya di tata letak 3D (ditentukan CSS)", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    // Bawaan: tersembunyi bersama rel.
+    expect(css).toMatch(/\.tour-rail,\s*\.tour-only-3d \{\s*display: none;/);
+    // Tampil di kedua jalur 3D (bawaan & pilihan pengunjung), tidak pernah
+    // bila tata letak ringkas dipaksa.
+    const shown = [
+      ...css.matchAll(/([^{}]+)\.tour-only-3d \{\s*display: block;/g),
+    ].map((match) => match[1].trim());
+    expect(shown).toEqual([
+      'html:not([data-tour-mode]) .tour:not([data-mode="simple"])',
+      'html[data-tour-mode="3d"] .tour:not([data-mode="simple"])',
+    ]);
+
+    // Jalur bawaan harus berada DI DALAM kueri media 3D: di luar itu petunjuk
+    // akan tampil di ponsel, yang tidak punya ruangan untuk dijelajahi.
+    const start = css.indexOf(`@media ${AUTO_3D_QUERY}`);
+    expect(start).toBeGreaterThan(-1);
+    // Blok @media berakhir di "}" pertama yang berdiri di awal baris.
+    const block = css.slice(start, css.indexOf("\n}", start));
+    expect(block).toContain(
+      'html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-only-3d',
+    );
+    expect(css.slice(0, start)).not.toMatch(
+      /html:not\(\[data-tour-mode\]\)[^{]*\.tour-only-3d/,
+    );
+  });
+
+  it("skrip pilihan tampilan ada di <head> root layout sebagai <script> inline biasa", () => {
+    // Sumbernya yang diperiksa: root layout memuat next/font dan tidak bisa
+    // dirender di jsdom. <Script beforeInteractive> baru jalan setelah paint
+    // pertama (terukur CLS 0,146), jadi bentuknya dijaga di sini.
+    const layout = readFileSync(
+      join(process.cwd(), "src/app/layout.tsx"),
+      "utf8",
+    );
+    const head = layout.slice(
+      layout.indexOf("<head>"),
+      layout.indexOf("</head>"),
+    );
+    expect(head).toContain(
+      "<script dangerouslySetInnerHTML={{ __html: TOUR_MODE_SCRIPT }} />",
+    );
+    expect(layout).not.toMatch(/<Script[^>]*>\s*\{TOUR_MODE_SCRIPT\}/);
+    expect(layout.indexOf("<head>")).toBeLessThan(layout.indexOf("<body"));
+  });
+
+  it("panel ukur dan scene dimuat malas, tidak diimpor langsung ke bundel awal", () => {
+    const shell = readFileSync(
+      join(process.cwd(), "src/components/tour/TourShell.tsx"),
+      "utf8",
+    );
+    expect(shell).toMatch(
+      /dynamic\(\(\) => import\("\.\/TourPerf"\), \{ ssr: false \}\)/,
+    );
+    expect(shell).toMatch(
+      /dynamic\(\(\) => import\("\.\/TourCanvas"\), \{ ssr: false \}\)/,
+    );
+    expect(shell).not.toMatch(/^import .* from "\.\/Tour(Perf|Canvas)";/m);
   });
 
   it("HTML dari server: isi lengkap, tanpa atribut pemaksa, dan gaya <noscript> untuk tata letak ringkas", () => {
@@ -550,5 +666,9 @@ describe("TourShell (3D tersedia)", () => {
       /<noscript><style>[^<]*\.tour \.tour-stop \{ display: block !important;/,
     );
     expect(html).toMatch(/<noscript><style>[^<]*\[data-requires-js\]/);
+    // Tanpa JS tidak ada ruangan: petunjuk gulir ikut disembunyikan.
+    expect(html).toMatch(
+      /<noscript><style>[^<]*\.tour \.tour-only-3d \{ display: none !important;/,
+    );
   });
 });

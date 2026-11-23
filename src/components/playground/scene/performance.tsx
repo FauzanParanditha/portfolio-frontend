@@ -2,6 +2,7 @@
 
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
+import type { Camera, Object3D } from "three";
 
 /**
  * Penyesuaian beban render, dipakai scene /playground dan tur beranda.
@@ -62,4 +63,36 @@ export function AdaptiveResolution({
   });
 
   return null;
+}
+
+/**
+ * Gambar seluruh adegan satu kali tanpa pemangkasan frustum, supaya geometri
+ * dan tekstur SEMUA objek terunggah ke GPU sekarang juga.
+ *
+ * three.js mengunggah keduanya saat objek pertama kali benar-benar digambar.
+ * Di tur, kamera baru menghadap dinding pengalaman dan terminal di tengah
+ * jalan — unggahannya (puluhan buffer, beberapa tekstur) lalu terjadi saat
+ * pengunjung menggulir dan terasa sebagai sendatan di GPU ponsel. Dipanaskan
+ * di awal, biayanya menyatu dengan jeda muat yang memang sudah ada.
+ *
+ * Objek yang `visible = false` tetap dilewati three.js; pemangkasan frustum
+ * dipulihkan seperti semula, juga bila render gagal.
+ */
+export function warmUpScene(
+  gl: { render: (scene: Object3D, camera: Camera) => void },
+  scene: Object3D,
+  camera: Camera,
+): void {
+  const culled: Object3D[] = [];
+  scene.traverse((object) => {
+    if (object.frustumCulled) {
+      object.frustumCulled = false;
+      culled.push(object);
+    }
+  });
+  try {
+    gl.render(scene, camera);
+  } finally {
+    for (const object of culled) object.frustumCulled = true;
+  }
 }
