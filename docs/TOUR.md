@@ -172,6 +172,9 @@ saat berhenti.
   (`scroll-padding-top` pada `<html>` selama halaman tur terpasang).
 - **Render berhenti saat tab tersembunyi**; resolusi turun otomatis bila FPS
   jatuh (sama dengan playground).
+- **Tidak ada blur latar di perangkat sentuh maupun tata letak ringkas.**
+  `backdrop-filter` hanya ada di `.tour-glass` pada tata letak 3D dengan
+  `pointer: fine`; jangan menambahkannya lewat kelas utilitas di markup.
 - **Tidak ada pekerjaan berat di tengah gulir.** Hasil status yang tiba tidak
   mengubah tinggi kartunya dan tidak memanggil `Intl`; geometri dan tekstur
   seluruh adegan diunggah ke GPU sebelum kanvas tampil (`warmUpScene`), bukan
@@ -369,9 +372,36 @@ di tengah gulir adalah layar terminal yang digambar ulang. Lab memakai GPU
 laptop, jadi bagian GPU-nya baru terbukti lewat hitungan unggahan, bukan lewat
 waktu; angka ponsel menengah sesudah perbaikan masih harus diambil.
 
+#### Blur latar di atas kanvas (ditemukan dari ponsel menengah)
+
+Setelah perbaikan di atas, ponsel menengah masih menunjukkan frame 100–240 ms
+di 3D. Baris `long frame` di laporan memisahkannya: empat frame terpanjang
+(di 10%, 12%, 76%, 77% gulir) semuanya `script 0 ms, layout 0 ms` — bukan kode,
+bukan tata letak — dan posisinya tepat saat dua kartu tertinggi (About,
+Contact) memenuhi layar. Uji banding di ponsel yang sama, 3D, ruangan penuh:
+
+| `backdrop-filter`        | Rata-rata | 1% low   | Frame terlama | Frame lambat | Frame panjang (> 50 ms)  |
+| ------------------------ | --------- | -------- | ------------- | ------------ | ------------------------ |
+| menyala (8 elemen)       | 57,1 fps  | 10,5 fps | 167 ms        | 1,0%         | 4 dilaporkan: 102–175 ms |
+| dimatikan (tombol panel) | 59,9 fps  | 59,5 fps | 17 ms         | 0,0%         | tidak ada                |
+
+Satu pasang uji, tetapi tiga uji 3D sebelumnya dengan blur di ponsel itu
+semuanya bersendatan (242, 209, 167 ms). Kartu ber-blur di atas kanvas yang
+terus bergerak harus dihitung ulang tiap frame.
+
+Perbaikan: permukaan kartu, bilah atas, dan rel memakai kelas `.tour-glass`
+(globals.css) — 95% pekat **tanpa** blur secara bawaan, bilah atas pekat
+penuh. Kaca buram (85% + `blur(12px)`) hanya berlaku di tata letak 3D pada
+perangkat berpenunjuk halus (`pointer: fine`: mouse, trackpad). Ponsel dan
+tablet tidak mendapatkannya, juga bila memilih 3D; tata letak ringkas tidak
+pernah, karena di belakang kartunya tidak ada apa-apa untuk diburamkan.
+
 Yang **belum** terjawab:
 
-- **Ponsel menengah sesudah perbaikan**, dan ponsel yang lebih lemah lagi.
+- **Laptop ber-GPU lemah.** Desktop tetap memakai blur di 3D; di laptop
+  pengukur tidak ada frame panjang, tetapi GPU terintegrasi yang lemah belum
+  diuji. Tombol **No blur** di panel bisa dipakai untuk uji banding di sana.
+- **Ponsel menengah sesudah perbaikan blur**, dan ponsel yang lebih lemah lagi.
 - **Panas dan baterai** setelah beberapa menit di 3D (uji hanya 12 detik).
 - **LCP di jaringan seluler.** Lewat Wi-Fi lokal angkanya tidak mewakili.
 

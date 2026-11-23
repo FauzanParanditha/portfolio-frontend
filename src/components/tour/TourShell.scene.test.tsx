@@ -534,7 +534,60 @@ describe("TourShell (3D tersedia)", () => {
     const media = [
       ...css.matchAll(/@media ([^{]+)\{\s*html:not\(\[data-tour-mode\]\)/g),
     ].map((match) => match[1].trim());
-    expect(media).toEqual([AUTO_3D_QUERY]);
+    // Dua blok memakai kueri itu: tata letak 3D, dan kaca buram (kueri yang
+    // sama, dipersempit ke penunjuk halus).
+    expect(media).toEqual([
+      AUTO_3D_QUERY,
+      `${AUTO_3D_QUERY} and (pointer: fine)`,
+    ]);
+  });
+
+  it("blur latar: tidak ada di perangkat sentuh maupun tata letak ringkas — hanya 3D dengan penunjuk halus", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    const tour = css.slice(css.indexOf("Tur ruang server (/tour)"));
+    const shell = readFileSync(
+      join(process.cwd(), "src/components/tour/TourShell.tsx"),
+      "utf8",
+    );
+    // Tidak ada blur lewat kelas utilitas: itu berlaku di SEMUA perangkat.
+    expect(shell).not.toMatch(/backdrop-(blur|filter)/);
+    expect(shell.match(/\btour-glass\b/g)).toHaveLength(3);
+
+    // Bawaan: hampir pekat, tanpa blur.
+    const base = tour.match(/\n\.tour-glass \{([^}]*)\}/)?.[1] ?? "";
+    expect(base).toMatch(/var\(--color-zinc-950\) 95%/);
+    expect(base).not.toContain("backdrop-filter");
+    // Bilah atas pekat penuh: isi kartu lewat di bawahnya saat digulir.
+    expect(tour).toMatch(
+      /\.tour > header\.tour-glass \{\s*background-color: var\(--color-zinc-950\);\s*\}/,
+    );
+
+    // Setiap `backdrop-filter` berada di dalam @media ber-`(pointer: fine)`,
+    // pada pemilih tata letak 3D yang tidak dipaksa ringkas.
+    const blocks = [
+      ...tour.matchAll(/@media ([^{]+)\{((?:[^{}]|\{[^{}]*\})*)\}/g),
+    ].filter((match) => match[2].includes("backdrop-filter"));
+    expect(blocks).toHaveLength(2);
+    for (const [, query, body] of blocks) {
+      expect(query).toContain("(pointer: fine)");
+      const selectors = [
+        ...body.matchAll(/([^{}]+)\{[^{}]*backdrop-filter/g),
+      ].map((match) => match[1].trim());
+      expect(selectors).toHaveLength(1);
+      expect(selectors[0]).toMatch(
+        /^html(:not\(\[data-tour-mode\]\)|\[data-tour-mode="3d"\]) \.tour:not\(\[data-mode="simple"\]\) \.tour-glass$/,
+      );
+    }
+    const inBlocks = blocks.reduce(
+      (sum, match) => sum + (match[2].match(/backdrop-filter:/g)?.length ?? 0),
+      0,
+    );
+    // Deklarasinya saja (komentar boleh menyebut namanya).
+    expect(tour.match(/backdrop-filter:/g)?.length).toBe(inBlocks);
+    expect(inBlocks).toBe(4);
   });
 
   it("petunjuk gulir: tersembunyi secara bawaan, tampil hanya di tata letak 3D (ditentukan CSS)", () => {

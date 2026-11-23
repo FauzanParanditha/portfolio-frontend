@@ -63,6 +63,23 @@ function downloadSizes(): DownloadSummary {
   return summarizeDownloads(resources, navigation);
 }
 
+/** Elemen tur yang saat ini benar-benar memakai `backdrop-filter`. */
+function countBlurred(): number | null {
+  try {
+    let count = 0;
+    for (const element of document.querySelectorAll(".tour, .tour *")) {
+      const style = getComputedStyle(element);
+      const value =
+        style.backdropFilter ||
+        style.getPropertyValue("-webkit-backdrop-filter");
+      if (value && value !== "none") count++;
+    }
+    return count;
+  } catch {
+    return null;
+  }
+}
+
 function gpuName(): string | null {
   try {
     const gl = document.createElement("canvas").getContext("webgl");
@@ -237,6 +254,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
       const data: PerfReport = {
         mode: show3d ? "3d" : "simple",
         blur,
+        blurred: countBlurred(),
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         dpr: window.devicePixelRatio || 1,
         canvas: canvas ? `${canvas.width}x${canvas.height}` : null,

@@ -477,7 +477,7 @@ export function TourShell({
       )}
 
       {/* ── Bilah atas ── */}
-      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2.5 backdrop-blur-md sm:px-6">
+      <header className="tour-glass fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-2.5 sm:px-6">
         <Link
           href="/"
           className={`rounded-sm text-lg font-semibold tracking-tight text-white ${focusRing}`}
@@ -527,7 +527,7 @@ export function TourShell({
       {/* ── Rel perhentian (layar lebar) ── */}
       <nav
         aria-label="Tour stops"
-        className="tour-rail fixed top-1/2 right-4 z-20 -translate-y-1/2 flex-col gap-1 rounded-lg border border-zinc-800 bg-zinc-950/85 p-2 backdrop-blur-md"
+        className="tour-rail tour-glass fixed top-1/2 right-4 z-20 -translate-y-1/2 flex-col gap-1 rounded-lg border border-zinc-800 p-2"
       >
         {stopIds.map((id, index) => (
           <a
@@ -555,7 +555,7 @@ export function TourShell({
             aria-labelledby={`${id}-heading`}
             className="tour-stop"
           >
-            <div className="tour-panel flex flex-col gap-5 rounded-lg border border-zinc-800 bg-zinc-950/85 p-6 backdrop-blur-md">
+            <div className="tour-panel tour-glass flex flex-col gap-5 rounded-lg border border-zinc-800 p-6">
               {cards[id]}
             </div>
           </section>

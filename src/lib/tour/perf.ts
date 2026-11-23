@@ -218,6 +218,11 @@ export interface PerfReport {
    * percobaan di panel (untuk mengukur berapa biaya blur di perangkat itu).
    */
   blur: boolean;
+  /**
+   * Jumlah elemen tur yang benar-benar memakai `backdrop-filter` saat uji
+   * (0 di perangkat sentuh dan di tata letak ringkas); `null` bila tak terbaca.
+   */
+  blurred: number | null;
   viewport: string;
   dpr: number;
   /** Ukuran kanvas dalam piksel sebenarnya, atau `null` tanpa kanvas. */
@@ -282,12 +287,20 @@ function longFrameLines(frames: LongFrame[] | null): string[] {
   });
 }
 
+/** Keadaan blur latar saat uji: dimatikan percobaan, tidak ada, atau menyala. */
+function blurLabel(report: PerfReport): string {
+  if (!report.blur) return "off (experiment)";
+  const count = report.blurred;
+  if (count === null || !Number.isFinite(count)) return dash;
+  return count > 0 ? `on (${count} elements)` : "none";
+}
+
 /** Teks laporan untuk disalin dari ponsel. Satu fakta per baris. */
 export function formatReport(report: PerfReport): string {
   return [
     "Tour perf report",
     `mode: ${report.mode}`,
-    `backdrop blur: ${report.blur ? "on" : "off (experiment)"}`,
+    `backdrop blur: ${blurLabel(report)}`,
     `viewport: ${report.viewport} @ dpr ${round(report.dpr, 2).replace(/\.?0+$/, "")}`,
     `canvas: ${report.canvas ?? dash}`,
     `gpu: ${report.gpu ?? dash}`,

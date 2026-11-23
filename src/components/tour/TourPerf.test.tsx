@@ -75,7 +75,8 @@ describe("TourPerf (panel ukur di perangkat)", () => {
 
     const report = screen.getByRole("textbox", { name: "Report" });
     const text = (report as HTMLTextAreaElement).value;
-    expect(text).toMatch(/^Tour perf report\nmode: 3d\nbackdrop blur: on\n/);
+    // jsdom: tidak ada elemen `.tour` di sini, jadi tidak ada yang ber-blur.
+    expect(text).toMatch(/^Tour perf report\nmode: 3d\nbackdrop blur: none\n/);
     expect(text).toMatch(/\nscroll: avg \d+\.\d fps, 1% low/);
     expect(text).toMatch(/\nidle: avg \d+\.\d fps/);
     expect(text).not.toMatch(/NaN|undefined/);
@@ -460,6 +461,32 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     expect(injected()).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(injected()).toBeNull();
+  });
+
+  it("laporan menyebut berapa elemen tur yang benar-benar ber-blur saat uji", async () => {
+    const tour = document.createElement("div");
+    tour.className = "tour";
+    tour.innerHTML =
+      '<div style="backdrop-filter: blur(12px)"></div>' +
+      '<div style="backdrop-filter: none"></div>' +
+      '<div style="backdrop-filter: blur(4px)"></div><div></div>';
+    document.body.append(tour);
+    const outside = document.createElement("div");
+    outside.style.backdropFilter = "blur(12px)";
+    document.body.append(outside);
+    try {
+      render(<TourPerf show3d />);
+      await warmUp();
+      fireEvent.click(runButton());
+      await act(() => vi.advanceTimersByTimeAsync(13000));
+      expect(
+        (screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement)
+          .value,
+      ).toContain("\nbackdrop blur: on (2 elements)\n");
+    } finally {
+      tour.remove();
+      outside.remove();
+    }
   });
 
   it("tinggi panel tetap: status dan kotak laporan berukuran sama sebelum dan sesudah uji", async () => {

@@ -123,6 +123,7 @@ describe("formatReport", () => {
   const base: PerfReport = {
     mode: "3d",
     blur: true,
+    blurred: 8,
     viewport: "390x844",
     dpr: 3,
     canvas: "780x1688",
@@ -146,7 +147,17 @@ describe("formatReport", () => {
     const lines = formatReport(base).split("\n");
     expect(lines[0]).toBe("Tour perf report");
     expect(lines).toContain("mode: 3d");
-    expect(lines[2]).toBe("backdrop blur: on");
+    expect(lines[2]).toBe("backdrop blur: on (8 elements)");
+    // Perangkat sentuh dan tata letak ringkas: tidak ada elemen ber-blur.
+    expect(formatReport({ ...base, blurred: 0 }).split("\n")[2]).toBe(
+      "backdrop blur: none",
+    );
+    expect(formatReport({ ...base, blurred: null }).split("\n")[2]).toBe(
+      "backdrop blur: n/a",
+    );
+    expect(formatReport({ ...base, blurred: NaN }).split("\n")[2]).toBe(
+      "backdrop blur: n/a",
+    );
     expect(formatReport({ ...base, blur: false }).split("\n")[2]).toBe(
       "backdrop blur: off (experiment)",
     );
@@ -466,6 +477,7 @@ describe("formatReport: frame panjang", () => {
   const base: PerfReport = {
     mode: "3d",
     blur: true,
+    blurred: 8,
     viewport: "390x844",
     dpr: 3,
     canvas: "585x1266",
