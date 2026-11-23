@@ -5,14 +5,18 @@ import {
   formatReport,
   type FrameSummary,
   IDLE_WINDOW_MS,
+  type LongFrameSample,
   type PerfReport,
   summarizeDownloads,
   summarizeFrames,
+  summarizeLongFrames,
 } from "@/lib/tour/perf";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Lama uji gulir otomatis. */
 const SCROLL_TEST_MS = 12_000;
+/** Batas entri frame panjang yang disimpan. */
+const MAX_LONG_FRAMES = 200;
 /** Lama menunggu sebelum uji boleh dimulai: satu jendela diam penuh. */
 const WARM_UP_SECONDS = IDLE_WINDOW_MS / 1000;
 
@@ -85,6 +89,8 @@ export default function TourPerf({ show3d }: { show3d: boolean }) {
 function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   const frames = useRef<number[]>([]);
   const vitals = useRef<Vitals>({ lcpMs: null, cls: null, blockedMs: null });
+  /** Entri `long-animation-frame`; `null` bila browser tidak mendukungnya. */
+  const longFrames = useRef<LongFrameSample[] | null>(null);
   /** Membatalkan uji gulir yang sedang berjalan; `null` bila tidak ada. */
   const cancelTest = useRef<(() => void) | null>(null);
   const [idle, setIdle] = useState<FrameSummary | null>(null);
@@ -162,6 +168,12 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
           current.cls = (current.cls ?? 0) + shift.value;
         }
       }),
+      observe("long-animation-frame", (entry) => {
+        const list = (longFrames.current ??= []);
+        list.push(entry as unknown as LongFrameSample);
+        // Cukup yang terbaru; uji 12 dtk tidak akan menghasilkan sebanyak ini.
+        if (list.length > MAX_LONG_FRAMES) list.shift();
+      }),
       observe("longtask", (entry) => {
         current.blockedMs =
           (current.blockedMs ?? 0) + Math.max(0, entry.duration - 50);
@@ -169,7 +181,8 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
     ];
     // Didukung tetapi belum ada entri = nol, bukan "tidak dilaporkan".
     if (observers[1]) current.cls ??= 0;
-    if (observers[2]) current.blockedMs ??= 0;
+    if (observers[2]) longFrames.current ??= [];
+    if (observers[3]) current.blockedMs ??= 0;
     return () => {
       for (const observer of observers) observer?.disconnect();
     };
@@ -194,7 +207,11 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   }, []);
 
   const buildReport = useCallback(
-    (scrollSummary: FrameSummary | null, idleSummary: FrameSummary | null) => {
+    (
+      scrollSummary: FrameSummary | null,
+      idleSummary: FrameSummary | null,
+      start: number,
+    ) => {
       const canvas = document.querySelector<HTMLCanvasElement>(".tour canvas");
       const memory = (navigator as Navigator & { deviceMemory?: number })
         .deviceMemory;
@@ -210,6 +227,9 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
         ...downloadSizes(),
         idle: idleSummary,
         scroll: scrollSummary,
+        longFrames:
+          longFrames.current &&
+          summarizeLongFrames(longFrames.current, start, SCROLL_TEST_MS),
         userAgent: navigator.userAgent,
       };
       return formatReport(data);
@@ -260,7 +280,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
       stop();
       window.scrollTo(0, 0);
       setScroll(summary);
-      setReport(buildReport(summary, idleBefore));
+      setReport(buildReport(summary, idleBefore, start));
       setTesting(false);
     };
     window.scrollTo(0, 0);

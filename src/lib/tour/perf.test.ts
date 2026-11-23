@@ -5,6 +5,7 @@ import {
   type ResourceSample,
   summarizeDownloads,
   summarizeFrames,
+  summarizeLongFrames,
 } from "./perf";
 
 /** Cap waktu frame dengan jeda tetap. */
@@ -136,6 +137,7 @@ describe("formatReport", () => {
     cachedFiles: 0,
     idle: summarizeFrames(steady(301, 1000 / 60)),
     scroll: summarizeFrames(steady(61, 1000 / 30)),
+    longFrames: [],
     userAgent: "TestBrowser/1.0",
   };
 
@@ -345,5 +347,172 @@ describe("summarizeDownloads", () => {
       files: 1,
       cachedFiles: 0,
     });
+  });
+});
+
+describe("summarizeLongFrames", () => {
+  const START = 10_000;
+  const SPAN = 12_000;
+  const entry = (
+    at: number,
+    duration: number,
+    extra: Partial<Parameters<typeof summarizeLongFrames>[0][number]> = {},
+  ) => ({ startTime: START + at * SPAN, duration, ...extra });
+
+  it("hanya frame di dalam jendela uji, terlama lebih dulu, dengan posisinya", () => {
+    const frames = summarizeLongFrames(
+      [
+        entry(-0.2, 400), // sebelum uji (mis. saat halaman dimuat)
+        entry(0.4, 90),
+        entry(0.79, 209),
+        entry(0.1, 60),
+        entry(1.1, 300), // setelah uji selesai
+      ],
+      START,
+      SPAN,
+    );
+    expect(
+      frames.map((frame) => [Math.round(frame.at * 100), frame.ms]),
+    ).toEqual([
+      [79, 209],
+      [40, 90],
+      [10, 60],
+    ]);
+  });
+
+  it("frame yang mulai sebelum uji tetapi berakhir di dalamnya ikut dihitung, di posisi 0", () => {
+    const [frame] = summarizeLongFrames([entry(-0.005, 200)], START, SPAN);
+    expect(frame.at).toBe(0);
+    expect(frame.ms).toBe(200);
+  });
+
+  it("isi frame: total skrip, pemanggil dan berkas skrip terlama, waktu tata letak", () => {
+    const [frame] = summarizeLongFrames(
+      [
+        entry(0.5, 200, {
+          // Tata letak mulai 30 ms sebelum frame berakhir.
+          styleAndLayoutStart: START + 0.5 * SPAN + 170,
+          scripts: [
+            { duration: 20, invoker: "FrameRequestCallback", sourceURL: "" },
+            {
+              duration: 120,
+              invoker: "MessagePort.onmessage",
+              sourceURL: "http://x.test/_next/static/chunks/abc123.js?v=1#x",
+            },
+          ],
+        }),
+      ],
+      START,
+      SPAN,
+    );
+    expect(frame.scriptMs).toBe(140);
+    expect(frame.invoker).toBe("MessagePort.onmessage");
+    expect(frame.source).toBe("abc123.js");
+    expect(frame.layoutMs).toBe(30);
+  });
+
+  it("frame tanpa skrip dan tanpa tata letak: nol, bukan NaN (jeda di luar skrip)", () => {
+    const [frame] = summarizeLongFrames([entry(0.3, 120)], START, SPAN);
+    expect(frame).toEqual({
+      at: expect.closeTo(0.3),
+      ms: 120,
+      scriptMs: 0,
+      invoker: null,
+      source: null,
+      layoutMs: 0,
+    });
+    const [zero] = summarizeLongFrames(
+      [entry(0.3, 120, { styleAndLayoutStart: 0, scripts: [] })],
+      START,
+      SPAN,
+    );
+    expect(zero.layoutMs).toBe(0);
+  });
+
+  it("dibatasi (bawaan 4), nama panjang dipotong, entri rusak dan jendela kosong diabaikan", () => {
+    const many = Array.from({ length: 9 }, (_, i) => entry(i / 10, 60 + i));
+    expect(summarizeLongFrames(many, START, SPAN)).toHaveLength(4);
+    expect(summarizeLongFrames(many, START, SPAN, 2).map((f) => f.ms)).toEqual([
+      68, 67,
+    ]);
+    const [long] = summarizeLongFrames(
+      [
+        entry(0.2, 80, {
+          scripts: [{ duration: 70, invoker: "x".repeat(80) }],
+        }),
+      ],
+      START,
+      SPAN,
+    );
+    expect(long.invoker).toHaveLength(48);
+    expect(long.invoker?.endsWith("…")).toBe(true);
+    expect(
+      summarizeLongFrames(
+        [{ startTime: NaN, duration: 100 }, entry(0.2, Infinity)],
+        START,
+        SPAN,
+      ),
+    ).toEqual([]);
+    expect(summarizeLongFrames(many, START, 0)).toEqual([]);
+  });
+});
+
+describe("formatReport: frame panjang", () => {
+  const base: PerfReport = {
+    mode: "3d",
+    viewport: "390x844",
+    dpr: 3,
+    canvas: "585x1266",
+    gpu: "Adreno 710",
+    cores: 8,
+    memoryGb: null,
+    lcpMs: 760,
+    cls: 0,
+    blockedMs: 0,
+    scriptKb: 1,
+    totalKb: 2,
+    files: 3,
+    cachedFiles: 0,
+    idle: null,
+    scroll: null,
+    longFrames: null,
+    userAgent: "TestBrowser/1.0",
+  };
+
+  it("tidak didukung browser: n/a; didukung tetapi tidak ada: disebut tidak ada", () => {
+    expect(formatReport(base)).toContain("\nlong frames: n/a\nua: ");
+    expect(formatReport({ ...base, longFrames: [] })).toContain(
+      "\nlong frames: none over 50 ms\nua: ",
+    );
+  });
+
+  it("satu baris per frame panjang, setelah baris scroll", () => {
+    const text = formatReport({
+      ...base,
+      longFrames: [
+        {
+          at: 0.79,
+          ms: 209.4,
+          scriptMs: 150.2,
+          invoker: "MessagePort.onmessage",
+          source: "abc123.js",
+          layoutMs: 12,
+        },
+        {
+          at: 0.4,
+          ms: 90,
+          scriptMs: 0,
+          invoker: null,
+          source: null,
+          layoutMs: 0,
+        },
+      ],
+    });
+    expect(text).toContain(
+      "\nscroll: n/a\n" +
+        "long frame at 79%: 209 ms (script 150 ms via MessagePort.onmessage in abc123.js, layout 12 ms)\n" +
+        "long frame at 40%: 90 ms (script 0 ms, layout 0 ms)\n" +
+        "ua: ",
+    );
   });
 });

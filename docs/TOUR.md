@@ -284,6 +284,15 @@ laju frame saat diam dan saat bergulir. Cara membacanya:
 - **scroll … worst N ms at P%** = frame terlama terjadi di P% perjalanan
   gulir. Uji bergulir dengan laju tetap, jadi P menunjuk tempatnya di halaman
   — titik awal untuk mencari penyebab sebuah sendatan.
+- **long frame at P%: N ms (script … via …, layout …)** = frame di atas 50 ms
+  selama uji gulir, terlama lebih dulu (paling banyak empat), menurut
+  `long-animation-frame` browser. `via` menyebut pemanggil skrip terlamanya:
+  `MessagePort.onmessage` adalah render React, `FrameRequestCallback` adalah
+  loop gambar three.js, `Response.json.then` adalah hasil fetch. `in` menyebut
+  berkas chunk-nya, yang bisa dicari di `.next/static/chunks` build yang sama.
+  Frame panjang di baris `scroll` yang **tidak** punya baris ini berarti jedanya
+  di luar utas utama (GPU atau compositor). `long frames: n/a` = browser tidak
+  mendukungnya (Safari, Firefox).
 - **LCP, CLS, blocked** hanya ada bila browser melaporkannya. Safari iOS
   tidak melaporkan semuanya; yang kosong ditulis `n/a`.
 - Panel **tidak mengukur daya atau baterai**. Untuk itu amati sendiri: suhu

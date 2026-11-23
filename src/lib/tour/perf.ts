@@ -135,6 +135,82 @@ export function summarizeDownloads(
   };
 }
 
+/** Bagian entri `long-animation-frame` yang dipakai laporan. */
+export interface LongFrameSample {
+  startTime: number;
+  duration: number;
+  /** Awal tahap gaya + tata letak di akhir frame; 0 bila tidak ada. */
+  styleAndLayoutStart?: number;
+  scripts?: readonly {
+    duration: number;
+    invoker?: string;
+    sourceURL?: string;
+  }[];
+}
+
+/** Satu frame panjang (> 50 ms) selama uji gulir, dan isinya. */
+export interface LongFrame {
+  /** Posisi 0..1 dalam uji gulir. */
+  at: number;
+  ms: number;
+  /** Total waktu skrip di frame itu. */
+  scriptMs: number;
+  /** Pemanggil skrip terlama (mis. `MessagePort.onmessage`), bila ada. */
+  invoker: string | null;
+  /** Berkas skrip terlama itu (nama chunk), bila ada. */
+  source: string | null;
+  /** Waktu gaya + tata letak di akhir frame. */
+  layoutMs: number;
+}
+
+const MAX_NAME = 48;
+const clip = (text: string) =>
+  text.length > MAX_NAME ? `${text.slice(0, MAX_NAME - 1)}…` : text;
+
+/**
+ * Frame panjang yang terjadi di jendela [start, start + span], terlama lebih
+ * dulu. Rekaman rAF hanya berkata "ada frame 200 ms"; entri ini berkata apa
+ * isinya — skrip siapa, atau tata letak — dan frame panjang yang TIDAK punya
+ * entri berarti jedanya di luar utas utama (GPU atau compositor).
+ */
+export function summarizeLongFrames(
+  entries: readonly LongFrameSample[],
+  start: number,
+  span: number,
+  limit = 4,
+): LongFrame[] {
+  if (!(span > 0)) return [];
+  return entries
+    .filter(
+      (entry) =>
+        Number.isFinite(entry.startTime) &&
+        Number.isFinite(entry.duration) &&
+        entry.startTime + entry.duration > start &&
+        entry.startTime < start + span,
+    )
+    .sort((a, b) => b.duration - a.duration)
+    .slice(0, limit)
+    .map((entry) => {
+      const scripts = entry.scripts ?? [];
+      const longest = scripts.reduce<(typeof scripts)[number] | null>(
+        (top, script) =>
+          top === null || script.duration > top.duration ? script : top,
+        null,
+      );
+      const end = entry.startTime + entry.duration;
+      const layoutStart = entry.styleAndLayoutStart ?? 0;
+      const file = longest?.sourceURL?.split(/[?#]/)[0].split("/").pop();
+      return {
+        at: Math.min(1, Math.max(0, (entry.startTime - start) / span)),
+        ms: entry.duration,
+        scriptMs: scripts.reduce((sum, script) => sum + script.duration, 0),
+        invoker: longest?.invoker ? clip(longest.invoker) : null,
+        source: file ? clip(file) : null,
+        layoutMs: layoutStart > 0 ? Math.max(0, end - layoutStart) : 0,
+      };
+    });
+}
+
 export interface PerfReport {
   mode: "3d" | "simple";
   viewport: string;
@@ -157,6 +233,8 @@ export interface PerfReport {
   cachedFiles: number | null;
   idle: FrameSummary | null;
   scroll: FrameSummary | null;
+  /** Frame panjang selama uji gulir; `null` bila browser tidak melaporkannya. */
+  longFrames: LongFrame[] | null;
   userAgent: string;
 }
 
@@ -188,6 +266,17 @@ function cacheNote(report: PerfReport): string {
   return ` [${cachedFiles} of ${files} files from cache: not the full download]`;
 }
 
+/** Satu baris per frame panjang, terlama lebih dulu. */
+function longFrameLines(frames: LongFrame[] | null): string[] {
+  if (frames === null) return [`long frames: ${dash}`];
+  if (frames.length === 0) return ["long frames: none over 50 ms"];
+  return frames.map((frame) => {
+    const via = frame.invoker ? ` via ${frame.invoker}` : "";
+    const where = frame.source ? ` in ${frame.source}` : "";
+    return `long frame at ${(frame.at * 100).toFixed(0)}%: ${round(frame.ms)} ms (script ${round(frame.scriptMs)} ms${via}${where}, layout ${round(frame.layoutMs)} ms)`;
+  });
+}
+
 /** Teks laporan untuk disalin dari ponsel. Satu fakta per baris. */
 export function formatReport(report: PerfReport): string {
   return [
@@ -203,6 +292,7 @@ export function formatReport(report: PerfReport): string {
     `download: scripts ${round(report.scriptKb)} KB, total ${round(report.totalKb)} KB${cacheNote(report)}`,
     frameLine("idle", report.idle) + idleNote(report.idle),
     frameLine("scroll", report.scroll, true),
+    ...longFrameLines(report.longFrames),
     `ua: ${report.userAgent}`,
   ].join("\n");
 }

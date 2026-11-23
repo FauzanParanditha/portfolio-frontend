@@ -331,6 +331,101 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     expect(runButton()).toBeEnabled();
   });
 
+  it("frame panjang selama uji dilaporkan dengan posisi dan isinya; yang di luar uji tidak", async () => {
+    // Uji dimulai di t = 5000 ms (setelah masa tunggu) dan berjalan 12 dtk.
+    const entries: Record<string, object[]> = {
+      "long-animation-frame": [
+        { startTime: 900, duration: 400, scripts: [] }, // saat halaman dimuat
+        {
+          startTime: 5000 + 0.79 * 12000,
+          duration: 209,
+          styleAndLayoutStart: 5000 + 0.79 * 12000 + 197,
+          scripts: [
+            {
+              duration: 150,
+              invoker: "MessagePort.onmessage",
+              sourceURL: "http://x.test/chunks/abc123.js",
+            },
+          ],
+        },
+      ],
+    };
+    class FakeObserver {
+      static supportedEntryTypes = Object.keys(entries);
+      constructor(
+        private callback: (list: { getEntries(): object[] }) => void,
+      ) {}
+      observe({ type }: { type: string }) {
+        this.callback({ getEntries: () => entries[type] ?? [] });
+      }
+      disconnect() {}
+    }
+    vi.stubGlobal("PerformanceObserver", FakeObserver);
+
+    render(<TourPerf show3d />);
+    await warmUp();
+    fireEvent.click(runButton());
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    const text = (
+      screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement
+    ).value;
+    expect(text).toContain(
+      "long frame at 79%: 209 ms (script 150 ms via MessagePort.onmessage in abc123.js, layout 12 ms)",
+    );
+    expect(text).not.toContain("400 ms");
+    expect(text.match(/long frame at/g)).toHaveLength(1);
+  });
+
+  it("didukung tetapi belum ada entri = nol atau 'none', bukan n/a — per jenis entri", async () => {
+    const reportWith = async (supported: string[]) => {
+      class FakeObserver {
+        static supportedEntryTypes = supported;
+        observe() {}
+        disconnect() {}
+      }
+      vi.stubGlobal("PerformanceObserver", FakeObserver);
+      const view = render(<TourPerf show3d={false} />);
+      await warmUp();
+      fireEvent.click(runButton());
+      await act(() => vi.advanceTimersByTimeAsync(13000));
+      const text = (
+        screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement
+      ).value;
+      view.unmount();
+      return text;
+    };
+
+    const all = await reportWith([
+      "largest-contentful-paint",
+      "layout-shift",
+      "long-animation-frame",
+      "longtask",
+    ]);
+    expect(all).toContain("CLS (sum since load): 0.000 | blocked: 0 ms");
+    expect(all).toContain("\nlong frames: none over 50 ms\n");
+
+    // Browser lama: tugas panjang ada, frame panjang belum.
+    const older = await reportWith(["layout-shift", "longtask"]);
+    expect(older).toContain("CLS (sum since load): 0.000 | blocked: 0 ms");
+    expect(older).toContain("\nlong frames: n/a\n");
+
+    // Hanya frame panjang.
+    const only = await reportWith(["long-animation-frame"]);
+    expect(only).toContain("CLS (sum since load): n/a | blocked: n/a ms");
+    expect(only).toContain("\nlong frames: none over 50 ms\n");
+  });
+
+  it("browser tanpa long-animation-frame: baris frame panjang ditulis n/a", async () => {
+    render(<TourPerf show3d={false} />);
+    await warmUp();
+    fireEvent.click(runButton());
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    expect(
+      (screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement)
+        .value,
+    ).toContain("\nlong frames: n/a\n");
+  });
+
   it("tinggi panel tetap: status dan kotak laporan berukuran sama sebelum dan sesudah uji", async () => {
     render(<TourPerf show3d={false} />);
     const shape = () => [
