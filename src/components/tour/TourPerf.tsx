@@ -15,6 +15,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Lama uji gulir otomatis. */
 const SCROLL_TEST_MS = 12_000;
+/**
+ * Percobaan "tanpa blur": mematikan `backdrop-filter` di seluruh tur. Kartu
+ * ber-blur di atas kanvas yang terus bergerak harus dihitung ulang tiap frame;
+ * sakelar ini mengukur berapa biayanya di perangkat yang sedang diuji.
+ */
+const NO_BLUR_CSS =
+  ".tour, .tour * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }";
+
 /** Batas entri frame panjang yang disimpan. */
 const MAX_LONG_FRAMES = 200;
 /** Lama menunggu sebelum uji boleh dimulai: satu jendela diam penuh. */
@@ -99,6 +107,17 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   const [note, setNote] = useState<string | null>(null);
   const [report, setReport] = useState("");
   const [copied, setCopied] = useState(false);
+  const [blur, setBlur] = useState(true);
+  // Gaya percobaan hidup di <head> selama blur dimatikan, dan ikut dicabut
+  // saat panel dilepas — pengunjung berikutnya tidak mewarisinya.
+  useEffect(() => {
+    if (blur) return;
+    const style = document.createElement("style");
+    style.dataset.tourPerf = "no-blur";
+    style.textContent = NO_BLUR_CSS;
+    document.head.append(style);
+    return () => style.remove();
+  }, [blur]);
   /**
    * Detik tersisa sebelum uji boleh dimulai (0 = siap). Uji yang ditekan tepat
    * setelah halaman dimuat atau tampilan diganti ikut merekam sendatan awal
@@ -217,6 +236,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
         .deviceMemory;
       const data: PerfReport = {
         mode: show3d ? "3d" : "simple",
+        blur,
         viewport: `${window.innerWidth}x${window.innerHeight}`,
         dpr: window.devicePixelRatio || 1,
         canvas: canvas ? `${canvas.width}x${canvas.height}` : null,
@@ -234,7 +254,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
       };
       return formatReport(data);
     },
-    [show3d],
+    [show3d, blur],
   );
 
   // Gulir seluruh halaman dengan laju tetap, lalu ringkas frame selama itu.
@@ -347,6 +367,15 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
           className="min-h-11 rounded-md border border-zinc-600 px-3 font-sans text-xs font-medium tracking-widest uppercase disabled:opacity-50"
         >
           {copied ? "Copied" : "Copy"}
+        </button>
+        <button
+          type="button"
+          aria-pressed={!blur}
+          onClick={() => setBlur((on) => !on)}
+          disabled={testing}
+          className="min-h-11 rounded-md border border-zinc-600 px-3 font-sans text-xs font-medium tracking-widest whitespace-nowrap uppercase disabled:opacity-50 aria-pressed:border-amber-400 aria-pressed:text-amber-300"
+        >
+          No blur
         </button>
       </div>
       {/* Selalu dirender, dengan tinggi tetap: kotak yang baru muncul setelah

@@ -293,6 +293,11 @@ laju frame saat diam dan saat bergulir. Cara membacanya:
   Frame panjang di baris `scroll` yang **tidak** punya baris ini berarti jedanya
   di luar utas utama (GPU atau compositor). `long frames: n/a` = browser tidak
   mendukungnya (Safari, Firefox).
+- **backdrop blur: off (experiment)** = uji dijalankan dengan tombol **No blur**
+  di panel menyala, yang mematikan `backdrop-filter` di seluruh tur. Dipakai
+  untuk membandingkan: bila frame panjang hilang tanpa blur, kartu ber-blur di
+  atas kanvaslah penyebabnya di perangkat itu. Hanya berlaku selama panel
+  terbuka.
 - **LCP, CLS, blocked** hanya ada bila browser melaporkannya. Safari iOS
   tidak melaporkan semuanya; yang kosong ditulis `n/a`.
 - Panel **tidak mengukur daya atau baterai**. Untuk itu amati sendiri: suhu

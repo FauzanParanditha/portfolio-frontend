@@ -75,7 +75,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
 
     const report = screen.getByRole("textbox", { name: "Report" });
     const text = (report as HTMLTextAreaElement).value;
-    expect(text).toMatch(/^Tour perf report\nmode: 3d\n/);
+    expect(text).toMatch(/^Tour perf report\nmode: 3d\nbackdrop blur: on\n/);
     expect(text).toMatch(/\nscroll: avg \d+\.\d fps, 1% low/);
     expect(text).toMatch(/\nidle: avg \d+\.\d fps/);
     expect(text).not.toMatch(/NaN|undefined/);
@@ -424,6 +424,42 @@ describe("TourPerf (panel ukur di perangkat)", () => {
       (screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement)
         .value,
     ).toContain("\nlong frames: n/a\n");
+  });
+
+  it("percobaan tanpa blur: mematikan backdrop-filter di tur, tercatat di laporan, dan dicabut saat panel ditutup", async () => {
+    const injected = () =>
+      document.head.querySelector<HTMLStyleElement>("style[data-tour-perf]");
+    render(<TourPerf show3d />);
+    const toggle = screen.getByRole("button", { name: "No blur" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(injected()).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(injected()?.textContent).toMatch(
+      /\.tour, \.tour \* \{[^}]*backdrop-filter: none !important/,
+    );
+
+    await warmUp();
+    fireEvent.click(runButton());
+    // Sakelar terkunci selama uji: mengubahnya di tengah jalan mencampur hasil.
+    expect(toggle).toBeDisabled();
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    expect(
+      (screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement)
+        .value,
+    ).toMatch(
+      /^Tour perf report\nmode: 3d\nbackdrop blur: off \(experiment\)\n/,
+    );
+
+    // Dimatikan lagi: gaya dicabut.
+    fireEvent.click(toggle);
+    expect(injected()).toBeNull();
+    // Panel ditutup saat percobaan aktif: halaman tidak mewarisinya.
+    fireEvent.click(toggle);
+    expect(injected()).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(injected()).toBeNull();
   });
 
   it("tinggi panel tetap: status dan kotak laporan berukuran sama sebelum dan sesudah uji", async () => {

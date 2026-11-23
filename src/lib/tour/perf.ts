@@ -213,6 +213,11 @@ export function summarizeLongFrames(
 
 export interface PerfReport {
   mode: "3d" | "simple";
+  /**
+   * `false` = uji dijalankan dengan `backdrop-filter` dimatikan lewat sakelar
+   * percobaan di panel (untuk mengukur berapa biaya blur di perangkat itu).
+   */
+  blur: boolean;
   viewport: string;
   dpr: number;
   /** Ukuran kanvas dalam piksel sebenarnya, atau `null` tanpa kanvas. */
@@ -282,6 +287,7 @@ export function formatReport(report: PerfReport): string {
   return [
     "Tour perf report",
     `mode: ${report.mode}`,
+    `backdrop blur: ${report.blur ? "on" : "off (experiment)"}`,
     `viewport: ${report.viewport} @ dpr ${round(report.dpr, 2).replace(/\.?0+$/, "")}`,
     `canvas: ${report.canvas ?? dash}`,
     `gpu: ${report.gpu ?? dash}`,

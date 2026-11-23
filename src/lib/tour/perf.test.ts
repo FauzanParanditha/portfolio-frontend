@@ -122,6 +122,7 @@ describe("summarizeFrames: posisi frame terlama", () => {
 describe("formatReport", () => {
   const base: PerfReport = {
     mode: "3d",
+    blur: true,
     viewport: "390x844",
     dpr: 3,
     canvas: "780x1688",
@@ -145,6 +146,10 @@ describe("formatReport", () => {
     const lines = formatReport(base).split("\n");
     expect(lines[0]).toBe("Tour perf report");
     expect(lines).toContain("mode: 3d");
+    expect(lines[2]).toBe("backdrop blur: on");
+    expect(formatReport({ ...base, blur: false }).split("\n")[2]).toBe(
+      "backdrop blur: off (experiment)",
+    );
     expect(lines).toContain("viewport: 390x844 @ dpr 3");
     expect(lines).toContain("canvas: 780x1688");
     expect(lines).toContain("gpu: Adreno 610");
@@ -460,6 +465,7 @@ describe("summarizeLongFrames", () => {
 describe("formatReport: frame panjang", () => {
   const base: PerfReport = {
     mode: "3d",
+    blur: true,
     viewport: "390x844",
     dpr: 3,
     canvas: "585x1266",
