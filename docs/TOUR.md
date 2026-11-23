@@ -336,8 +336,9 @@ arsip) kecuali disebut lain:
 | Menengah (Adreno 710)   | ringkas   | 59,1 fps  | 28,2 fps | 50 ms         | 0,3%         |
 | Menengah (Adreno 710)   | 3D        | 58,3 fps  | 16,1 fps | 242 ms        | 0,4%         |
 
-Kedua baris ponsel menengah diukur **sebelum** perbaikan sendatan di bawah;
-angka sesudahnya belum ada.
+Kedua baris ponsel menengah diukur **sebelum** perbaikan sendatan di bawah.
+Sesudah kedua perbaikan, 3D di ponsel itu: 59,9 fps, 1% low 55,9 fps, frame
+terlama 25 ms, tanpa frame di atas 50 ms.
 
 Yang bisa disimpulkan:
 
@@ -380,10 +381,11 @@ di 3D. Baris `long frame` di laporan memisahkannya: empat frame terpanjang
 bukan tata letak — dan posisinya tepat saat dua kartu tertinggi (About,
 Contact) memenuhi layar. Uji banding di ponsel yang sama, 3D, ruangan penuh:
 
-| `backdrop-filter`        | Rata-rata | 1% low   | Frame terlama | Frame lambat | Frame panjang (> 50 ms)  |
-| ------------------------ | --------- | -------- | ------------- | ------------ | ------------------------ |
-| menyala (8 elemen)       | 57,1 fps  | 10,5 fps | 167 ms        | 1,0%         | 4 dilaporkan: 102–175 ms |
-| dimatikan (tombol panel) | 59,9 fps  | 59,5 fps | 17 ms         | 0,0%         | tidak ada                |
+| `backdrop-filter`             | Rata-rata | 1% low   | Frame terlama | Frame lambat | Frame panjang (> 50 ms)  |
+| ----------------------------- | --------- | -------- | ------------- | ------------ | ------------------------ |
+| menyala (8 elemen)            | 57,1 fps  | 10,5 fps | 167 ms        | 1,0%         | 4 dilaporkan: 102–175 ms |
+| dimatikan (tombol panel)      | 59,9 fps  | 59,5 fps | 17 ms         | 0,0%         | tidak ada                |
+| dihapus lewat CSS (build ini) | 59,9 fps  | 55,9 fps | 25 ms         | 0,0%         | tidak ada                |
 
 Satu pasang uji, tetapi tiga uji 3D sebelumnya dengan blur di ponsel itu
 semuanya bersendatan (242, 209, 167 ms). Kartu ber-blur di atas kanvas yang
@@ -401,7 +403,7 @@ Yang **belum** terjawab:
 - **Laptop ber-GPU lemah.** Desktop tetap memakai blur di 3D; di laptop
   pengukur tidak ada frame panjang, tetapi GPU terintegrasi yang lemah belum
   diuji. Tombol **No blur** di panel bisa dipakai untuk uji banding di sana.
-- **Ponsel menengah sesudah perbaikan blur**, dan ponsel yang lebih lemah lagi.
+- **Ponsel yang lebih lemah** dari Adreno 710.
 - **Panas dan baterai** setelah beberapa menit di 3D (uji hanya 12 detik).
 - **LCP di jaringan seluler.** Lewat Wi-Fi lokal angkanya tidak mewakili.
 
