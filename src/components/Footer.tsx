@@ -1,9 +1,16 @@
 import { GithubIcon, LinkedinIcon } from "@/components/icons/BrandIcons";
+import { CONTACT_CHANNELS } from "@/content/profile";
 import { Mail } from "lucide-react";
 import Link from "next/link";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
+  // Sumber yang sama dengan kartu kontak: surel dan lokasi dari env tidak
+  // boleh tampil berbeda di dua tempat pada halaman yang sama.
+  const email = CONTACT_CHANNELS.find((channel) => channel.title === "Email");
+  const location = CONTACT_CHANNELS.find(
+    (channel) => channel.title === "Location",
+  );
 
   const socialLinks = [
     // external: true untuk tautan http (dibuka tab baru + rel aman); mailto tidak.
@@ -21,7 +28,7 @@ export const Footer = () => {
     },
     {
       icon: Mail,
-      href: "mailto:paranditha@gmail.com",
+      href: email?.href ?? "mailto:paranditha@gmail.com",
       label: "Email",
       external: false,
     },
@@ -88,7 +95,7 @@ export const Footer = () => {
         {/* Bottom Section */}
         <div className="eyebrow flex flex-col items-center justify-between gap-6 pt-8 tabular-nums md:flex-row">
           <p>© {currentYear} FAUZAN PARANDITHA.</p>
-          <p>TANGERANG SELATAN, ID</p>
+          <p>{(location?.value ?? "Tangerang Selatan, ID").toUpperCase()}</p>
           <p>ALL RIGHTS RESERVED.</p>
         </div>
       </div>

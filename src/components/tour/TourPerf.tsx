@@ -11,7 +11,13 @@ import {
   summarizeFrames,
   summarizeLongFrames,
 } from "@/lib/tour/perf";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 /** Lama uji gulir otomatis. */
 const SCROLL_TEST_MS = 12_000;
@@ -162,7 +168,10 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
       setNote("Test cancelled: the view changed. Run it again.");
     }
   }
-  useEffect(() => {
+  // Layout effect: berjalan di commit yang sama, sebelum frame berikutnya.
+  // Dengan efek pasif, satu frame uji masih bisa lolos — dan bila itu frame
+  // terakhir, laporan campurannya tetap terbit.
+  useLayoutEffect(() => {
     warmSince.current = performance.now();
     cancelTest.current?.();
   }, [warmKey]);

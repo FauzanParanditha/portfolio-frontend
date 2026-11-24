@@ -63,7 +63,7 @@ vi.mock("@/hooks/use-backend-health", async (importOriginal) => {
 vi.mock("@/lib/axios/public", () => ({ default: { post: vi.fn() } }));
 
 import { AUTO_3D_QUERY, TourShell } from "@/components/tour/TourShell";
-import { resetTourModeForTest } from "@/lib/tour/mode";
+import { writeTourMode, resetTourModeForTest } from "@/lib/tour/mode";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToString } from "react-dom/server";
@@ -415,6 +415,27 @@ describe("TourShell (3D tersedia)", () => {
     expect(scene.props?.highlightedSlot).toBeNull();
   });
 
+  it("ganti tampilan menutup menu perhentian: ia tidak boleh muncul terbuka sendiri saat kembali", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    await screen.findByTestId("scene");
+    // Di jsdom tidak ada CSS, jadi tombol menu tetap bisa ditekan di 3D.
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("button", { name: "Close menu" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    // Lewat penyimpan pilihan, bukan klik: klik di luar menu sudah menutupnya
+    // sendiri, dan yang diuji di sini adalah pergantian tampilannya (mis.
+    // pilihan berubah dari tab lain, atau layar melewati batas 3D bawaan).
+    act(() => writeTourMode("simple"));
+    expect(screen.queryByTestId("scene")).toBeNull();
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
   it("tombol 'Simple version' melepas scene, memaksa tata letak ringkas, dan diingat", async () => {
     const user = userEvent.setup();
     const { container, unmount } = render(<TourShell {...base} />);
@@ -570,6 +591,11 @@ describe("TourShell (3D tersedia)", () => {
       );
     }
     expect(shell.match(/\btour-glass\b/g)).toHaveLength(3);
+    // Kartu status menjelaskan dirinya tanpa JavaScript (React tidak merender
+    // isi <noscript> di klien, jadi sumbernya yang diperiksa).
+    expect(shell).toMatch(
+      /<noscript>\s*<p[^>]*>\s*The live check runs in your browser and needs JavaScript\.\s*<\/p>\s*<\/noscript>/,
+    );
 
     // Bawaan: hampir pekat, tanpa blur.
     const base = tour.match(/\n\.tour-glass \{([^}]*)\}/)?.[1] ?? "";

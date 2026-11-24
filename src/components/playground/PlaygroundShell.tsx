@@ -348,7 +348,7 @@ export function PlaygroundShell({
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           <span>
-            Back<span className="hidden sm:inline"> to the regular site</span>
+            Back<span className="hidden sm:inline"> to home</span>
           </span>
         </Link>
 

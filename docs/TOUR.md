@@ -37,9 +37,11 @@ Yang ditambahkan ke tur supaya tidak kalah dari beranda lama:
   diisi, lokasi), dari `CONTACT_CHANNELS` di `src/content/profile.ts` — sumber
   yang sama dengan beranda lama.
 - **Intro pembuka** (`IntroOverlay`) tampil di atas tur pada kunjungan pertama
-  tiap sesi. Penanda sesinya kini skrip inline di `<head>` (dulu
-  `<Script beforeInteractive>`, yang baru berjalan setelah paint pertama
-  sehingga intro bisa berkedip di kunjungan kedua).
+  tiap sesi (`src/lib/intro.ts`). Penandanya dipasang dua kali: sebelum paint
+  oleh skrip inline di `<head>` (dulu `<Script beforeInteractive>`, yang baru
+  berjalan setelah paint pertama sehingga intro bisa berkedip di kunjungan
+  kedua), dan begitu animasinya selesai — tanpa yang kedua, intro terputar
+  ulang tiap pengunjung kembali ke beranda lewat navigasi sisi klien.
 
 `/classic` sengaja dipertahankan: LCP di jaringan seluler belum pernah diukur,
 dan dengan dua halaman di alamat yang ter-deploy keduanya bisa dibandingkan
@@ -60,9 +62,18 @@ Angka lab sesudah ditukar (build produksi, muat dingin, median 3 kali; ponsel
 
 - **Ponsel:** beranda baru tidak lebih lambat dan tidak lebih berat dari yang
   lama (bawaannya HTML tanpa 3D).
-- **Desktop:** LCP sama, tetapi 3D menambah ±215 KB dan ±325 ms waktu blokir
-  saat ruangan penuh pertama kali digambar (unduh, kompilasi, dan pemanasan
-  adegan). Itu terjadi setelah teks tampil. Angka 47 ms di tabel "Hasil lab"
+- **Desktop:** beranda baru ±215 KB lebih berat dari yang lama (558 lawan
+  344 KB) dan punya ±325 ms waktu blokir saat ruangan penuh pertama kali
+  digambar (unduh, kompilasi, dan pemanasan adegan), setelah teks tampil.
+  Biaya 3D-nya sendiri ±245 KB JavaScript (469 lawan 224 KB di ponsel, yang
+  tanpa 3D).
+- **Angka LCP di tabel ini tidak mengukur yang dilihat pengunjung baru.** Pada
+  kunjungan pertama intro menutupi layar ±1 detik dan isi baru terlihat penuh
+  ±1,6 detik; browser tetap melaporkan LCP saat `<h1>` digambar di baliknya.
+  Elemen LCP-nya pun berbeda: `<h1>` di `/`, huruf intro atau logo di
+  `/classic` (hero-nya mulai dari `opacity: 0`). Jadi "LCP sama" di sini
+  membandingkan dua elemen berbeda, dan PageSpeed kelak tidak akan melihat
+  biaya intro. Angka 47 ms di tabel "Hasil lab"
   tahap 4 diukur dengan satu rak dan sebelum pemanasan adegan ada.
 - Alat ukurnya berbeda dari tabel tahap 4 (skrip dan versi Chrome lain), jadi
   bandingkan baris dalam tabel ini saja, bukan antartabel.
@@ -232,8 +243,16 @@ saat berhenti.
     tampil (`warmUpScene`). Pengecualian: objek `visible={false}` (cahaya
     sorot rak, baru diunggah saat proyek pertama disorot) dan layar terminal,
     yang diunggah ulang tiap status berubah.
-- **Selalu ada cara melompat antar-bagian:** rel di tata letak 3D layar lebar,
-  menu di bilah atas selain itu (ditentukan CSS, saling eksklusif).
+- **Dengan JavaScript, selalu ada cara melompat antar-bagian:** rel di tata
+  letak 3D layar lebar, menu di bilah atas selain itu (ditentukan CSS, saling
+  eksklusif). Menu menutup saat tautannya dipilih, saat Escape, saat diklik di
+  luar, saat fokus keluar, dan saat tampilan atau lebar layar menggantinya
+  dengan rel. Tanpa JavaScript keduanya tidak ada; yang tersisa tautan bagian
+  di footer.
+- **Tanpa JavaScript tidak ada yang berpura-pura bekerja:** kartu status
+  menulis bahwa pemeriksaannya butuh JavaScript (bukan "Checking…"
+  selamanya), dan form kontak disembunyikan — tanpa skrip ia terkirim sebagai
+  GET dan pesannya hilang — menyisakan surel dan kanal langsung lainnya.
 
 ## Verifikasi manual
 
@@ -259,7 +278,9 @@ Jalankan backend + `pnpm dev`, buka `/`:
     sana; Escape menutup dan mengembalikan fokus ke tombol. Di desktop 3D
     tombol itu tidak ada (rel yang tampil).
 11. Kunjungan pertama di sesi baru: intro "PARANDITHA" menutupi layar lalu
-    hilang sendiri; muat ulang → tidak tampil lagi, tanpa kedipan.
+    hilang sendiri; muat ulang → tidak tampil lagi, tanpa kedipan. Juga tanpa
+    muat ulang: "View projects" lalu "Back to Home" → intro tidak terputar
+    lagi.
 12. `/tour` mengalihkan ke `/`; `/classic` menampilkan beranda lama.
 
 ## Tahap 4 — pengukuran
@@ -329,9 +350,10 @@ tidak ada data yang dikirim ke mana pun):
    langkah 3–4. Angka CLS dijumlahkan sejak halaman dimuat, jadi tanpa muat
    ulang angka uji kedua tercampur uji pertama.
 
-Uji batal sendiri bila tab disembunyikan di tengah jalan (browser menghentikan
-frame, dan jedanya akan terbaca sebagai sendatan). "Close" menghentikan uji
-dan melepas panel.
+Uji batal sendiri bila tab disembunyikan atau tampilan diganti di tengah
+jalan (jeda dan rekaman campuran akan terbaca sebagai sendatan). Masa tunggu 5
+detik baru berjalan setelah kanvas 3D terpasang, dan diulang tiap tampilan
+diganti atau **No blur** ditekan. "Close" menghentikan uji dan melepas panel.
 
 Laporannya memuat: mode, ukuran layar dan kanvas, GPU, ukuran unduhan, dan
 laju frame saat diam dan saat bergulir. Cara membacanya:
@@ -374,6 +396,9 @@ laju frame saat diam dan saat bergulir. Cara membacanya:
   - `long frames: n/a` = browser tidak mendukungnya (Safari, Firefox).
 - **backdrop blur: none / on (N elements)** = berapa elemen tur yang
   benar-benar digambar dengan `backdrop-filter` saat uji.
+- **backdrop blur: experiment FAILED (N elements still blurred)** = tombol
+  **No blur** menyala tetapi masih ada elemen ber-blur: gaya suntikannya tidak
+  berlaku (mis. diblokir CSP), jadi hasilnya bukan uji tanpa blur.
 - **backdrop blur: off (experiment)** = uji dijalankan dengan tombol **No blur**
   di panel menyala, yang mematikan `backdrop-filter` di seluruh tur. Dipakai
   untuk membandingkan: bila frame panjang hilang tanpa blur, kartu ber-blur di
@@ -527,6 +552,11 @@ mundur.
 
 ## Belum dikerjakan
 
+- **`/projects` tidak punya metadata sendiri:** judul dan canonical-nya
+  mewarisi beranda (`/`), padahal masuk sitemap. Sudah begitu sebelum tahap
+  5; perlu `metadata` di halaman itu.
+- Di ponsel pendek dengan `?perf`, panel ukur menutupi sebagian menu (hanya
+  alat ukur yang terkena).
 - **LCP/CLS dari alamat yang ter-deploy**, untuk `/` dan `/classic`; lalu
   hapus `/classic` dan komponen yang hanya dipakainya.
 - **Laju frame di laptop tanpa GPU khusus** lewat `/?perf` (desktop memakai

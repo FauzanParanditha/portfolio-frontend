@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { INTRO_SESSION_SCRIPT } from "@/lib/intro";
 import { TOUR_MODE_SCRIPT } from "@/lib/tour/mode";
 import "./globals.css";
 import Providers from "./Providers";
@@ -20,18 +21,6 @@ const siteUrl = getSiteUrl();
 // Deskripsi ringkas dipakai ulang di beberapa channel (meta, OG, Twitter).
 const siteDescription =
   "Portofolio Fauzan Paranditha — fullstack programmer yang membangun aplikasi web andal dengan arsitektur bersih, performa kuat, dan dampak nyata.";
-
-const INTRO_SESSION_SCRIPT = `
-try {
-  if (sessionStorage.getItem('introSeen')) {
-    document.documentElement.setAttribute('data-intro', 'seen');
-  } else {
-    sessionStorage.setItem('introSeen', '1');
-  }
-} catch (e) {
-  /* mode privat / storage diblokir — intro tampil seperti biasa */
-}
-`.trim();
 
 export const metadata: Metadata = {
   // metadataBase membuat semua URL relatif (canonical, OG image) menjadi absolut.

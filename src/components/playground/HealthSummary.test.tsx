@@ -108,17 +108,21 @@ describe("HealthSummary", () => {
     ]);
   });
 
-  it("tanpa JavaScript tidak ada jawaban: tabel tunggu dan janji penyegaran ditandai butuh JS", () => {
+  it("tanpa JavaScript tidak ada jawaban: pil status, tabel tunggu, dan janji penyegaran ditandai butuh JS", () => {
+    // Tur menyembunyikan ketiganya lewat blok <noscript> dan menjelaskan
+    // sebabnya; "Checking…" yang tampil selamanya menyesatkan.
     const view = render(<HealthSummary health={null} />);
+    expect(screen.getByRole("status")).toHaveAttribute("data-requires-js");
     expect(screen.getByRole("table")).toHaveAttribute("data-requires-js");
     expect(
       screen.getByText("Waiting for an answer.").closest("p"),
     ).toHaveAttribute("data-requires-js");
-    // Pil statusnya tetap tampil.
-    expect(screen.getByRole("status")).not.toHaveAttribute("data-requires-js");
-    expect(view.container.querySelectorAll("[data-requires-js]")).toHaveLength(
-      2,
-    );
+    // Semua anak langsung: tidak ada bagian yang tertinggal tampil.
+    expect(
+      [...view.container.children].every((child) =>
+        child.hasAttribute("data-requires-js"),
+      ),
+    ).toBe(true);
   });
 
   it("tidak memformat waktu lewat Intl/toLocale…: panggilan pertamanya memblokir utas utama", () => {

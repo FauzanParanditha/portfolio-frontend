@@ -12,13 +12,8 @@ import { CONTACT_CHANNELS } from "@/content/profile";
 export { CONTACT_MAX_LENGTH, contactFieldLabel };
 
 export const ContactSection = () => {
-  // Kontak diambil dari env supaya nilainya bisa diisi tanpa menyentuh kode.
-  // Telepon SENGAJA disembunyikan bila kosong: sebelumnya nilainya masih
-  // placeholder "+62" dengan tautan ke https://wa.me/62 — recruiter yang
-  // mengkliknya mendarat di halaman WhatsApp yang tidak valid. Lebih baik
-  // barisnya absen daripada menawarkan kontak yang tidak bisa dihubungi.
-  const contactInfo = CONTACT_CHANNELS;
-
+  // Kanal kontak (surel, WhatsApp bila nomornya diisi, lokasi) disusun di
+  // src/content/profile.ts — sumber yang sama dengan kartu kontak di tur.
   return (
     <section
       className="w-full bg-zinc-950 pt-32 pb-32"
@@ -45,7 +40,7 @@ export const ContactSection = () => {
               </p>
 
               <div className="flex w-full max-w-sm flex-col gap-6">
-                {contactInfo.map((item, idx) => {
+                {CONTACT_CHANNELS.map((item, idx) => {
                   const body = (
                     <>
                       <span className="eyebrow mb-2">

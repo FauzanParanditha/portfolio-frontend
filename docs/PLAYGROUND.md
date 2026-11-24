@@ -2,11 +2,13 @@
 
 Ruang server 3D tempat tiap rak adalah satu proyek. Pengunjung menggerakkan
 robot anjing ke sebuah rak untuk membuka detail proyeknya. Halaman ini
-**opsional**: portfolio biasa tidak bergantung padanya, dan beranda tidak
-memuat satu byte pun kode 3D.
+**opsional**: isi portfolio tidak bergantung padanya. Kode 3D yang sama
+dipakai beranda (tur ruang server), yang mengunduhnya hanya bila tampilan 3D
+dipakai — bawaannya di layar lebar, atas permintaan di ponsel.
 
 Status: **Tahap 2**. Tahap 1 = ruangan, rak proyek, klik-untuk-jalan, panel
-detail, pintu masuk dari hero & navbar. Tahap 2 menambah tiga stasiun di lobi:
+detail. Pintu masuknya kini bilah atas dan menu beranda ("Explore freely").
+Tahap 2 menambah tiga stasiun di lobi:
 
 | Stasiun     | Objek di ruangan               | Panelnya berisi                              | Tanpa JS / tanpa 3D             |
 | ----------- | ------------------------------ | -------------------------------------------- | ------------------------------- |
@@ -177,8 +179,9 @@ Prinsip yang dijaga:
   turun otomatis bila FPS jatuh (batasnya disimpan di state dan diteruskan
   lewat prop `dpr`, karena `<Canvas>` menerapkan ulang prop itu tiap render); bayangan dimatikan di perangkat sentuh /
   ber-core sedikit.
-- **Ukuran:** chunk 3D ± 245 KB gzip, hanya diunduh di `/playground`. Tautan
-  dari hero & navbar memakai `prefetch={false}`.
+- **Ukuran:** kode 3D ± 245 KB gzip, diunduh di `/playground` dan di beranda
+  bila tampilan 3D dipakai. Tautan ke `/playground` memakai
+  `prefetch={false}`.
 - **Versi three dikunci di `~0.182`.** r183+ menandai `THREE.Clock` usang,
   sementara @react-three/fiber 9.8 masih memakainya — hasilnya peringatan di
   konsol tiap kunjungan. Naikkan bersamaan saat fiber sudah beralih ke

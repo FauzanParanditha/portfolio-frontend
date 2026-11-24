@@ -1,4 +1,5 @@
 import {
+  act,
   render as rtlRender,
   screen,
   waitFor,
@@ -18,7 +19,7 @@ vi.mock("@/lib/axios/public", () => ({
 }));
 
 import { TourShell } from "@/components/tour/TourShell";
-import { HEADLINE } from "@/content/profile";
+import { CONTACT_CHANNELS, HEADLINE } from "@/content/profile";
 import publicClient from "@/lib/axios/public";
 import type {
   PlaygroundExperience,
@@ -396,6 +397,86 @@ describe("TourShell (tanpa WebGL)", () => {
     expect(screen.getByRole("link", { name: "PARANDITHA" })).toHaveFocus();
   });
 
+  it("menu perhentian: klik di luar menutupnya; klik di dalam tidak", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    // Di dalam panel (bukan pada tautan): tetap terbuka.
+    await user.pointer({
+      keys: "[MouseLeft]",
+      target: screen.getByRole("navigation", { name: "Sections" }),
+    });
+    expect(
+      screen.getByRole("navigation", { name: "Sections" }),
+    ).toBeInTheDocument();
+
+    await user.pointer({
+      keys: "[MouseLeft]",
+      target: document.getElementById("about") as HTMLElement,
+    });
+    expect(screen.queryByRole("navigation", { name: "Sections" })).toBeNull();
+  });
+
+  it("menu perhentian: fokus yang keluar menutupnya, supaya kontrol berikutnya tidak tertutup panel", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    const links = within(
+      screen.getByRole("navigation", { name: "Sections" }),
+    ).getAllByRole("link");
+    links[links.length - 1].focus();
+    expect(
+      screen.getByRole("navigation", { name: "Sections" }),
+    ).toBeInTheDocument();
+
+    await user.tab();
+    expect(screen.queryByRole("navigation", { name: "Sections" })).toBeNull();
+    // Fokusnya memang sudah di luar menu, bukan dikembalikan ke tombol.
+    expect(screen.getByRole("button", { name: "Open menu" })).not.toHaveFocus();
+  });
+
+  it("menu perhentian: Escape saat fokus di tempat lain menutup menu tanpa mencuri fokus", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    // Fokus dipindah lewat skrip (bukan Tab/klik), mis. oleh pembaca layar:
+    // menu tertutup karena fokusnya keluar, dan Escape berikutnya tidak
+    // boleh menariknya kembali.
+    const mail = document.querySelector("#contact dl a") as HTMLElement;
+    mail.focus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("navigation", { name: "Sections" })).toBeNull();
+    expect(mail).toHaveFocus();
+  });
+
+  it("menu perhentian: layar dilebarkan sampai tombolnya disembunyikan CSS → menu ikut tertutup", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    const button = screen.getByRole("button", { name: "Open menu" });
+    await user.click(button);
+    // Ukuran berubah tetapi tombol masih tampil: tetap terbuka.
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(button).toHaveAttribute("aria-expanded", "true");
+
+    button.style.display = "none";
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(
+      document.getElementById(button.getAttribute("aria-controls") ?? ""),
+    ).not.toBeVisible();
+  });
+
+  it("menu perhentian: panelnya bisa digulir di layar pendek (ponsel lanskap)", () => {
+    render(<TourShell {...base} />);
+    const panel = document.getElementById("tour-menu") as HTMLElement;
+    expect(panel.className).toMatch(/max-h-\[calc\(100svh-4\.5rem\)\]/);
+    expect(panel).toHaveClass("overflow-y-auto");
+  });
+
   it("tanpa data pengalaman: menu ikut tanpa perhentian itu", async () => {
     const user = userEvent.setup();
     render(<TourShell {...base} experiences={[]} />);
@@ -422,11 +503,21 @@ describe("TourShell (tanpa WebGL)", () => {
     const mail = within(channels).getByRole("link");
     expect(mail.textContent).toMatch(/.+@.+/);
     expect(mail.getAttribute("href")).toBe(`mailto:${mail.textContent}`);
+    // Sama persis dengan sumber bersama (isi env mesin ini tidak diandaikan).
     expect(
       [...channels.querySelectorAll("dt")].map((term) => term.textContent),
-      // Tanpa nomor di env: tidak ada baris WhatsApp kosong.
-    ).toEqual(["Email", "Location"]);
-    expect(channels.querySelectorAll("dd")[1].querySelector("a")).toBeNull();
+    ).toEqual(CONTACT_CHANNELS.map((channel) => channel.title));
+    const location = [...channels.querySelectorAll("dt")].findIndex(
+      (term) => term.textContent === "Location",
+    );
+    expect(
+      channels.querySelectorAll("dd")[location].querySelector("a"),
+    ).toBeNull();
+    // Form butuh JavaScript untuk mengirim; kanal ini yang tersisa tanpanya.
+    expect(document.querySelector("#contact form")).toHaveAttribute(
+      "data-requires-js",
+    );
+    expect(channels).not.toHaveAttribute("data-requires-js");
   });
 
   it("panel ukur hanya ada bila alamatnya memuat ?perf", async () => {

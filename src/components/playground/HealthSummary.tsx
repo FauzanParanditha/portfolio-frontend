@@ -67,6 +67,7 @@ export function HealthSummary({
           Hanya pil ini — baris "Checked at…" berubah tiap 10 dtk. */}
       <p
         role="status"
+        data-requires-js
         className={`inline-flex min-h-11 items-center gap-2 self-start rounded-full border px-4 text-sm font-medium ${
           style?.className ?? "border-zinc-600 text-zinc-300"
         }`}
@@ -143,8 +144,9 @@ export function HealthSummary({
       {/* Dua baris tersendiri: kalimat pertama berbeda panjang sebelum dan
           sesudah hasil tiba, dan bila menyambung dengan petunjuk dalam satu
           paragraf, jumlah barisnya (jadi tinggi kartu) bisa berubah di lebar
-          tertentu. `data-requires-js`: tanpa JavaScript tidak akan pernah ada
-          jawaban, jadi tabel tunggu dan janji penyegaran tidak ditampilkan. */}
+          tertentu. `data-requires-js` (di sini, di tabel, dan di pil status):
+          tanpa JavaScript tidak akan pernah ada jawaban, jadi tur
+          menyembunyikan ketiganya dan menjelaskannya lewat <noscript>. */}
       <p data-requires-js className="text-sm leading-relaxed text-zinc-400">
         <span className="block">
           {health

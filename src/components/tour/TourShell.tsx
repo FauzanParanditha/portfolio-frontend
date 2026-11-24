@@ -233,19 +233,58 @@ export function TourShell({
 
   // ── Menu perhentian (tata letak tanpa rel: ponsel dan tampilan ringkas) ──
   // Disclosure, bukan modal: tautannya tetap bagian dari urutan Tab halaman,
-  // jadi tidak ada focus trap. Escape menutup dan mengembalikan fokus ke
-  // tombolnya.
+  // jadi tidak ada focus trap. Escape, klik di luar, dan fokus yang keluar
+  // menutupnya.
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuPanelRef = useRef<HTMLDivElement | null>(null);
+  // Ganti tampilan bisa menukar menu dengan rel: menu yang tersembunyi dalam
+  // keadaan terbuka akan muncul terbuka sendiri saat kembali.
+  const [menuMode, setMenuMode] = useState(show3d);
+  if (menuMode !== show3d) {
+    setMenuMode(show3d);
+    setMenuOpen(false);
+  }
   useEffect(() => {
     if (!menuOpen) return;
+    const button = menuButtonRef.current;
+    const panel = menuPanelRef.current;
+    const inMenu = (node: EventTarget | null) =>
+      node instanceof Node &&
+      (button?.contains(node) === true || panel?.contains(node) === true);
+
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // Selama menu terbuka fokus hanya bisa berada di menu atau di <body>:
+      // fokus yang pindah ke tempat lain sudah menutupnya (lihat onFocusIn),
+      // jadi pengembalian ini tidak pernah mencuri fokus dari form.
       setMenuOpen(false);
-      menuButtonRef.current?.focus();
+      button?.focus();
+    };
+    // Klik di luar, atau Tab keluar dari butir terakhir: tutup, supaya
+    // kontrol yang difokus berikutnya tidak tertutup panelnya.
+    const onPointerDown = (event: PointerEvent) => {
+      if (!inMenu(event.target)) setMenuOpen(false);
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      if (!inMenu(event.target)) setMenuOpen(false);
+    };
+    // Layar dilebarkan sampai rel tampil: CSS menyembunyikan tombolnya.
+    const onResize = () => {
+      if (button && getComputedStyle(button).display === "none") {
+        setMenuOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("focusin", onFocusIn);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("focusin", onFocusIn);
+      window.removeEventListener("resize", onResize);
+    };
   }, [menuOpen]);
 
   // ── Sorotan rak dari kartu proyek ──
@@ -443,6 +482,13 @@ export function TourShell({
           health={health}
           refreshHint="Refreshes every 10 seconds while you are here."
         />
+        {/* Pemeriksaannya dijalankan browser; tanpa JavaScript tidak akan
+            pernah ada jawaban, jadi katakan itu alih-alih "Checking…". */}
+        <noscript>
+          <p className="text-sm leading-relaxed text-zinc-400">
+            The live check runs in your browser and needs JavaScript.
+          </p>
+        </noscript>
       </>
     ),
     contact: (
@@ -546,7 +592,7 @@ export function TourShell({
             >
               {/* Satu pembungkus inline: di dalam tombol `inline-flex`, spasi
                   di antara dua anak langsung akan hilang. Di layar sempit kata
-                  "version" hanya untuk pembaca layar, supaya logo, penghitung,
+                  "version" hanya untuk pembaca layar, supaya logo, tombol ini,
                   dan tombol muat sebaris. */}
               <span>
                 {show3d ? "Simple" : "3D"}{" "}
@@ -579,12 +625,15 @@ export function TourShell({
             harus menunjuk elemen yang benar-benar ada. Pembungkusnya
             (`.tour-menu`) ikut hilang bila rel tampil, jadi menu yang terbuka
             tidak tertinggal saat layar dilebarkan. */}
-        <div className="tour-menu absolute inset-x-0 top-full sm:left-auto sm:w-72">
+        <div
+          ref={menuPanelRef}
+          className="tour-menu absolute inset-x-0 top-full sm:left-auto sm:w-72"
+        >
           <nav
             id="tour-menu"
             hidden={!menuOpen}
             aria-label="Sections"
-            className="w-full border-b border-zinc-800 bg-zinc-950 sm:rounded-bl-lg sm:border-l"
+            className="max-h-[calc(100svh-4.5rem)] w-full overflow-y-auto border-b border-zinc-800 bg-zinc-950 sm:rounded-bl-lg sm:border-l"
           >
             <ul className="flex flex-col py-2">
               {stopIds.map((id, index) => (
