@@ -75,7 +75,10 @@ export function HealthSummary({
         {health ? OVERALL_LABEL[health.overall] : "Checking…"}
       </p>
 
-      <table className="w-full border-collapse font-mono text-sm tabular-nums">
+      <table
+        data-requires-js
+        className="w-full border-collapse font-mono text-sm tabular-nums"
+      >
         <caption className="sr-only">Health checks</caption>
         <thead>
           <tr className="text-left text-xs tracking-widest text-zinc-400 uppercase">
@@ -108,7 +111,19 @@ export function HealthSummary({
                       : "text-zinc-300"
                 }`}
               >
-                {check.state === null ? "checking…" : CHECK_LABEL[check.state]}
+                {check.state === null ? (
+                  // Tanda tunggu sengaja lebih sempit dari judul kolomnya:
+                  // teks yang lebih lebar ("checking…") melebarkan kolom ini,
+                  // mempersempit kolom alamat, dan di layar 320 px membuat
+                  // alamatnya terlipat lebih banyak daripada setelah "ok" tiba
+                  // — kartu lalu berubah tinggi 20 px.
+                  <>
+                    <span aria-hidden="true">…</span>
+                    <span className="sr-only">checking</span>
+                  </>
+                ) : (
+                  CHECK_LABEL[check.state]
+                )}
               </td>
               <td className="py-3 text-right text-zinc-300">
                 {check.latencyMs === null ? (
@@ -125,11 +140,20 @@ export function HealthSummary({
         </tbody>
       </table>
 
-      <p className="text-sm leading-relaxed text-zinc-400">
-        {health
-          ? `Checked at ${formatClock(health.checkedAt)}.`
-          : "Waiting for the first answer."}
-        {health?.overall !== "limited" && ` ${refreshHint}`}
+      {/* Dua baris tersendiri: kalimat pertama berbeda panjang sebelum dan
+          sesudah hasil tiba, dan bila menyambung dengan petunjuk dalam satu
+          paragraf, jumlah barisnya (jadi tinggi kartu) bisa berubah di lebar
+          tertentu. `data-requires-js`: tanpa JavaScript tidak akan pernah ada
+          jawaban, jadi tabel tunggu dan janji penyegaran tidak ditampilkan. */}
+      <p data-requires-js className="text-sm leading-relaxed text-zinc-400">
+        <span className="block">
+          {health
+            ? `Checked at ${formatClock(health.checkedAt)}.`
+            : "Waiting for an answer."}
+        </span>
+        {health?.overall !== "limited" && (
+          <span className="block">{refreshHint}</span>
+        )}
       </p>
 
       {health && (

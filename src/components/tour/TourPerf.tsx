@@ -69,6 +69,9 @@ function countBlurred(): number | null {
     let count = 0;
     for (const element of document.querySelectorAll(".tour, .tour *")) {
       const style = getComputedStyle(element);
+      // Rel perhentian tetap ada di DOM saat disembunyikan (ponsel): tidak
+      // digambar, jadi tidak ikut dihitung.
+      if (style.display === "none") continue;
       const value =
         style.backdropFilter ||
         style.getPropertyValue("-webkit-backdrop-filter");
@@ -116,6 +119,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   const vitals = useRef<Vitals>({ lcpMs: null, cls: null, blockedMs: null });
   /** Entri `long-animation-frame`; `null` bila browser tidak mendukungnya. */
   const longFrames = useRef<LongFrameSample[] | null>(null);
+  const longFrameObserver = useRef<PerformanceObserver | null>(null);
   /** Membatalkan uji gulir yang sedang berjalan; `null` bila tidak ada. */
   const cancelTest = useRef<(() => void) | null>(null);
   const [idle, setIdle] = useState<FrameSummary | null>(null);
@@ -144,16 +148,24 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
    */
   const [wait, setWait] = useState(WARM_UP_SECONDS);
   const warmSince = useRef(0);
-  // Ganti tampilan: hitung mundur dari awal, sejak render ini juga (bukan
-  // menunggu detak berikutnya) supaya tombol tidak sempat ditekan.
-  const [shownMode, setShownMode] = useState(show3d);
-  if (shownMode !== show3d) {
-    setShownMode(show3d);
+  // Ganti tampilan atau sakelar blur: hitung mundur dari awal, sejak render
+  // ini juga (bukan menunggu detak berikutnya) supaya tombol tidak sempat
+  // ditekan. Uji yang sedang berjalan dibatalkan: separuh rekamannya berasal
+  // dari tampilan lama, dan jarak gulirnya sudah tidak cocok.
+  const warmKey = `${show3d}:${blur}`;
+  const [shownKey, setShownKey] = useState(warmKey);
+  if (shownKey !== warmKey) {
+    setShownKey(warmKey);
     setWait(WARM_UP_SECONDS);
+    if (testing) {
+      setTesting(false);
+      setNote("Test cancelled: the view changed. Run it again.");
+    }
   }
   useEffect(() => {
     warmSince.current = performance.now();
-  }, [show3d]);
+    cancelTest.current?.();
+  }, [warmKey]);
 
   // Cap waktu tiap frame, disimpan untuk jendela terakhir saja.
   useEffect(() => {
@@ -172,6 +184,11 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
   useEffect(() => {
     const timer = setInterval(() => {
       const now = performance.now();
+      // 3D di jaringan lambat: kode adegan bisa butuh lebih dari 5 dtk untuk
+      // tiba. Selama kanvasnya belum ada, masa tunggu belum mulai berjalan.
+      if (show3d && !document.querySelector(".tour canvas")) {
+        warmSince.current = now;
+      }
       setWait(
         Math.max(
           0,
@@ -185,7 +202,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
       );
     }, 1_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [show3d]);
 
   useEffect(() => {
     const current = vitals.current;
@@ -218,6 +235,7 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
     // Didukung tetapi belum ada entri = nol, bukan "tidak dilaporkan".
     if (observers[1]) current.cls ??= 0;
     if (observers[2]) longFrames.current ??= [];
+    longFrameObserver.current = observers[2];
     if (observers[3]) current.blockedMs ??= 0;
     return () => {
       for (const observer of observers) observer?.disconnect();
@@ -315,6 +333,12 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
       const summary = summarizeFrames(
         frames.current.filter((time) => time >= start),
       );
+      // Entri frame panjang diantar asinkron; yang terjadi di detik terakhir
+      // uji bisa masih mengantre di pengamatnya.
+      const pending = longFrameObserver.current?.takeRecords?.() ?? [];
+      if (longFrames.current) {
+        longFrames.current.push(...(pending as unknown as LongFrameSample[]));
+      }
       stop();
       window.scrollTo(0, 0);
       setScroll(summary);
@@ -357,15 +381,15 @@ function Panel({ show3d, onClose }: { show3d: boolean; onClose: () => void }) {
       {/* Tinggi tetap (dua baris): teks status yang memanjang tidak boleh
           mengubah tinggi panel — pergeseran itu ikut terhitung sebagai CLS. */}
       <p role="status" className="h-8 overflow-hidden leading-4 tabular-nums">
-        {note ??
-          (testing
-            ? "Scrolling the page for 12 s…"
-            : wait > 0
-              ? `Warming up: test ready in ${wait} s`
-              : idle
+        {testing
+          ? "Scrolling the page for 12 s…"
+          : wait > 0
+            ? `Warming up: test ready in ${wait} s`
+            : (note ??
+              (idle
                 ? `idle ${idle.avgFps.toFixed(0)} fps · worst ${idle.worstMs.toFixed(0)} ms`
-                : "Measuring…")}
-        {scroll && !testing && !note
+                : "Measuring…"))}
+        {scroll && !testing && !note && wait === 0
           ? ` · scroll ${scroll.avgFps.toFixed(0)} fps (1% low ${scroll.lowFps.toFixed(0)})`
           : ""}
       </p>
