@@ -4,8 +4,14 @@ import { GithubIcon } from "@/components/icons/BrandIcons";
 import { ProjectSearch } from "@/components/projects/ProjectSearch";
 import { Button } from "@/components/ui/button";
 import { safeHttpUrl } from "@/lib/safeUrl";
+import {
+  parseProjectsQuery,
+  projectsHref,
+  projectsMeta,
+} from "@/lib/projectsMeta";
 import { getProjectsPage, getUsedProjectTags } from "@/lib/server/portfolio";
 import { ArrowLeft, ExternalLink } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 /**
@@ -35,21 +41,54 @@ interface PageProps {
   searchParams: Promise<{ q?: string; tag?: string; page?: string }>;
 }
 
-/** Menyusun URL /projects dengan hanya parameter yang benar-benar terpakai. */
-function buildHref(params: { q?: string; tag?: string; page?: number }) {
-  const qs = new URLSearchParams();
-  if (params.q) qs.set("q", params.q);
-  if (params.tag) qs.set("tag", params.tag);
-  if (params.page && params.page > 1) qs.set("page", String(params.page));
-  const s = qs.toString();
-  return s ? `/projects?${s}` : "/projects";
+/**
+ * Tanpa ini /projects mewarisi judul dan canonical beranda dari root layout
+ * (`canonical: "/"`), padahal halaman ini masuk sitemap: mesin pencari diberi
+ * tahu bahwa indeks proyek adalah duplikat beranda. Aturannya ada di
+ * `projectsMeta`.
+ */
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const query = parseProjectsQuery(await searchParams);
+  // Daftar tag hanya dibutuhkan untuk mengesahkan filter tag; halaman
+  // mengambilnya juga, dan cache `fetch` menyatukan keduanya.
+  const knownTags = query.tag ? await getUsedProjectTags() : [];
+  const { title, description, canonical, index } = projectsMeta(
+    query,
+    knownTags,
+  );
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    robots: { index, follow: true },
+    // Metadata digabung dangkal: `openGraph`/`twitter` di sini MENGGANTI milik
+    // root layout seluruhnya, jadi field yang ingin dipertahankan diulang.
+    openGraph: {
+      type: "website",
+      siteName: "Paranditha",
+      locale: "id_ID",
+      title,
+      description,
+      url: canonical,
+      images: [
+        { url: "/opengraph-image", width: 1200, height: 630, alt: title },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      creator: "@paranditha",
+      images: ["/opengraph-image"],
+    },
+  };
 }
 
 export default async function ProjectsPage({ searchParams }: PageProps) {
-  const sp = await searchParams;
-  const q = sp.q?.trim() ?? "";
-  const tag = sp.tag?.trim() ?? "";
-  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+  const { q, tag, page } = parseProjectsQuery(await searchParams);
 
   const [result, tagNames] = await Promise.all([
     getProjectsPage({ page, limit: PROJECTS_PER_PAGE, q, tag }),
@@ -102,7 +141,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               <ul className="flex flex-wrap gap-x-6 gap-y-3">
                 <li>
                   <Link
-                    href={buildHref({ q })}
+                    href={projectsHref({ q })}
                     aria-current={tag === "" ? "page" : undefined}
                     className={`flex min-h-11 items-center text-sm tracking-wide transition-all ${
                       tag === ""
@@ -116,7 +155,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                 {tagNames.map((name) => (
                   <li key={name}>
                     <Link
-                      href={buildHref({ q, tag: name })}
+                      href={projectsHref({ q, tag: name })}
                       aria-current={tag === name ? "page" : undefined}
                       className={`flex min-h-11 items-center text-sm tracking-wide transition-all ${
                         tag === name
@@ -246,7 +285,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                 <li>
                   {page > 1 ? (
                     <Link
-                      href={buildHref({ q, tag, page: page - 1 })}
+                      href={projectsHref({ q, tag, page: page - 1 })}
                       rel="prev"
                       className="flex min-h-11 items-center px-4 text-sm tracking-wide hover:opacity-70"
                     >
@@ -263,7 +302,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                   (n) => (
                     <li key={n}>
                       <Link
-                        href={buildHref({ q, tag, page: n })}
+                        href={projectsHref({ q, tag, page: n })}
                         aria-current={n === page ? "page" : undefined}
                         aria-label={`Halaman ${n}`}
                         className={`flex h-11 w-11 items-center justify-center text-sm tabular-nums ${
@@ -281,7 +320,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                 <li>
                   {page < totalPages ? (
                     <Link
-                      href={buildHref({ q, tag, page: page + 1 })}
+                      href={projectsHref({ q, tag, page: page + 1 })}
                       rel="next"
                       className="flex min-h-11 items-center px-4 text-sm tracking-wide hover:opacity-70"
                     >
