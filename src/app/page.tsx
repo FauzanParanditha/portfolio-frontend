@@ -12,6 +12,7 @@ import {
   getTags,
 } from "@/lib/server/portfolio";
 import { groupSkills } from "@/lib/skills";
+import type { Metadata } from "next";
 
 /**
  * Beranda — tur ruang server. Komponen SERVER.
@@ -21,12 +22,20 @@ import { groupSkills } from "@/lib/skills";
  * belakangnya. Semua data diambil di sini, jadi HTML pertama sudah lengkap
  * tanpa menunggu JavaScript; kanvas hanyalah peningkatan (lihat docs/TOUR.md).
  *
- * Metadata (judul, canonical `/`, Open Graph) memakai bawaan root layout.
+ * Judul dan Open Graph memakai bawaan root layout; canonical disetel di sini
+ * (root layout sengaja tidak punya bawaannya).
  * Beranda lama masih bisa dibuka di /classic selama masa pembandingan.
  */
 
 // Data portfolio jarang berubah; segarkan tiap 5 menit.
 export const revalidate = 300;
+
+// Hanya canonical: field lain (judul, deskripsi, Open Graph, robots) tetap
+// diwarisi dari root layout. Jangan menambah `openGraph` di sini tanpa
+// mengulang seluruh isinya — metadata digabung dangkal.
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function Home() {
   const [{ projects, total }, featured, experiences, tags] = await Promise.all([

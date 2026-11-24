@@ -47,9 +47,12 @@ export const metadata: Metadata = {
   authors: [{ name: "Fauzan Paranditha", url: siteUrl }],
   creator: "Fauzan Paranditha",
   publisher: "Fauzan Paranditha",
-  alternates: {
-    canonical: "/",
-  },
+  // SENGAJA tanpa `alternates.canonical` di sini. Metadata root layout
+  // diwarisi setiap halaman, jadi canonical bawaan "/" membuat halaman mana
+  // pun yang lupa menyetelnya mengaku duplikat beranda — itu yang terjadi
+  // pada /projects. Tiap halaman publik menyetel canonical-nya sendiri
+  // (dijaga test di routes.test.ts); tanpa canonical lebih baik daripada
+  // canonical yang salah.
   openGraph: {
     type: "website",
     siteName: "Paranditha",
