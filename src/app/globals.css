@@ -466,7 +466,7 @@
 }
 
 /* ==========================================================================
-   Tur ruang server (/tour) — tata letak perhentian.
+   Tur ruang server (beranda, /) — tata letak perhentian.
 
    Dua tata letak untuk markup yang sama:
    - ringkas : kartu bertumpuk di tengah, seperti halaman biasa;
@@ -512,6 +512,12 @@ html:has(.tour) {
 .tour-only-3d {
   display: none;
 }
+/* Menu perhentian (tombol + panel di bilah atas): kebalikan dari rel. Tampil
+   di mana rel tidak tampil — ponsel dan tata letak ringkas — karena di sana
+   tidak ada cara lain untuk melompat antar-bagian. */
+.tour-menu {
+  display: flex;
+}
 /* Permukaan kartu, bilah atas, dan rel: hampir pekat, TANPA blur latar.
    `backdrop-filter` di atas kanvas yang terus bergerak harus dihitung ulang
    tiap frame. Di ponsel kelas menengah (Adreno 710) itu terukur sebagai frame
@@ -542,6 +548,9 @@ html:has(.tour) {
   }
   html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-rail {
     display: flex;
+  }
+  html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-menu {
+    display: none;
   }
   html:not([data-tour-mode]) .tour:not([data-mode="simple"]) .tour-only-3d {
     display: block;
@@ -596,5 +605,8 @@ html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-only-3d {
   }
   html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-rail {
     display: flex;
+  }
+  html[data-tour-mode="3d"] .tour:not([data-mode="simple"]) .tour-menu {
+    display: none;
   }
 }

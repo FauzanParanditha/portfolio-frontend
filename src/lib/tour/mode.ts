@@ -74,7 +74,7 @@ export function subscribeTourMode(onChange: () => void): () => void {
     reflect(readTourMode());
     onChange();
   };
-  // Navigasi sisi klien ke /tour tidak menjalankan skrip pra-paint lagi;
+  // Navigasi sisi klien ke beranda tidak menjalankan skrip pra-paint lagi;
   // pastikan atributnya sesuai begitu tur terpasang.
   reflect(readTourMode());
   listeners.add(onChange);

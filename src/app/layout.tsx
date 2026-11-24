@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { getSiteUrl } from "@/lib/siteUrl";
+import { INTRO_SESSION_SCRIPT } from "@/lib/intro";
 import { TOUR_MODE_SCRIPT } from "@/lib/tour/mode";
 import "./globals.css";
 import Providers from "./Providers";
@@ -21,18 +21,6 @@ const siteUrl = getSiteUrl();
 // Deskripsi ringkas dipakai ulang di beberapa channel (meta, OG, Twitter).
 const siteDescription =
   "Portofolio Fauzan Paranditha — fullstack programmer yang membangun aplikasi web andal dengan arsitektur bersih, performa kuat, dan dampak nyata.";
-
-const INTRO_SESSION_SCRIPT = `
-try {
-  if (sessionStorage.getItem('introSeen')) {
-    document.documentElement.setAttribute('data-intro', 'seen');
-  } else {
-    sessionStorage.setItem('introSeen', '1');
-  }
-} catch (e) {
-  /* mode privat / storage diblokir — intro tampil seperti biasa */
-}
-`.trim();
 
 export const metadata: Metadata = {
   // metadataBase membuat semua URL relatif (canonical, OG image) menjadi absolut.
@@ -107,39 +95,36 @@ export default function RootLayout({
 }>) {
   return (
     // suppressHydrationWarning HANYA untuk atribut <html> itu sendiri, bukan
-    // isinya. Dibutuhkan karena dua skrip menyetel atribut pada <html>
-    // sebelum React hidrasi: `data-tour-mode` (skrip inline di <head> di
-    // bawah) dan `data-intro="seen"` (skrip di IntroOverlay) — sebelum React
-    // hidrasi — sehingga atribut di klien memang sengaja berbeda dari yang
-    // dirender server. Ini pola yang sama dipakai skrip anti-kedip tema.
-    // Cakupannya satu tingkat, jadi ketidakcocokan sungguhan di dalam pohon
-    // tetap dilaporkan.
+    // isinya. Dibutuhkan karena dua skrip inline di <head> menyetel atribut
+    // pada <html> sebelum React hidrasi — `data-tour-mode` dan
+    // `data-intro="seen"` — sehingga atribut di klien memang sengaja berbeda
+    // dari yang dirender server. Ini pola yang sama dipakai skrip anti-kedip
+    // tema. Cakupannya satu tingkat, jadi ketidakcocokan sungguhan di dalam
+    // pohon tetap dilaporkan.
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
-        {/* Pilihan tampilan tur (3D / ringkas) dipasang pada <html> SEBELUM
-            paint, supaya /tour tidak tampil di tata letak bawaan lalu melompat.
+        {/* Dua atribut dipasang pada <html> SEBELUM paint:
+            - `data-tour-mode`: pilihan tampilan beranda (3D / ringkas), supaya
+              halaman tidak tampil di tata letak bawaan lalu melompat;
+            - `data-intro="seen"`: intro pembuka sudah tampil di sesi ini,
+              supaya kunjungan berikutnya langsung melihat isi.
 
             Sengaja <script> inline biasa, bukan <Script beforeInteractive>:
             di App Router yang terakhir hanya mengantre ke `self.__next_s` dan
             baru dijalankan saat runtime Next menyala — SETELAH paint pertama
-            (terukur: CLS 0,146 di desktop dengan pilihan "simple"). Skrip
+            (terukur: CLS 0,146 di desktop dengan pilihan "simple"; untuk intro
+            berarti layar pembuka sempat berkedip di kunjungan kedua). Skrip
             inline di <head> dijalankan parser sebelum <body> digambar.
             Beberapa byte, sinkron. Atributnya terpasang di semua halaman,
-            tetapi CSS yang membacanya berlingkup `.tour`. Root layout
-            tidak dirender ulang di klien, jadi skrip ini tidak pernah
-            disisipkan React (yang tidak akan mengeksekusinya). */}
+            tetapi CSS yang membacanya berlingkup `.tour` dan `.intro-overlay`.
+            Root layout tidak dirender ulang di klien, jadi skrip ini tidak
+            pernah disisipkan React (yang tidak akan mengeksekusinya). */}
         <script dangerouslySetInnerHTML={{ __html: TOUR_MODE_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: INTRO_SESSION_SCRIPT }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {/* Menandai bahwa intro sudah tampil di sesi ini, supaya kunjungan
-            berikutnya langsung melihat isi. `beforeInteractive` membuatnya
-            berjalan sebelum hidrasi — sebuah <script> biasa di dalam komponen
-            React tidak akan dieksekusi pada navigasi sisi klien. */}
-        <Script id="intro-session" strategy="beforeInteractive">
-          {INTRO_SESSION_SCRIPT}
-        </Script>
         <Providers>{children}</Providers>
       </body>
     </html>

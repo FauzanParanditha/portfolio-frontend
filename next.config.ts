@@ -26,6 +26,15 @@ const nextConfig: NextConfig = {
     // melenceng, next/image melempar saat render, bukan saat build.
     remotePatterns: imageRemotePatterns(),
   },
+  async redirects() {
+    return [
+      // /tour adalah alamat pratinjau tur sebelum menjadi beranda. Sementara
+      // (307), bukan permanen: alamat itu tidak pernah diindeks atau
+      // ditautkan, jadi tidak ada sinyal mesin pencari yang perlu dipindahkan,
+      // dan redirect permanen di-cache browser tanpa batas waktu.
+      { source: "/tour", destination: "/", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

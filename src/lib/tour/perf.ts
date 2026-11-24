@@ -289,9 +289,16 @@ function longFrameLines(frames: LongFrame[] | null): string[] {
 
 /** Keadaan blur latar saat uji: dimatikan percobaan, tidak ada, atau menyala. */
 function blurLabel(report: PerfReport): string {
-  if (!report.blur) return "off (experiment)";
   const count = report.blurred;
-  if (count === null || !Number.isFinite(count)) return dash;
+  const known = count !== null && Number.isFinite(count);
+  if (!report.blur) {
+    // Labelnya berasal dari sakelar; bila gaya suntikannya ternyata tidak
+    // berlaku (mis. diblokir CSP), laporan tidak boleh tetap berkata "off".
+    return known && count > 0
+      ? `experiment FAILED (${count} elements still blurred)`
+      : "off (experiment)";
+  }
+  if (!known) return dash;
   return count > 0 ? `on (${count} elements)` : "none";
 }
 

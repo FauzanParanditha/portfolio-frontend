@@ -63,7 +63,7 @@ vi.mock("@/hooks/use-backend-health", async (importOriginal) => {
 vi.mock("@/lib/axios/public", () => ({ default: { post: vi.fn() } }));
 
 import { AUTO_3D_QUERY, TourShell } from "@/components/tour/TourShell";
-import { resetTourModeForTest } from "@/lib/tour/mode";
+import { writeTourMode, resetTourModeForTest } from "@/lib/tour/mode";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToString } from "react-dom/server";
@@ -415,6 +415,27 @@ describe("TourShell (3D tersedia)", () => {
     expect(scene.props?.highlightedSlot).toBeNull();
   });
 
+  it("ganti tampilan menutup menu perhentian: ia tidak boleh muncul terbuka sendiri saat kembali", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    await screen.findByTestId("scene");
+    // Di jsdom tidak ada CSS, jadi tombol menu tetap bisa ditekan di 3D.
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("button", { name: "Close menu" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    // Lewat penyimpan pilihan, bukan klik: klik di luar menu sudah menutupnya
+    // sendiri, dan yang diuji di sini adalah pergantian tampilannya (mis.
+    // pilihan berubah dari tab lain, atau layar melewati batas 3D bawaan).
+    act(() => writeTourMode("simple"));
+    expect(screen.queryByTestId("scene")).toBeNull();
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
   it("tombol 'Simple version' melepas scene, memaksa tata letak ringkas, dan diingat", async () => {
     const user = userEvent.setup();
     const { container, unmount } = render(<TourShell {...base} />);
@@ -547,14 +568,34 @@ describe("TourShell (3D tersedia)", () => {
       join(process.cwd(), "src/app/globals.css"),
       "utf8",
     );
-    const tour = css.slice(css.indexOf("Tur ruang server (/tour)"));
+    const blockStart = css.indexOf("Tur ruang server (beranda, /)");
+    // Tanpa ini `slice(-1)` membuat semua pemeriksaan di bawah lolos kosong.
+    expect(blockStart).toBeGreaterThan(-1);
+    const tour = css.slice(blockStart);
     const shell = readFileSync(
       join(process.cwd(), "src/components/tour/TourShell.tsx"),
       "utf8",
     );
     // Tidak ada blur lewat kelas utilitas: itu berlaku di SEMUA perangkat.
     expect(shell).not.toMatch(/backdrop-(blur|filter)/);
+    // Juga komponen lain yang dirender di dalam tur.
+    for (const path of [
+      "src/components/contact/ContactForm.tsx",
+      "src/components/Footer.tsx",
+      "src/components/IntroOverlay.tsx",
+      "src/components/playground/ExperienceList.tsx",
+      "src/components/playground/HealthSummary.tsx",
+    ]) {
+      expect(readFileSync(join(process.cwd(), path), "utf8"), path).not.toMatch(
+        /backdrop-(blur|filter)/,
+      );
+    }
     expect(shell.match(/\btour-glass\b/g)).toHaveLength(3);
+    // Kartu status menjelaskan dirinya tanpa JavaScript (React tidak merender
+    // isi <noscript> di klien, jadi sumbernya yang diperiksa).
+    expect(shell).toMatch(
+      /<noscript>\s*<p[^>]*>\s*The live check runs in your browser and needs JavaScript\.\s*<\/p>\s*<\/noscript>/,
+    );
 
     // Bawaan: hampir pekat, tanpa blur.
     const base = tour.match(/\n\.tour-glass \{([^}]*)\}/)?.[1] ?? "";
@@ -588,6 +629,35 @@ describe("TourShell (3D tersedia)", () => {
     // Deklarasinya saja (komentar boleh menyebut namanya).
     expect(tour.match(/backdrop-filter:/g)?.length).toBe(inBlocks);
     expect(inBlocks).toBe(4);
+  });
+
+  it("menu perhentian tampil tepat di mana rel tidak tampil (ditentukan CSS)", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    // Bawaan (ponsel, tata letak ringkas): menu tampil, rel tersembunyi.
+    expect(css).toMatch(/\n\.tour-menu \{\s*display: flex;\s*\}/);
+    // Setiap aturan yang menampilkan rel langsung diikuti aturan yang
+    // menyembunyikan menu, dengan pemilih yang sama — dan tidak ada aturan
+    // penyembunyi menu di luar itu.
+    const railShown = [
+      ...css.matchAll(
+        /([^{}]+)\.tour-rail \{\s*display: flex;\s*\}\s*([^{}]+)\.tour-menu \{\s*display: none;\s*\}/g,
+      ),
+    ].map((match) => [match[1].trim(), match[2].trim()]);
+    expect(railShown).toEqual([
+      [
+        'html:not([data-tour-mode]) .tour:not([data-mode="simple"])',
+        'html:not([data-tour-mode]) .tour:not([data-mode="simple"])',
+      ],
+      [
+        'html[data-tour-mode="3d"] .tour:not([data-mode="simple"])',
+        'html[data-tour-mode="3d"] .tour:not([data-mode="simple"])',
+      ],
+    ]);
+    expect(css.match(/\.tour-rail \{\s*display: flex;/g)).toHaveLength(2);
+    expect(css.match(/\.tour-menu \{\s*display: none;/g)).toHaveLength(2);
   });
 
   it("petunjuk gulir: tersembunyi secara bawaan, tampil hanya di tata letak 3D (ditentukan CSS)", () => {

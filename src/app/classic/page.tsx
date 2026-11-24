@@ -1,0 +1,82 @@
+import { AboutSection } from "@/components/AboutSection";
+import { ContactSection } from "@/components/ContactSection";
+import { ExperienceSection } from "@/components/ExperienceSection";
+import { Footer } from "@/components/Footer";
+import { HeroSection } from "@/components/HeroSection";
+import { IntroOverlay } from "@/components/IntroOverlay";
+import { Navbar } from "@/components/Navbar";
+import { ProjectsSection } from "@/components/ProjectsSection";
+import {
+  getExperiences,
+  getFeaturedProjects,
+  getTags,
+} from "@/lib/server/portfolio";
+import type { Metadata } from "next";
+
+/**
+ * /classic — beranda lama, disimpan selama masa pembandingan.
+ *
+ * Beranda (`/`) sekarang tur ruang server. Halaman ini dipertahankan supaya
+ * keduanya bisa diukur berdampingan di alamat yang ter-deploy (LCP di jaringan
+ * seluler belum pernah diukur), dan supaya ada jalan mundur yang murah.
+ * `noindex`, tidak masuk sitemap, tidak ditautkan dari mana pun; canonical-nya
+ * ke diri sendiri (noindex + canonical ke halaman lain saling bertentangan).
+ * Hapus halaman ini beserta komponen yang hanya dipakainya setelah angkanya
+ * ada — lihat docs/TOUR.md.
+ *
+ * Catatan asli halaman ini — komponen SERVER.
+ *
+ * Sebelumnya berlabel "use client" dan menahan seluruh isinya di balik
+ * `useState(showWelcome = true)`. Akibatnya HTML yang dikirim server hanya
+ * berisi layar pembuka: nama, headline, keahlian, proyek, dan kontak sama
+ * sekali tidak ada di dalamnya. Recruiter berkoneksi lambat, mesin pencari,
+ * dan pratinjau tautan hanya melihat layar hitam.
+ *
+ * Sekarang: proyek dan pengalaman diambil di server, seluruh section dirender
+ * langsung, dan intro pembuka menjadi lapisan yang tidak menghalangi apa pun
+ * (lihat IntroOverlay).
+ */
+
+// Data portfolio jarang berubah; segarkan tiap 5 menit.
+export const revalidate = 300;
+
+export const metadata: Metadata = {
+  title: "Classic Home",
+  alternates: { canonical: "/classic" },
+  robots: { index: false, follow: true },
+};
+
+export default async function ClassicHome() {
+  // Diambil paralel — keduanya tidak saling bergantung.
+  const [projects, experiences, tags] = await Promise.all([
+    getFeaturedProjects(),
+    getExperiences(),
+    getTags(),
+  ]);
+
+  return (
+    <div className="text-foreground min-h-screen bg-zinc-950">
+      {/* Skip link: elemen fokus pertama, memungkinkan lompat ke konten utama. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-60 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-black focus:ring-2 focus:ring-white focus:outline-hidden"
+      >
+        Lewati ke konten
+      </a>
+
+      <IntroOverlay />
+
+      <Navbar />
+
+      <main id="main">
+        <HeroSection />
+        <AboutSection tags={tags} />
+        <ExperienceSection experiences={experiences} />
+        <ProjectsSection projects={projects} />
+        <ContactSection />
+      </main>
+
+      <Footer />
+    </div>
+  );
+}

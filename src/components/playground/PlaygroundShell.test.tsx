@@ -173,7 +173,7 @@ describe("PlaygroundShell (tanpa WebGL)", () => {
     ).toHaveAttribute("href", "https://github.com/x/y");
     // Jalan keluar tetap ada di dalam panel (panel modal menutupi header).
     expect(
-      within(dialog).getByRole("link", { name: /back to the regular site/i }),
+      within(dialog).getByRole("link", { name: /back to home/i }),
     ).toHaveAttribute("href", "/");
 
     await user.keyboard("{Escape}");

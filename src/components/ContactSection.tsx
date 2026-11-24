@@ -5,50 +5,15 @@ import {
   ContactForm,
   contactFieldLabel,
 } from "@/components/contact/ContactForm";
+import { CONTACT_CHANNELS } from "@/content/profile";
 
 // Diekspor ulang: batas panjang & label field kini tinggal bersama form-nya
 // (ContactForm), tetapi pemakai lama mengimpornya dari berkas ini.
 export { CONTACT_MAX_LENGTH, contactFieldLabel };
 
 export const ContactSection = () => {
-  // Kontak diambil dari env supaya nilainya bisa diisi tanpa menyentuh kode.
-  // Telepon SENGAJA disembunyikan bila kosong: sebelumnya nilainya masih
-  // placeholder "+62" dengan tautan ke https://wa.me/62 — recruiter yang
-  // mengkliknya mendarat di halaman WhatsApp yang tidak valid. Lebih baik
-  // barisnya absen daripada menawarkan kontak yang tidak bisa dihubungi.
-  const email = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "paranditha@gmail.com";
-  const phone = process.env.NEXT_PUBLIC_CONTACT_PHONE;
-  const location =
-    process.env.NEXT_PUBLIC_CONTACT_LOCATION ?? "Tangerang Selatan, ID";
-
-  const contactInfo: {
-    title: string;
-    value: string;
-    href?: string;
-  }[] = [
-    {
-      title: "Email",
-      value: email,
-      href: `mailto:${email}`,
-    },
-    ...(phone
-      ? [
-          {
-            title: "WhatsApp",
-            value: phone,
-            // wa.me hanya menerima angka: buang spasi, tanda plus, dan tanda hubung.
-            href: `https://wa.me/${phone.replace(/\D/g, "")}`,
-          },
-        ]
-      : []),
-    {
-      // Lokasi bukan aksi — dulu ditautkan ke situs kantor, yang membingungkan.
-      // Kini teks biasa tanpa tautan.
-      title: "Location",
-      value: location,
-    },
-  ];
-
+  // Kanal kontak (surel, WhatsApp bila nomornya diisi, lokasi) disusun di
+  // src/content/profile.ts — sumber yang sama dengan kartu kontak di tur.
   return (
     <section
       className="w-full bg-zinc-950 pt-32 pb-32"
@@ -75,7 +40,7 @@ export const ContactSection = () => {
               </p>
 
               <div className="flex w-full max-w-sm flex-col gap-6">
-                {contactInfo.map((item, idx) => {
+                {CONTACT_CHANNELS.map((item, idx) => {
                   const body = (
                     <>
                       <span className="eyebrow mb-2">

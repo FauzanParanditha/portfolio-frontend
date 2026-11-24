@@ -1,65 +1,59 @@
-import { AboutSection } from "@/components/AboutSection";
-import { ContactSection } from "@/components/ContactSection";
-import { ExperienceSection } from "@/components/ExperienceSection";
-import { Footer } from "@/components/Footer";
-import { HeroSection } from "@/components/HeroSection";
 import { IntroOverlay } from "@/components/IntroOverlay";
-import { Navbar } from "@/components/Navbar";
-import { ProjectsSection } from "@/components/ProjectsSection";
+import { TourShell } from "@/components/tour/TourShell";
+import {
+  MAX_STATIONS,
+  toPlaygroundExperience,
+  toPlaygroundProject,
+} from "@/lib/playground/layout";
 import {
   getExperiences,
   getFeaturedProjects,
+  getProjectsPage,
   getTags,
 } from "@/lib/server/portfolio";
+import { groupSkills } from "@/lib/skills";
 
 /**
- * Beranda — komponen SERVER.
+ * Beranda — tur ruang server. Komponen SERVER.
  *
- * Sebelumnya berlabel "use client" dan menahan seluruh isinya di balik
- * `useState(showWelcome = true)`. Akibatnya HTML yang dikirim server hanya
- * berisi layar pembuka: nama, headline, keahlian, proyek, dan kontak sama
- * sekali tidak ada di dalamnya. Recruiter berkoneksi lambat, mesin pencari,
- * dan pratinjau tautan hanya melihat layar hitam.
+ * Seluruh isi portfolio (profil, keahlian, proyek, pengalaman, status API,
+ * kontak) disajikan sebagai kartu HTML yang digulir, dengan ruang server 3D di
+ * belakangnya. Semua data diambil di sini, jadi HTML pertama sudah lengkap
+ * tanpa menunggu JavaScript; kanvas hanyalah peningkatan (lihat docs/TOUR.md).
  *
- * Sekarang: proyek dan pengalaman diambil di server, seluruh section dirender
- * langsung, dan intro pembuka menjadi lapisan yang tidak menghalangi apa pun
- * (lihat IntroOverlay).
+ * Metadata (judul, canonical `/`, Open Graph) memakai bawaan root layout.
+ * Beranda lama masih bisa dibuka di /classic selama masa pembandingan.
  */
 
 // Data portfolio jarang berubah; segarkan tiap 5 menit.
 export const revalidate = 300;
 
 export default async function Home() {
-  // Diambil paralel — keduanya tidak saling bergantung.
-  const [projects, experiences, tags] = await Promise.all([
+  const [{ projects, total }, featured, experiences, tags] = await Promise.all([
+    // Satu lebih banyak dari kapasitas rak: cukup untuk tahu ada "sisanya".
+    getProjectsPage({ page: 1, limit: MAX_STATIONS + 1 }),
     getFeaturedProjects(),
     getExperiences(),
     getTags(),
   ]);
 
   return (
-    <div className="text-foreground min-h-screen bg-zinc-950">
-      {/* Skip link: elemen fokus pertama, memungkinkan lompat ke konten utama. */}
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-60 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:font-medium focus:text-black focus:ring-2 focus:ring-white focus:outline-hidden"
-      >
-        Lewati ke konten
-      </a>
-
+    <>
+      {/* Lapisan pembuka: murni CSS, tidak menahan input, hilang sendiri. */}
       <IntroOverlay />
-
-      <Navbar />
-
-      <main id="main">
-        <HeroSection />
-        <AboutSection tags={tags} />
-        <ExperienceSection experiences={experiences} />
-        <ProjectsSection projects={projects} />
-        <ContactSection />
-      </main>
-
-      <Footer />
-    </div>
+      <TourShell
+        projects={projects.slice(0, MAX_STATIONS).map(toPlaygroundProject)}
+        // `total` dari meta API bisa cacat (bukan angka); jangan sampai NaN
+        // menghilangkan rak arsip.
+        total={
+          Number.isFinite(total)
+            ? Math.max(total, projects.length)
+            : projects.length
+        }
+        featured={featured.map(toPlaygroundProject)}
+        experiences={experiences.map(toPlaygroundExperience)}
+        skills={groupSkills(tags)}
+      />
+    </>
   );
 }

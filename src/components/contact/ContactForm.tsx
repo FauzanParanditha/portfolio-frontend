@@ -196,7 +196,11 @@ export function ContactForm({
   const countId = `${idPrefix}-message-count`;
 
   return (
+    // `data-requires-js`: pengiriman ditangani JavaScript. Tanpanya form ini
+    // akan terkirim sebagai GET ke halaman itu sendiri dan pesannya hilang;
+    // tur menyembunyikannya (blok <noscript>) dan menyisakan kanal langsung.
     <form
+      data-requires-js
       onSubmit={handleSubmit}
       // `change` dari tiap field menggelembung ke sini; cukup satu penangan.
       onChange={

@@ -158,9 +158,17 @@ describe("formatReport", () => {
     expect(formatReport({ ...base, blurred: NaN }).split("\n")[2]).toBe(
       "backdrop blur: n/a",
     );
-    expect(formatReport({ ...base, blur: false }).split("\n")[2]).toBe(
-      "backdrop blur: off (experiment)",
-    );
+    expect(
+      formatReport({ ...base, blur: false, blurred: 0 }).split("\n")[2],
+    ).toBe("backdrop blur: off (experiment)");
+    expect(
+      formatReport({ ...base, blur: false, blurred: null }).split("\n")[2],
+    ).toBe("backdrop blur: off (experiment)");
+    // Sakelar menyala tetapi masih ada yang ber-blur: gaya suntikannya tidak
+    // berlaku, dan laporan tidak boleh berpura-pura.
+    expect(
+      formatReport({ ...base, blur: false, blurred: 3 }).split("\n")[2],
+    ).toBe("backdrop blur: experiment FAILED (3 elements still blurred)");
     expect(lines).toContain("viewport: 390x844 @ dpr 3");
     expect(lines).toContain("canvas: 780x1688");
     expect(lines).toContain("gpu: Adreno 610");

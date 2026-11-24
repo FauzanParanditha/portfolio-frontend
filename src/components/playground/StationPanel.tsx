@@ -114,7 +114,7 @@ export function StationPanel({
               className="inline-flex min-h-11 items-center gap-2 rounded-sm text-sm text-zinc-400 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Back to the regular site
+              Back to home
             </Link>
           </div>
         </div>

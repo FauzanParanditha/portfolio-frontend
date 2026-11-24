@@ -36,3 +36,42 @@ export const HEADLINE = PROFILE.headlineLines.join(" ");
  * setelah menaruh berkasnya di `public/cv/`.
  */
 export const CV_URL = process.env.NEXT_PUBLIC_CV_URL;
+
+/** Satu cara menghubungi langsung, di luar form: surel, WhatsApp, lokasi. */
+export interface ContactChannel {
+  title: string;
+  value: string;
+  /** Tanpa `href` = hanya keterangan (lokasi). */
+  href?: string;
+}
+
+/**
+ * Susun kanal kontak dari nilai env. Nilai kosong diperlakukan sama dengan
+ * tidak diisi (`.env` sering memuat `KUNCI=` tanpa nilai): surel dan lokasi
+ * jatuh ke bawaannya, WhatsApp tidak ditampilkan.
+ */
+export function contactChannels(env: {
+  email?: string;
+  phone?: string;
+  location?: string;
+}): ContactChannel[] {
+  const email = env.email?.trim() || "paranditha@gmail.com";
+  const phone = env.phone?.trim();
+  const location = env.location?.trim() || "Tangerang Selatan, ID";
+  // wa.me hanya menerima angka; nomor tanpa satu angka pun bukan nomor.
+  const digits = phone?.replace(/\D/g, "") ?? "";
+  return [
+    { title: "Email", value: email, href: `mailto:${email}` },
+    ...(phone && digits
+      ? [{ title: "WhatsApp", value: phone, href: `https://wa.me/${digits}` }]
+      : []),
+    { title: "Location", value: location },
+  ];
+}
+
+/** Kanal kontak situs ini. Nama env ditulis utuh supaya di-inline saat build. */
+export const CONTACT_CHANNELS = contactChannels({
+  email: process.env.NEXT_PUBLIC_CONTACT_EMAIL,
+  phone: process.env.NEXT_PUBLIC_CONTACT_PHONE,
+  location: process.env.NEXT_PUBLIC_CONTACT_LOCATION,
+});

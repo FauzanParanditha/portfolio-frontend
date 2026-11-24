@@ -35,15 +35,21 @@ describe("HealthSummary", () => {
     // Kepala tabel + satu baris per pemeriksaan.
     expect(rows).toHaveLength(3);
     expect(rows[1]).toHaveTextContent("/api/v1/healthz");
-    expect(rows[1]).toHaveTextContent("checking…");
+    // Terlihat: "…" saja (lebih sempit dari judul kolom, supaya lebar kolom
+    // tidak berubah saat "ok" tiba); pembaca layar mendapat katanya.
+    const pending = rows[1].querySelectorAll("td")[0];
+    expect(pending.querySelector('[aria-hidden="true"]')).toHaveTextContent(
+      "…",
+    );
+    expect(pending.querySelector(".sr-only")).toHaveTextContent("checking");
+    expect(pending.textContent).toBe("…checking");
     expect(rows[1]).toHaveTextContent("not measured");
     expect(rows[2]).toHaveTextContent("/api/v1/readyz");
-    expect(
-      screen.getByText("Waiting for the first answer. Hint here."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Waiting for an answer.")).toBeInTheDocument();
+    expect(screen.getByText("Hint here.")).toBeInTheDocument();
   });
 
-  it("kerangka kartu sama sebelum dan sesudah hasil tiba, supaya tingginya tidak berubah", () => {
+  it("kerangka kartu (jenis dan jumlah elemen) sama sebelum dan sesudah hasil tiba", () => {
     vi.stubEnv("NEXT_PUBLIC_API_URL", "http://api.test/api/v1");
     const view = render(<HealthSummary health={null} />);
     const before = shape(view.container);
@@ -54,16 +60,15 @@ describe("HealthSummary", () => {
     expect(rows[1]).toHaveTextContent("/api/v1/healthz");
     expect(rows[1]).toHaveTextContent("ok");
     expect(rows[1]).toHaveTextContent("12 ms");
-    expect(rows[1]).not.toHaveTextContent("checking…");
+    expect(rows[1]).not.toHaveTextContent("checking");
   });
 
   it("hasil: status, jam periksa (HH:MM:SS lokal), dan petunjuk penyegaran", () => {
     render(<HealthSummary health={result()} refreshHint="Hint here." />);
     expect(screen.getByRole("status")).toHaveTextContent("Operational");
-    expect(
-      screen.getByText("Checked at 14:03:09. Hint here."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Waiting for the first answer/)).toBeNull();
+    expect(screen.getByText("Checked at 14:03:09.")).toBeInTheDocument();
+    expect(screen.getByText("Hint here.")).toBeInTheDocument();
+    expect(screen.queryByText(/Waiting for an answer/)).toBeNull();
   });
 
   it("dibatasi (429): tanpa janji penyegaran 10 detik, dengan penjelasannya", () => {
@@ -82,6 +87,42 @@ describe("HealthSummary", () => {
     expect(
       screen.getByText(/can\u2019t be reached|can't be reached/),
     ).toBeInTheDocument();
+  });
+
+  it("kalimat waktu dan petunjuk penyegaran berada di baris masing-masing, sebelum maupun sesudah hasil", () => {
+    // Bila menyambung dalam satu baris teks, jumlah barisnya (jadi tinggi
+    // kartu) berubah di lebar tertentu saat kalimat pertama memendek.
+    const lines = (container: HTMLElement) =>
+      [...container.querySelectorAll("p[data-requires-js] > span")].map(
+        (span) => [span.className, span.textContent],
+      );
+    const view = render(<HealthSummary health={null} refreshHint="Hint." />);
+    expect(lines(view.container)).toEqual([
+      ["block", "Waiting for an answer."],
+      ["block", "Hint."],
+    ]);
+    view.rerender(<HealthSummary health={result()} refreshHint="Hint." />);
+    expect(lines(view.container)).toEqual([
+      ["block", "Checked at 14:03:09."],
+      ["block", "Hint."],
+    ]);
+  });
+
+  it("tanpa JavaScript tidak ada jawaban: pil status, tabel tunggu, dan janji penyegaran ditandai butuh JS", () => {
+    // Tur menyembunyikan ketiganya lewat blok <noscript> dan menjelaskan
+    // sebabnya; "Checking…" yang tampil selamanya menyesatkan.
+    const view = render(<HealthSummary health={null} />);
+    expect(screen.getByRole("status")).toHaveAttribute("data-requires-js");
+    expect(screen.getByRole("table")).toHaveAttribute("data-requires-js");
+    expect(
+      screen.getByText("Waiting for an answer.").closest("p"),
+    ).toHaveAttribute("data-requires-js");
+    // Semua anak langsung: tidak ada bagian yang tertinggal tampil.
+    expect(
+      [...view.container.children].every((child) =>
+        child.hasAttribute("data-requires-js"),
+      ),
+    ).toBe(true);
   });
 
   it("tidak memformat waktu lewat Intl/toLocale…: panggilan pertamanya memblokir utas utama", () => {

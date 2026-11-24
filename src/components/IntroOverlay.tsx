@@ -1,3 +1,8 @@
+"use client";
+
+import { markIntroSeen } from "@/lib/intro";
+import { useEffect, useRef } from "react";
+
 /**
  * Intro pembuka — versi yang TIDAK menghalangi isi.
  *
@@ -15,22 +20,38 @@
  * 3. Hilang sendiri lewat animasi CSS, bukan timer JavaScript. Kalau JS gagal
  *    dimuat sekalipun, intro tetap menyingkir dan isi tetap terbaca.
  *
- * Penandaan sesi (supaya kunjungan berikutnya langsung melihat isi tanpa intro)
- * TIDAK ditangani di sini. Skripnya dipasang lewat `next/script` dengan
- * strategy `beforeInteractive` di app/layout.tsx.
- *
- * Alasannya: `<script>` yang dirender di dalam komponen React hanya dieksekusi
- * saat HTML awal di-parse. Pada navigasi sisi klien, React merender ulang tag
- * itu tanpa menjalankannya — React sendiri memperingatkan hal ini. Menaruhnya
- * di layout lewat next/script membuatnya benar-benar masuk ke dokumen dan
- * berjalan sebelum hidrasi.
+ * Penandaan "sudah tampil" ada di src/lib/intro.ts: skrip inline di <head>
+ * melewati intro sejak paint pertama pada kunjungan berikutnya, dan komponen
+ * ini menandainya begitu animasinya selesai — supaya kembali ke beranda lewat
+ * navigasi sisi klien tidak memutarnya lagi. Hanya itu alasan komponen ini
+ * "use client"; tanpa JavaScript intro tetap menyingkir sendiri lewat CSS.
  */
 
 const NAME = "PARANDITHA";
 
 export const IntroOverlay = () => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const overlay = ref.current;
+    if (!overlay) return;
+    // Hidrasi bisa datang setelah animasinya selesai (JS lambat): saat itu
+    // lapisannya sudah tak terlihat dan `animationend` tidak akan datang lagi.
+    const style = getComputedStyle(overlay);
+    if (style.display === "none" || style.visibility === "hidden") {
+      markIntroSeen();
+      return;
+    }
+    const onEnd = (event: AnimationEvent) => {
+      // Animasi huruf ikut menggelembung ke sini; yang ditunggu animasi
+      // lapisannya sendiri.
+      if (event.target === overlay) markIntroSeen();
+    };
+    overlay.addEventListener("animationend", onEnd);
+    return () => overlay.removeEventListener("animationend", onEnd);
+  }, []);
+
   return (
-    <div className="intro-overlay" aria-hidden="true">
+    <div ref={ref} className="intro-overlay" aria-hidden="true">
       <div className="intro-overlay__dot" />
 
       <div className="intro-overlay__center">

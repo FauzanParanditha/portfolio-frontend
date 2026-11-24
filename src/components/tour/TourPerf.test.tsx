@@ -5,6 +5,8 @@ import TourPerf from "@/components/tour/TourPerf";
 
 describe("TourPerf (panel ukur di perangkat)", () => {
   let scrollTo: ReturnType<typeof vi.fn>;
+  /** Tur dengan kanvas terpasang: di 3D, masa tunggu baru berjalan setelahnya. */
+  let stage: HTMLDivElement;
 
   beforeEach(() => {
     vi.useFakeTimers({
@@ -19,6 +21,10 @@ describe("TourPerf (panel ukur di perangkat)", () => {
         "Date",
       ],
     });
+    stage = document.createElement("div");
+    stage.className = "tour";
+    stage.append(document.createElement("canvas"));
+    document.body.append(stage);
     scrollTo = vi.fn();
     vi.stubGlobal("scrollTo", scrollTo);
     vi.spyOn(document.documentElement, "scrollHeight", "get").mockReturnValue(
@@ -32,6 +38,7 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     screen.getByRole("button", { name: "Run scroll test" });
 
   afterEach(() => {
+    stage.remove();
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -469,7 +476,10 @@ describe("TourPerf (panel ukur di perangkat)", () => {
     tour.innerHTML =
       '<div style="backdrop-filter: blur(12px)"></div>' +
       '<div style="backdrop-filter: none"></div>' +
-      '<div style="backdrop-filter: blur(4px)"></div><div></div>';
+      '<div style="backdrop-filter: blur(4px)"></div><div></div>' +
+      // Tersembunyi (rel di ponsel): tidak digambar, tidak dihitung.
+      '<div style="display: none; backdrop-filter: blur(12px)"></div>' +
+      "<canvas></canvas>";
     document.body.append(tour);
     const outside = document.createElement("div");
     outside.style.backdropFilter = "blur(12px)";
@@ -487,6 +497,87 @@ describe("TourPerf (panel ukur di perangkat)", () => {
       tour.remove();
       outside.remove();
     }
+  });
+
+  it("3D yang kanvasnya belum terpasang: masa tunggu belum berjalan (kode adegan masih diunduh)", async () => {
+    stage.querySelector("canvas")?.remove();
+    render(<TourPerf show3d />);
+    await act(() => vi.advanceTimersByTimeAsync(9000));
+    expect(runButton()).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Warming up: test ready in 5 s",
+    );
+
+    stage.append(document.createElement("canvas"));
+    await act(() => vi.advanceTimersByTimeAsync(4000));
+    expect(runButton()).toBeDisabled();
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(runButton()).toBeEnabled();
+  });
+
+  it("tampilan ringkas tidak menunggu kanvas", async () => {
+    stage.querySelector("canvas")?.remove();
+    render(<TourPerf show3d={false} />);
+    await warmUp();
+    expect(runButton()).toBeEnabled();
+  });
+
+  it("ganti tampilan di tengah uji: uji dibatalkan, tidak melaporkan rekaman campuran", async () => {
+    document.documentElement.style.scrollBehavior = "smooth";
+    const view = render(<TourPerf show3d />);
+    await warmUp();
+    fireEvent.click(runButton());
+    await act(() => vi.advanceTimersByTimeAsync(3000));
+    const before = scrollTo.mock.calls.length;
+    expect(before).toBeGreaterThan(50);
+
+    view.rerender(<TourPerf show3d={false} />);
+    // Berhenti menggulir, gulir halus dipulihkan, tidak ada laporan.
+    expect(document.documentElement.style.scrollBehavior).toBe("smooth");
+    await act(() => vi.advanceTimersByTimeAsync(4000));
+    expect(scrollTo.mock.calls.length).toBe(before);
+    expect(screen.getByRole("textbox", { name: "Report" })).toHaveValue("");
+    // Hitung mundur dulu, lalu alasannya.
+    expect(screen.getByRole("status")).toHaveTextContent(/Warming up/);
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Test cancelled: the view changed. Run it again.",
+    );
+    expect(runButton()).toBeEnabled();
+    document.documentElement.style.scrollBehavior = "";
+  });
+
+  it("sakelar blur mengulang masa tunggu: baris idle harus dari keadaan yang diuji", async () => {
+    render(<TourPerf show3d />);
+    await warmUp();
+    expect(runButton()).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "No blur" }));
+    expect(runButton()).toBeDisabled();
+    await act(() => vi.advanceTimersByTimeAsync(4000));
+    expect(runButton()).toBeDisabled();
+    await act(() => vi.advanceTimersByTimeAsync(1000));
+    expect(runButton()).toBeEnabled();
+  });
+
+  it("frame panjang yang belum diantar pengamat saat uji selesai tetap masuk laporan", async () => {
+    // Pengamat yang menahan entrinya sampai `takeRecords()` dipanggil.
+    class LazyObserver {
+      static supportedEntryTypes = ["long-animation-frame"];
+      observe() {}
+      disconnect() {}
+      takeRecords() {
+        return [{ startTime: 5000 + 0.99 * 12000, duration: 140, scripts: [] }];
+      }
+    }
+    vi.stubGlobal("PerformanceObserver", LazyObserver);
+    render(<TourPerf show3d={false} />);
+    await warmUp();
+    fireEvent.click(runButton());
+    await act(() => vi.advanceTimersByTimeAsync(13000));
+    expect(
+      (screen.getByRole("textbox", { name: "Report" }) as HTMLTextAreaElement)
+        .value,
+    ).toContain("long frame at 99%: 140 ms (script 0 ms, layout 0 ms)");
   });
 
   it("tinggi panel tetap: status dan kotak laporan berukuran sama sebelum dan sesudah uji", async () => {
