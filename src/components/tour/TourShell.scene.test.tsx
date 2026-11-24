@@ -547,13 +547,28 @@ describe("TourShell (3D tersedia)", () => {
       join(process.cwd(), "src/app/globals.css"),
       "utf8",
     );
-    const tour = css.slice(css.indexOf("Tur ruang server (/tour)"));
+    const blockStart = css.indexOf("Tur ruang server (beranda, /)");
+    // Tanpa ini `slice(-1)` membuat semua pemeriksaan di bawah lolos kosong.
+    expect(blockStart).toBeGreaterThan(-1);
+    const tour = css.slice(blockStart);
     const shell = readFileSync(
       join(process.cwd(), "src/components/tour/TourShell.tsx"),
       "utf8",
     );
     // Tidak ada blur lewat kelas utilitas: itu berlaku di SEMUA perangkat.
     expect(shell).not.toMatch(/backdrop-(blur|filter)/);
+    // Juga komponen lain yang dirender di dalam tur.
+    for (const path of [
+      "src/components/contact/ContactForm.tsx",
+      "src/components/Footer.tsx",
+      "src/components/IntroOverlay.tsx",
+      "src/components/playground/ExperienceList.tsx",
+      "src/components/playground/HealthSummary.tsx",
+    ]) {
+      expect(readFileSync(join(process.cwd(), path), "utf8"), path).not.toMatch(
+        /backdrop-(blur|filter)/,
+      );
+    }
     expect(shell.match(/\btour-glass\b/g)).toHaveLength(3);
 
     // Bawaan: hampir pekat, tanpa blur.
@@ -588,6 +603,35 @@ describe("TourShell (3D tersedia)", () => {
     // Deklarasinya saja (komentar boleh menyebut namanya).
     expect(tour.match(/backdrop-filter:/g)?.length).toBe(inBlocks);
     expect(inBlocks).toBe(4);
+  });
+
+  it("menu perhentian tampil tepat di mana rel tidak tampil (ditentukan CSS)", () => {
+    const css = readFileSync(
+      join(process.cwd(), "src/app/globals.css"),
+      "utf8",
+    );
+    // Bawaan (ponsel, tata letak ringkas): menu tampil, rel tersembunyi.
+    expect(css).toMatch(/\n\.tour-menu \{\s*display: flex;\s*\}/);
+    // Setiap aturan yang menampilkan rel langsung diikuti aturan yang
+    // menyembunyikan menu, dengan pemilih yang sama — dan tidak ada aturan
+    // penyembunyi menu di luar itu.
+    const railShown = [
+      ...css.matchAll(
+        /([^{}]+)\.tour-rail \{\s*display: flex;\s*\}\s*([^{}]+)\.tour-menu \{\s*display: none;\s*\}/g,
+      ),
+    ].map((match) => [match[1].trim(), match[2].trim()]);
+    expect(railShown).toEqual([
+      [
+        'html:not([data-tour-mode]) .tour:not([data-mode="simple"])',
+        'html:not([data-tour-mode]) .tour:not([data-mode="simple"])',
+      ],
+      [
+        'html[data-tour-mode="3d"] .tour:not([data-mode="simple"])',
+        'html[data-tour-mode="3d"] .tour:not([data-mode="simple"])',
+      ],
+    ]);
+    expect(css.match(/\.tour-rail \{\s*display: flex;/g)).toHaveLength(2);
+    expect(css.match(/\.tour-menu \{\s*display: none;/g)).toHaveLength(2);
   });
 
   it("petunjuk gulir: tersembunyi secara bawaan, tampil hanya di tata letak 3D (ditentukan CSS)", () => {

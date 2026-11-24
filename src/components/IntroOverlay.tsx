@@ -16,14 +16,10 @@
  *    dimuat sekalipun, intro tetap menyingkir dan isi tetap terbaca.
  *
  * Penandaan sesi (supaya kunjungan berikutnya langsung melihat isi tanpa intro)
- * TIDAK ditangani di sini. Skripnya dipasang lewat `next/script` dengan
- * strategy `beforeInteractive` di app/layout.tsx.
- *
- * Alasannya: `<script>` yang dirender di dalam komponen React hanya dieksekusi
- * saat HTML awal di-parse. Pada navigasi sisi klien, React merender ulang tag
- * itu tanpa menjalankannya — React sendiri memperingatkan hal ini. Menaruhnya
- * di layout lewat next/script membuatnya benar-benar masuk ke dokumen dan
- * berjalan sebelum hidrasi.
+ * TIDAK ditangani di sini: skripnya <script> inline di <head> root layout
+ * (app/layout.tsx), supaya atribut `data-intro="seen"` sudah terpasang sebelum
+ * paint pertama. `<script>` yang dirender di dalam komponen React hanya
+ * dieksekusi saat HTML awal di-parse, tidak pada navigasi sisi klien.
  */
 
 const NAME = "PARANDITHA";

@@ -315,6 +315,120 @@ describe("TourShell (tanpa WebGL)", () => {
     ).toHaveAttribute("href", "#main");
   });
 
+  it("menu perhentian: tertutup secara bawaan, dan tombolnya menunjuk panel yang benar-benar ada", () => {
+    render(<TourShell {...base} />);
+    const button = screen.getByRole("button", { name: "Open menu" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    // Tanpa JavaScript tombol ini tidak berguna: disembunyikan blok <noscript>.
+    expect(button).toHaveAttribute("data-requires-js");
+    const panel = document.getElementById(
+      button.getAttribute("aria-controls") ?? "",
+    );
+    expect(panel).not.toBeNull();
+    expect(panel).not.toBeVisible();
+    expect(screen.queryByRole("navigation", { name: "Sections" })).toBeNull();
+    // Tombol dan pembungkus panelnya sama-sama diatur CSS lewat `.tour-menu`.
+    expect(button).toHaveClass("tour-menu");
+    expect(panel?.parentElement).toHaveClass("tour-menu");
+  });
+
+  it("menu perhentian: berisi tautan jangkar ke tiap bagian dan ke playground; yang aktif ditandai", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+
+    const button = screen.getByRole("button", { name: "Close menu" });
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    const nav = screen.getByRole("navigation", { name: "Sections" });
+    const links = within(nav).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "#top",
+      "#about",
+      "#projects",
+      "#experience",
+      "#status",
+      "#contact",
+      "/playground",
+    ]);
+    expect(links.map((link) => link.textContent)).toEqual([
+      "01Lobby",
+      "02About",
+      "03Projects",
+      "04Experience",
+      "05Status",
+      "06Contact",
+      "Explore the room freely",
+    ]);
+    // Di atas halaman: perhentian pertama yang aktif, dan hanya itu.
+    expect(
+      links.filter((link) => link.getAttribute("aria-current") === "location"),
+    ).toEqual([links[0]]);
+  });
+
+  it("menu perhentian: memilih tautan menutupnya; Escape menutup dan mengembalikan fokus ke tombol", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} />);
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    await user.click(
+      within(screen.getByRole("navigation", { name: "Sections" })).getByRole(
+        "link",
+        { name: /Contact/ },
+      ),
+    );
+    expect(screen.queryByRole("navigation", { name: "Sections" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    // Fokus dipindah ke dalam menu dulu, supaya pengembaliannya teruji.
+    within(screen.getByRole("navigation", { name: "Sections" }))
+      .getAllByRole("link")[2]
+      .focus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("navigation", { name: "Sections" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Open menu" })).toHaveFocus();
+
+    // Escape saat menu tertutup tidak memindahkan fokus ke mana pun.
+    screen.getByRole("link", { name: "PARANDITHA" }).focus();
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("link", { name: "PARANDITHA" })).toHaveFocus();
+  });
+
+  it("tanpa data pengalaman: menu ikut tanpa perhentian itu", async () => {
+    const user = userEvent.setup();
+    render(<TourShell {...base} experiences={[]} />);
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    const nav = screen.getByRole("navigation", { name: "Sections" });
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual([
+      "#top",
+      "#about",
+      "#projects",
+      "#status",
+      "#contact",
+      "/playground",
+    ]);
+  });
+
+  it("kartu kontak memuat jalur langsung di luar form: surel sebagai tautan, lokasi sebagai teks", () => {
+    render(<TourShell {...base} />);
+    // Daftar kanal, bukan form di atasnya (yang juga punya label "Email").
+    const channels = document.querySelector("#contact dl") as HTMLElement;
+    const mail = within(channels).getByRole("link");
+    expect(mail.textContent).toMatch(/.+@.+/);
+    expect(mail.getAttribute("href")).toBe(`mailto:${mail.textContent}`);
+    expect(
+      [...channels.querySelectorAll("dt")].map((term) => term.textContent),
+      // Tanpa nomor di env: tidak ada baris WhatsApp kosong.
+    ).toEqual(["Email", "Location"]);
+    expect(channels.querySelectorAll("dd")[1].querySelector("a")).toBeNull();
+  });
+
   it("panel ukur hanya ada bila alamatnya memuat ?perf", async () => {
     // Bukan dengan parameter lain yang kebetulan memuat kata itu, dan bukan
     // dengan ?perf=0.

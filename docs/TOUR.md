@@ -1,9 +1,8 @@
-# Tur ruang server (`/tour`)
+# Tur ruang server (beranda, `/`)
 
 Seluruh isi portfolio sebagai kartu yang digulir, dengan ruang server 3D di
 belakangnya. Menggulir halaman menggerakkan kamera dan robot dari satu
-perhentian ke perhentian berikutnya. Ini calon pengganti beranda; saat ini
-masih **pratinjau** di `/tour`.
+perhentian ke perhentian berikutnya. Sejak tahap 5 ini **beranda situs**.
 
 Bedanya dengan `/playground`: di sana pengunjung menggerakkan robot sendiri
 (jelajah bebas); di sini cukup menggulir, dan semua isi terbaca tanpa harus
@@ -11,17 +10,62 @@ Bedanya dengan `/playground`: di sana pengunjung menggerakkan robot sendiri
 
 ## Posisi di rencana lima tahap
 
-| Tahap | Isi                                                        | Status                                                            |
-| ----- | ---------------------------------------------------------- | ----------------------------------------------------------------- |
-| 1     | Playground: ruangan, rak proyek, robot                     | Selesai                                                           |
-| 2     | Tiga stasiun di `/playground` + endpoint status di backend | Selesai                                                           |
-| 3     | Tur dengan scroll di `/tour` (dokumen ini)                 | Selesai                                                           |
-| 4     | Uji di ponsel sungguhan dan ukur kecepatan muat            | Ukur lab selesai; uji ponsel sungguhan menunggu (lihat "Tahap 4") |
-| 5     | Tukar beranda ke tur — hanya bila angka tahap 4 bagus      | Belum (titik keputusan)                                           |
+| Tahap | Isi                                                        | Status                                                     |
+| ----- | ---------------------------------------------------------- | ---------------------------------------------------------- |
+| 1     | Playground: ruangan, rak proyek, robot                     | Selesai                                                    |
+| 2     | Tiga stasiun di `/playground` + endpoint status di backend | Selesai                                                    |
+| 3     | Tur dengan scroll, sebagai pratinjau di `/tour`            | Selesai                                                    |
+| 4     | Uji di ponsel sungguhan dan ukur kecepatan muat            | Selesai, kecuali LCP di jaringan seluler (lihat "Tahap 4") |
+| 5     | Tukar beranda ke tur                                       | Selesai (lihat "Tahap 5")                                  |
 
-Selama masih pratinjau, `/tour` ber-`noindex` (canonical ke dirinya sendiri),
-tidak masuk sitemap, dan tidak ditautkan dari beranda. Beranda (`/`) tidak
-berubah.
+## Tahap 5 — beranda ditukar
+
+| Alamat        | Isi                                                                                           |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| `/`           | Tur ruang server. Metadata bawaan root layout: canonical `/`, boleh diindeks.                 |
+| `/tour`       | Alamat pratinjau lama: dialihkan ke `/` (307, sementara; kueri seperti `?perf` ikut).         |
+| `/classic`    | Beranda lama, disimpan selama masa pembandingan. `noindex`, di luar sitemap, tidak ditautkan. |
+| `/playground` | Tidak berubah.                                                                                |
+
+Yang ditambahkan ke tur supaya tidak kalah dari beranda lama:
+
+- **Menu perhentian** di bilah atas (tombol + panel, `.tour-menu`): tampil di
+  mana rel tidak tampil — ponsel dan tata letak ringkas — karena di sana tidak
+  ada cara lain untuk melompat antar-bagian. Memuat tautan ke tiap perhentian
+  dan ke `/playground`. Menggantikan penghitung "04 / 06" di ponsel.
+- **Jalur kontak langsung** di kartu Contact (surel, WhatsApp bila nomornya
+  diisi, lokasi), dari `CONTACT_CHANNELS` di `src/content/profile.ts` — sumber
+  yang sama dengan beranda lama.
+- **Intro pembuka** (`IntroOverlay`) tampil di atas tur pada kunjungan pertama
+  tiap sesi. Penanda sesinya kini skrip inline di `<head>` (dulu
+  `<Script beforeInteractive>`, yang baru berjalan setelah paint pertama
+  sehingga intro bisa berkedip di kunjungan kedua).
+
+`/classic` sengaja dipertahankan: LCP di jaringan seluler belum pernah diukur,
+dan dengan dua halaman di alamat yang ter-deploy keduanya bisa dibandingkan
+langsung (PageSpeed Insights pada `/` dan `/classic`). Ia juga jalan mundur
+yang murah. Setelah angkanya ada, hapus `/classic` beserta komponen yang hanya
+dipakainya (`HeroSection`, `AboutSection`, `ExperienceSection`,
+`ProjectsSection`, `ContactSection`, `Navbar`).
+
+Angka lab sesudah ditukar (build produksi, muat dingin, median 3 kali; ponsel
+= 390×844, CPU 4×, Slow 4G; database berisi 25 proyek, jadi ruangan penuh):
+
+| Halaman    | Profil  | LCP (ms) | CLS | TBT (ms) | Total (KB) | JS (KB) |
+| ---------- | ------- | -------- | --- | -------- | ---------- | ------- |
+| `/`        | ponsel  | 820      | 0   | 141      | 316        | 224     |
+| `/classic` | ponsel  | 932      | 0   | 211      | 333        | 238     |
+| `/`        | desktop | 204      | 0   | 325      | 558        | 469     |
+| `/classic` | desktop | 204      | 0   | 0        | 344        | 238     |
+
+- **Ponsel:** beranda baru tidak lebih lambat dan tidak lebih berat dari yang
+  lama (bawaannya HTML tanpa 3D).
+- **Desktop:** LCP sama, tetapi 3D menambah ±215 KB dan ±325 ms waktu blokir
+  saat ruangan penuh pertama kali digambar (unduh, kompilasi, dan pemanasan
+  adegan). Itu terjadi setelah teks tampil. Angka 47 ms di tabel "Hasil lab"
+  tahap 4 diukur dengan satu rak dan sebelum pemanasan adegan ada.
+- Alat ukurnya berbeda dari tabel tahap 4 (skrip dan versi Chrome lain), jadi
+  bandingkan baris dalam tabel ini saja, bukan antartabel.
 
 ## Perhentian
 
@@ -82,7 +126,7 @@ Urutannya mengikuti letak di ruangan, bukan urutan beranda.
 ## Arsitektur
 
 ```
-src/app/tour/page.tsx            Server: ambil semua data, kirim ke shell
+src/app/page.tsx                 Server: ambil semua data, kirim ke shell
 src/components/tour/
   TourShell.tsx                  Klien: kartu, bilah atas, rel, posisi gulir,
                                  pilihan tampilan, status backend
@@ -172,17 +216,28 @@ saat berhenti.
   (`scroll-padding-top` pada `<html>` selama halaman tur terpasang).
 - **Render berhenti saat tab tersembunyi**; resolusi turun otomatis bila FPS
   jatuh (sama dengan playground).
-- **Tidak ada blur latar di perangkat sentuh maupun tata letak ringkas.**
-  `backdrop-filter` hanya ada di `.tour-glass` pada tata letak 3D dengan
-  `pointer: fine`; jangan menambahkannya lewat kelas utilitas di markup.
-- **Tidak ada pekerjaan berat di tengah gulir.** Hasil status yang tiba tidak
-  mengubah tinggi kartunya dan tidak memanggil `Intl`; geometri dan tekstur
-  seluruh adegan diunggah ke GPU sebelum kanvas tampil (`warmUpScene`), bukan
-  saat objeknya pertama kali masuk pandangan.
+- **Blur latar hanya di tata letak 3D dengan `pointer: fine`** (penunjuk
+  utamanya mouse atau trackpad), lewat `.tour-glass`. Ponsel dan tablet tanpa
+  mouse tidak mendapatkannya, tata letak ringkas tidak pernah. Perangkat
+  hibrida (laptop layar sentuh, tablet ber-mouse) tetap mendapat blur. Jangan
+  menambahkan `backdrop-blur-*` lewat kelas utilitas di komponen mana pun yang
+  dirender di dalam tur (dijaga test untuk `TourShell` dan komponen isinya).
+- **Pekerjaan berat dijauhkan dari tengah gulir.**
+  - Hasil status yang tiba tidak memanggil `Intl`, dan pada jalur biasa
+    (operational / degraded) tidak mengubah tinggi kartunya: tabel sudah
+    dirender, kalimat waktu dan petunjuk penyegaran berada di baris
+    masing-masing. Keadaan `limited` dan `unavailable` masih menambah satu
+    paragraf.
+  - Geometri dan tekstur objek yang terlihat diunggah ke GPU sebelum kanvas
+    tampil (`warmUpScene`). Pengecualian: objek `visible={false}` (cahaya
+    sorot rak, baru diunggah saat proyek pertama disorot) dan layar terminal,
+    yang diunggah ulang tiap status berubah.
+- **Selalu ada cara melompat antar-bagian:** rel di tata letak 3D layar lebar,
+  menu di bilah atas selain itu (ditentukan CSS, saling eksklusif).
 
 ## Verifikasi manual
 
-Jalankan backend + `pnpm dev`, buka `/tour`:
+Jalankan backend + `pnpm dev`, buka `/`:
 
 1. Layar lebar: gulir dari atas ke bawah — kamera berpindah per perhentian,
    robot berjalan mengikutinya, rel di kanan menandai perhentian aktif.
@@ -194,15 +249,26 @@ Jalankan backend + `pnpm dev`, buka `/tour`:
    masih berlaku. "3D version" mengembalikannya.
 6. Lebar ponsel: bawaannya tanpa 3D; "3D version" menyalakannya dengan kartu
    di bawah.
-7. `curl -s localhost:3000/tour | grep -o 'class="tour-stop"' | wc -l` → 6
+7. `curl -s localhost:3000/ | grep -o 'class="tour-stop"' | wc -l` → 6
    (isi ada tanpa JS; 5 bila tidak ada data pengalaman).
 8. Ponsel lanskap dan tablet potret: bawaannya tanpa 3D. Tablet lanskap: 3D.
 9. Tab dari kolom alamat sampai form kontak, lalu Shift+Tab kembali: kontrol
    yang difokus selalu terlihat di bawah bilah atas.
+10. Lebar ponsel (atau "Simple version" di desktop): tombol menu di bilah atas
+    membuka daftar perhentian; memilih satu menutup menu dan menggulir ke
+    sana; Escape menutup dan mengembalikan fokus ke tombol. Di desktop 3D
+    tombol itu tidak ada (rel yang tampil).
+11. Kunjungan pertama di sesi baru: intro "PARANDITHA" menutupi layar lalu
+    hilang sendiri; muat ulang → tidak tampil lagi, tanpa kedipan.
+12. `/tour` mengalihkan ke `/`; `/classic` menampilkan beranda lama.
 
 ## Tahap 4 — pengukuran
 
 ### Hasil lab
+
+Diukur saat tur masih pratinjau di `/tour`, dengan database berisi satu
+proyek (satu rak). Untuk angka sesudah ditukar dan dengan ruangan penuh, lihat
+"Tahap 5" di atas.
 
 Build produksi (`pnpm build && pnpm start`), Chrome headless, cache mati,
 median tiga kali muat. Profil ponsel: layar 390×844, CPU diperlambat 4×,
@@ -248,10 +314,10 @@ Yang **tidak** bisa disimpulkan dari lab:
 
 ### Uji di ponsel sungguhan
 
-`/tour?perf` menampilkan panel ukur kecil (hanya diunduh dengan parameter itu;
+`/?perf` menampilkan panel ukur kecil (hanya diunduh dengan parameter itu;
 tidak ada data yang dikirim ke mana pun):
 
-1. Buka `/tour?perf` di ponsel. Panel di kiri-bawah menampilkan laju frame.
+1. Buka `/?perf` di ponsel. Panel di kiri-bawah menampilkan laju frame.
 2. Untuk mengukur 3D: tekan **3D version** di kanan atas dan tunggu ruangan
    tampil.
 3. Tekan **Run scroll test**. Tombolnya baru aktif 5 detik setelah halaman
@@ -288,14 +354,26 @@ laju frame saat diam dan saat bergulir. Cara membacanya:
   gulir. Uji bergulir dengan laju tetap, jadi P menunjuk tempatnya di halaman
   — titik awal untuk mencari penyebab sebuah sendatan.
 - **long frame at P%: N ms (script … via …, layout …)** = frame di atas 50 ms
-  selama uji gulir, terlama lebih dulu (paling banyak empat), menurut
-  `long-animation-frame` browser. `via` menyebut pemanggil skrip terlamanya:
-  `MessagePort.onmessage` adalah render React, `FrameRequestCallback` adalah
-  loop gambar three.js, `Response.json.then` adalah hasil fetch. `in` menyebut
-  berkas chunk-nya, yang bisa dicari di `.next/static/chunks` build yang sama.
-  Frame panjang di baris `scroll` yang **tidak** punya baris ini berarti jedanya
-  di luar utas utama (GPU atau compositor). `long frames: n/a` = browser tidak
-  mendukungnya (Safari, Firefox).
+  selama uji gulir, terlama lebih dulu, **paling banyak empat**, menurut
+  `long-animation-frame` browser.
+  - `script` = total waktu skrip; `via` = pemanggil skrip terlamanya.
+    `MessagePort.onmessage` biasanya render React, `Response.json.then` hasil
+    fetch, `FrameRequestCallback` callback `requestAnimationFrame` apa pun
+    (loop gambar three.js, tetapi juga loop panel ini sendiri dan pembaca
+    posisi gulir). `in` = berkas chunk-nya, yang bisa dicari di
+    `.next/static/chunks` build yang sama.
+  - `layout` = gaya + tata letak di akhir frame saja; tata letak yang dipaksa
+    di tengah skrip tidak terhitung di sini.
+  - **`script 0 ms, layout 0 ms`** = jedanya bukan di kode maupun tata letak:
+    tahap menggambar (paint, compositor, GPU). Begitulah sendatan blur
+    terlihat.
+  - Frame panjang di baris `scroll` yang tidak punya baris ini belum tentu di
+    luar utas utama: bisa juga karena lebih dari empat frame panjang.
+  - `P` di sini dihitung dari awal frame, sedangkan `worst … at P%` di baris
+    `scroll` dari akhirnya; frame yang sama bisa tertulis selisih ±2%.
+  - `long frames: n/a` = browser tidak mendukungnya (Safari, Firefox).
+- **backdrop blur: none / on (N elements)** = berapa elemen tur yang
+  benar-benar digambar dengan `backdrop-filter` saat uji.
 - **backdrop blur: off (experiment)** = uji dijalankan dengan tombol **No blur**
   di panel menyala, yang mematikan `backdrop-filter` di seluruh tur. Dipakai
   untuk membandingkan: bila frame panjang hilang tanpa blur, kartu ber-blur di
@@ -315,7 +393,7 @@ IP=$(ipconfig getifaddr en0)          # macOS; IP mesin ini di jaringan lokal
 CORS_ALLOWED_ORIGINS="http://localhost:3000,http://$IP:3000" go run ./cmd/api
 # Frontend: alamat API ikut tertanam saat build
 NEXT_PUBLIC_API_URL="http://$IP:8080/api/v1" pnpm build && pnpm start
-# Di ponsel: http://<IP>:3000/tour?perf
+# Di ponsel: http://<IP>:3000/?perf
 ```
 
 Pakai build produksi, bukan `pnpm dev` — mode pengembangan jauh lebih lambat
@@ -325,7 +403,7 @@ teksnya tetap bisa dipilih manual dari kotak laporan.
 ### Hasil ponsel sungguhan
 
 Dua ponsel, 20 November 2026, Chrome Android, lewat Wi-Fi lokal ke build
-produksi. Baris `scroll` dari `/tour?perf`, ruangan terisi maksimum (24 rak +
+produksi. Baris `scroll` dari `/?perf`, ruangan terisi maksimum (24 rak +
 arsip) kecuali disebut lain:
 
 | Ponsel (GPU)            | Tampilan  | Rata-rata | 1% low   | Frame terlama | Frame lambat |
@@ -336,30 +414,35 @@ arsip) kecuali disebut lain:
 | Menengah (Adreno 710)   | ringkas   | 59,1 fps  | 28,2 fps | 50 ms         | 0,3%         |
 | Menengah (Adreno 710)   | 3D        | 58,3 fps  | 16,1 fps | 242 ms        | 0,4%         |
 
-Kedua baris ponsel menengah diukur **sebelum** perbaikan sendatan di bawah.
-Sesudah kedua perbaikan, 3D di ponsel itu: 59,9 fps, 1% low 55,9 fps, frame
-terlama 25 ms, tanpa frame di atas 50 ms.
+Kedua baris ponsel menengah diukur **sebelum** perbaikan di bawah. Sesudahnya,
+3D di ponsel itu: 59,9 fps, 1% low 55,9 fps, frame terlama 25 ms, tanpa frame
+di atas 50 ms. Yang terbukti menghilangkan sendatannya di ponsel adalah
+pencabutan blur; lihat catatan di tiap bagian.
 
 Yang bisa disimpulkan:
 
 - **Rata-rata lolos patokan di kedua ponsel**, juga dengan ruangan penuh
-  (≥ 40 fps, frame lambat ≤ 5%). Di ponsel kelas atas angkanya mentok di laju
-  layar (60 Hz).
-- **Jumlah rak menambah sendatan awal, bukan beban saat bergulir.** Waktu
-  blokir saat adegan pertama digambar di ponsel kelas atas: 86 ms dengan 1
-  rak, 219 ms dengan 24 rak. Di ponsel menengah 388–457 ms, dengan satu frame
-  membeku ±0,5 detik. Terjadi sekali, setelah teks tampil, dan hanya bila
+  (≥ 40 fps, frame lambat ≤ 5%). Tetapi patokan itu terlalu longgar: uji yang
+  membeku 0,24 detik pun lolos. Lihat usulan patokan di bawah.
+- **Di ponsel kelas atas, jumlah rak menambah sendatan awal dan tidak terlihat
+  menambah beban saat bergulir.** Waktu blokir saat adegan pertama digambar:
+  86 ms dengan 1 rak, 219 ms dengan 24 rak. Angka bergulirnya mentok di laju
+  layar (60 Hz) pada keduanya, jadi selisih beban yang lebih kecil dari itu
+  tidak akan terlihat; ponsel menengah tidak diuji dengan 1 rak.
+- **Sendatan awal di ponsel menengah:** waktu blokir 388–457 ms, dengan satu
+  frame membeku ±0,5 detik. Terjadi sekali, setelah teks tampil, dan hanya bila
   pengunjung ponsel memilih "3D version".
-- **Kunjungan pertama di ponsel menengah:** 239 KB JavaScript dan 347 KB total
-  (cocok dengan lab), LCP 944 ms lewat Wi-Fi.
+- **Kunjungan pertama di ponsel menengah:** 239 KB JavaScript (lab: 240) dan
+  347 KB total (lab: 333), LCP 944 ms lewat Wi-Fi.
 - CLS 0 di semua uji.
 
-#### Sendatan di tengah gulir (ditemukan dari ponsel menengah)
+#### Sendatan saat hasil status tiba (ditemukan di lab)
 
-Ponsel menengah menunjukkan satu frame 242 ms saat bergulir di 3D. Di lab
-(CPU diperlambat 6×) sendatan itu muncul di kedua tampilan, selalu di ±40%
-gulir — saat pengunjung mendekati kartu status dan hasil pemeriksaan pertama
-tiba. Tiga penyebab, semuanya diperbaiki:
+Dicari karena ponsel menengah menunjukkan satu frame 242 ms di 3D; posisinya
+di gulir tidak tercatat (laporan waktu itu belum menyebutnya). Di lab (CPU
+diperlambat 6×) ada sendatan di kedua tampilan, selalu di ±40% gulir — saat
+pengunjung mendekati kartu status dan hasil pemeriksaan pertama tiba. Tiga
+penyebab, semuanya diperbaiki:
 
 | Penyebab                                                                                                     | Perbaikan                                                                    |
 | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
@@ -369,14 +452,20 @@ tiba. Tiga penyebab, semuanya diperbaiki:
 
 Sesudahnya, di lab: tidak ada frame di atas 40 ms di kedua tampilan (sebelumnya
 100 ms di 3D dan sampai 360 ms di ringkas, @6×), dan satu-satunya unggahan GPU
-di tengah gulir adalah layar terminal yang digambar ulang. Lab memakai GPU
-laptop, jadi bagian GPU-nya baru terbukti lewat hitungan unggahan, bukan lewat
-waktu; angka ponsel menengah sesudah perbaikan masih harus diambil.
+di tengah gulir adalah layar terminal yang digambar ulang.
+
+**Yang terbukti hanya di lab.** Lab memakai GPU laptop, jadi bagian GPU-nya
+terbukti lewat hitungan unggahan, bukan lewat waktu. Di ponsel, efek tiga
+perbaikan ini tidak bisa dipisahkan dari blur: sesudahnya ponsel menengah
+masih 209 dan 167 ms (lihat bawah), dan tampilan ringkasnya memang tidak
+pernah menunjukkan sendatan sebesar di lab (50 ms). Frame 242 ms tadi bisa
+saja sepenuhnya akibat blur. Satu hal yang berubah di ponsel: sesudah
+perbaikan ini tidak ada lagi frame panjang yang dilaporkan di sekitar 40%.
 
 #### Blur latar di atas kanvas (ditemukan dari ponsel menengah)
 
-Setelah perbaikan di atas, ponsel menengah masih menunjukkan frame 100–240 ms
-di 3D. Baris `long frame` di laporan memisahkannya: empat frame terpanjang
+Setelah perbaikan di atas, ponsel menengah masih menunjukkan frame 167 dan
+209 ms di 3D (dua uji). Baris `long frame` di laporan memisahkannya: empat frame terpanjang
 (di 10%, 12%, 76%, 77% gulir) semuanya `script 0 ms, layout 0 ms` — bukan kode,
 bukan tata letak — dan posisinya tepat saat dua kartu tertinggi (About,
 Contact) memenuhi layar. Uji banding di ponsel yang sama, 3D, ruangan penuh:
@@ -387,49 +476,63 @@ Contact) memenuhi layar. Uji banding di ponsel yang sama, 3D, ruangan penuh:
 | dimatikan (tombol panel)      | 59,9 fps  | 59,5 fps | 17 ms         | 0,0%         | tidak ada                |
 | dihapus lewat CSS (build ini) | 59,9 fps  | 55,9 fps | 25 ms         | 0,0%         | tidak ada                |
 
-Satu pasang uji, tetapi tiga uji 3D sebelumnya dengan blur di ponsel itu
-semuanya bersendatan (242, 209, 167 ms). Kartu ber-blur di atas kanvas yang
-terus bergerak harus dihitung ulang tiap frame.
+Satu pasang uji, tetapi ketiga uji 3D dengan blur di ponsel itu bersendatan
+(242, 209, 167 ms; baris "menyala" di atas adalah yang terakhir). Kartu
+ber-blur di atas kanvas yang terus bergerak harus dihitung ulang tiap frame.
+
+Catatan angka: "8 elemen" termasuk rel yang tersembunyi di ponsel, jadi yang
+digambar 7 (hitungan panel sejak itu melewati elemen `display: none`). "Frame
+terlama" memakai selang `requestAnimationFrame`, "frame panjang" memakai
+durasi `long-animation-frame`; dua jam berbeda, jadi 167 ms dan 175 ms bisa
+merujuk frame yang sama.
 
 Perbaikan: permukaan kartu, bilah atas, dan rel memakai kelas `.tour-glass`
 (globals.css) — 95% pekat **tanpa** blur secara bawaan, bilah atas pekat
 penuh. Kaca buram (85% + `blur(12px)`) hanya berlaku di tata letak 3D pada
-perangkat berpenunjuk halus (`pointer: fine`: mouse, trackpad). Ponsel dan
-tablet tidak mendapatkannya, juga bila memilih 3D; tata letak ringkas tidak
-pernah, karena di belakang kartunya tidak ada apa-apa untuk diburamkan.
+perangkat yang penunjuk utamanya halus (`pointer: fine`: mouse, trackpad).
+Ponsel dan tablet tanpa mouse tidak mendapatkannya, juga bila memilih 3D;
+tata letak ringkas tidak pernah, karena di belakang kartunya tidak ada apa-apa
+untuk diburamkan. Laptop layar sentuh dan tablet ber-mouse tetap mendapat
+blur.
 
 Yang **belum** terjawab:
 
-- **Laptop ber-GPU lemah.** Desktop tetap memakai blur di 3D; di laptop
-  pengukur tidak ada frame panjang, tetapi GPU terintegrasi yang lemah belum
-  diuji. Tombol **No blur** di panel bisa dipakai untuk uji banding di sana.
+- **Laptop ber-GPU lemah** (termasuk Chromebook ARM). Desktop tetap memakai
+  blur di 3D; di laptop pengukur tidak ada frame panjang, tetapi GPU
+  terintegrasi yang lemah belum diuji. Tombol **No blur** di panel bisa
+  dipakai untuk uji banding di sana.
 - **Ponsel yang lebih lemah** dari Adreno 710.
 - **Panas dan baterai** setelah beberapa menit di 3D (uji hanya 12 detik).
 - **LCP di jaringan seluler.** Lewat Wi-Fi lokal angkanya tidak mewakili.
 
-### Usulan patokan keputusan (tahap 5)
+### Patokan
 
-Usulan, belum disepakati. Diukur di ponsel kelas menengah dan satu laptop
-tanpa GPU khusus:
+Usulan yang dipakai selama tahap 4; tidak pernah disepakati secara resmi.
+Diukur di ponsel kelas menengah dan satu laptop tanpa GPU khusus:
 
-| Yang diukur                              | Dengan apa                                                            | Lolos bila                                          | Bila gagal                                  |
-| ---------------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------- |
-| Laptop, tur 3D saat bergulir             | `/tour?perf`, baris `scroll`                                          | rata-rata ≥ 50 fps, 1% low ≥ 30 fps, worst ≤ 150 ms | Beranda tidak ditukar, atau 3D jadi pilihan |
-| Ponsel, 3D atas permintaan saat bergulir | `/tour?perf`, baris `scroll`                                          | rata-rata ≥ 40 fps, slow frames ≤ 5%                | Tombol "3D version" disembunyikan di ponsel |
-| Ponsel, tur bawaan (ringkas)             | PageSpeed Insights / Lighthouse pada alamat pratinjau yang ter-deploy | LCP ≤ 2,5 dtk, CLS ≤ 0,1                            | Beranda tidak ditukar                       |
+| Yang diukur                              | Dengan apa                                             | Lolos bila                                                               | Hasil                                           |
+| ---------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------- |
+| Laptop, tur 3D saat bergulir             | `/?perf`, baris `scroll`                               | rata-rata ≥ 50 fps, 1% low ≥ 30 fps, worst ≤ 150 ms                      | Belum diukur di laptop tanpa GPU khusus         |
+| Ponsel, 3D atas permintaan saat bergulir | `/?perf`, baris `scroll` dan `long frame`              | rata-rata ≥ 40 fps, 1% low ≥ 30 fps, worst ≤ 100 ms, tanpa frame panjang | Lolos di Adreno 740 dan 710 (sesudah perbaikan) |
+| Ponsel, tur bawaan (ringkas)             | PageSpeed Insights / Lighthouse pada alamat ter-deploy | LCP ≤ 2,5 dtk, CLS ≤ 0,1                                                 | Belum diukur; lab: LCP 820 ms, CLS 0            |
+
+Baris ponsel 3D semula hanya "rata-rata ≥ 40 fps, frame lambat ≤ 5%". Itu
+diperketat karena uji ber-blur yang membeku 167–242 ms lolos patokan lama.
 
 Baris terakhir tidak bisa diukur lewat jaringan lokal (ponsel ke laptop di
 Wi-Fi yang sama bukan 4G, dan Safari tidak melaporkan CLS); ia butuh alamat
-yang bisa dijangkau dari internet.
+yang bisa dijangkau dari internet. Beranda ditukar sebelum angka itu ada —
+keputusan pemilik situs — dengan `/classic` sebagai pembanding dan jalan
+mundur.
 
 ## Belum dikerjakan
 
-- **Tahap 4:** laju frame di ponsel kelas menengah dan di laptop tanpa GPU
-  khusus lewat `/tour?perf` (baru satu ponsel kelas atas yang diukur),
-  LCP/CLS dari alamat yang ter-deploy, lalu putuskan apakah beranda ditukar.
+- **LCP/CLS dari alamat yang ter-deploy**, untuk `/` dan `/classic`; lalu
+  hapus `/classic` dan komponen yang hanya dipakainya.
+- **Laju frame di laptop tanpa GPU khusus** lewat `/?perf` (desktop memakai
+  blur di 3D).
 - Jalur tanpa WebGL di layar lebar masih melompat setelah hidrasi.
-- **Bila ditukar (tahap 5):** cabut `noindex`, pindahkan data terstruktur dan
-  intro beranda, arahkan `/tour` ke `/`.
+- Panel ukur: berkas yang direvalidasi (304) tidak terhitung "dari cache".
 - Belum ada objek khusus untuk "About" (sekarang pandangan dari atas ke
   deretan rak); papan keahlian bisa menyusul.
 - Sorotan rak hanya untuk proyek unggulan yang kebagian rak; kamera tidak

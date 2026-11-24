@@ -6,7 +6,7 @@ import { GithubIcon, LinkedinIcon } from "@/components/icons/BrandIcons";
 import { ExperienceList } from "@/components/playground/ExperienceList";
 import { HealthSummary } from "@/components/playground/HealthSummary";
 import { SceneBoundary } from "@/components/playground/SceneBoundary";
-import { CV_URL, HEADLINE, PROFILE } from "@/content/profile";
+import { CONTACT_CHANNELS, CV_URL, HEADLINE, PROFILE } from "@/content/profile";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import {
   useDocumentHidden,
@@ -36,7 +36,7 @@ import {
   type Span,
   type TourStopId,
 } from "@/lib/tour/tour";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Menu, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -230,6 +230,23 @@ export function TourShell({
     active === statusIndex,
     !hidden && nearStatus,
   );
+
+  // ── Menu perhentian (tata letak tanpa rel: ponsel dan tampilan ringkas) ──
+  // Disclosure, bukan modal: tautannya tetap bagian dari urutan Tab halaman,
+  // jadi tidak ada focus trap. Escape menutup dan mengembalikan fokus ke
+  // tombolnya.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      menuButtonRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   // ── Sorotan rak dari kartu proyek ──
   const [highlighted, setHighlighted] = useState<number | null>(null);
@@ -440,6 +457,29 @@ export function TourShell({
           Tell me about the project or role. I read every message.
         </p>
         <ContactForm variant="panel" idPrefix="tour-contact" />
+        {/* Jalur langsung, bila form (atau backend-nya) sedang tidak bisa
+            dipakai. */}
+        <dl className="flex flex-col gap-2 border-t border-zinc-800 pt-4 text-sm">
+          {CONTACT_CHANNELS.map((channel) => (
+            <div key={channel.title} className="flex flex-wrap gap-x-3">
+              <dt className="w-20 shrink-0 font-mono text-xs leading-6 tracking-widest text-zinc-400 uppercase">
+                {channel.title}
+              </dt>
+              <dd className="min-w-0 break-words text-zinc-200">
+                {channel.href ? (
+                  <a
+                    href={channel.href}
+                    className={`rounded-sm underline decoration-zinc-600 underline-offset-4 transition-colors hover:text-white hover:decoration-white ${focusRing}`}
+                  >
+                    {channel.value}
+                  </a>
+                ) : (
+                  channel.value
+                )}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </>
     ),
   };
@@ -485,13 +525,6 @@ export function TourShell({
           PARANDITHA
         </Link>
         <div className="flex items-center gap-3">
-          <p
-            data-requires-js
-            aria-hidden="true"
-            className="shrink-0 font-mono text-xs whitespace-nowrap text-zinc-400 tabular-nums md:hidden"
-          >
-            {pad(active + 1)} / {pad(stopIds.length)}
-          </p>
           <Link
             href="/playground"
             prefetch={false}
@@ -521,6 +554,73 @@ export function TourShell({
               </span>
             </button>
           )}
+          {/* Tampil hanya bila rel perhentian tidak tampil (diatur CSS,
+              `.tour-menu`): di ponsel dan di tampilan ringkas, tempat tidak
+              ada cara lain untuk melompat antar-bagian. */}
+          <button
+            ref={menuButtonRef}
+            type="button"
+            data-requires-js
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-controls="tour-menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            className={`tour-menu -mr-2 h-11 w-11 shrink-0 items-center justify-center rounded-md text-zinc-200 transition-colors hover:text-white ${focusRing}`}
+          >
+            {menuOpen ? (
+              <X className="h-6 w-6" aria-hidden="true" />
+            ) : (
+              <Menu className="h-6 w-6" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+
+        {/* Selalu dirender dan disembunyikan lewat `hidden`: `aria-controls`
+            harus menunjuk elemen yang benar-benar ada. Pembungkusnya
+            (`.tour-menu`) ikut hilang bila rel tampil, jadi menu yang terbuka
+            tidak tertinggal saat layar dilebarkan. */}
+        <div className="tour-menu absolute inset-x-0 top-full sm:left-auto sm:w-72">
+          <nav
+            id="tour-menu"
+            hidden={!menuOpen}
+            aria-label="Sections"
+            className="w-full border-b border-zinc-800 bg-zinc-950 sm:rounded-bl-lg sm:border-l"
+          >
+            <ul className="flex flex-col py-2">
+              {stopIds.map((id, index) => (
+                <li key={id}>
+                  <a
+                    href={`#${id}`}
+                    aria-current={active === index ? "location" : undefined}
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex min-h-11 items-center gap-3 px-5 font-mono text-sm transition-colors hover:bg-zinc-900 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden focus-visible:ring-inset ${
+                      active === index ? "text-white" : "text-zinc-300"
+                    }`}
+                  >
+                    <span
+                      className={
+                        active === index ? "text-cyan-400" : "text-zinc-500"
+                      }
+                    >
+                      {pad(index + 1)}
+                    </span>
+                    {STOP_LABEL[id]}
+                  </a>
+                </li>
+              ))}
+              <li className="mt-2 border-t border-zinc-800 pt-2">
+                <Link
+                  href="/playground"
+                  prefetch={false}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex min-h-11 items-center justify-between gap-3 px-5 text-sm text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-hidden focus-visible:ring-inset"
+                >
+                  Explore the room freely
+                  <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
       </header>
 

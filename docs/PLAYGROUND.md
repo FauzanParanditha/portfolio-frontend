@@ -14,8 +14,8 @@ detail, pintu masuk dari hero & navbar. Tahap 2 menambah tiga stasiun di lobi:
 | Experience  | Papan di dinding barat (`LOG`) | Riwayat kerja dari `/experiences`            | Tautan ke `/#experience`        |
 | Contact     | Kotak surat (`MSG`)            | Form kontak yang sama dengan beranda         | Tautan ke `/#contact`           |
 
-Ruangan dan komponen scene yang sama dipakai tur dengan scroll di `/tour`
-(calon beranda) — lihat [TOUR.md](TOUR.md).
+Ruangan dan komponen scene yang sama dipakai tur dengan scroll di beranda
+(`/`) — lihat [TOUR.md](TOUR.md).
 
 ## Cara pakai
 
@@ -206,5 +206,5 @@ Jalankan backend + `pnpm dev`, buka `/playground`, lalu periksa:
 ## Belum dikerjakan (tahap berikutnya)
 
 - Paket data di kabel dan animasi rak saat status berubah.
-- Tur dengan scroll sudah ada di `/tour` (tahap 3); pengukuran di perangkat
-  sungguhan dan keputusan menukar beranda ada di [TOUR.md](TOUR.md).
+- Tur dengan scroll kini menjadi beranda (tahap 5); pengukuran di perangkat
+  sungguhan dan yang masih terbuka ada di [TOUR.md](TOUR.md).
