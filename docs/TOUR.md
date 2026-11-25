@@ -552,9 +552,6 @@ mundur.
 
 ## Belum dikerjakan
 
-- **`/projects` tidak punya metadata sendiri:** judul dan canonical-nya
-  mewarisi beranda (`/`), padahal masuk sitemap. Sudah begitu sebelum tahap
-  5; perlu `metadata` di halaman itu.
 - Di ponsel pendek dengan `?perf`, panel ukur menutupi sebagian menu (hanya
   alat ukur yang terkena).
 - **LCP/CLS dari alamat yang ter-deploy**, untuk `/` dan `/classic`; lalu

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -16,9 +16,16 @@ describe("rute beranda", () => {
     const home = read("src/app/page.tsx");
     expect(home).toContain("<TourShell");
     expect(home).toContain("<IntroOverlay />");
-    // Metadata bawaan root layout: canonical `/`, index. Halaman ini tidak
-    // boleh menimpanya (dulu, sebagai pratinjau /tour, ia ber-noindex).
-    expect(home).not.toMatch(/export const metadata/);
+    // Hanya canonical yang disetel di sini; judul, Open Graph, dan robots
+    // diwarisi dari root layout (dulu, sebagai pratinjau /tour, halaman ini
+    // ber-noindex). Menambah `openGraph`/`robots` di sini akan MENGGANTI
+    // milik root layout seluruhnya.
+    const metadata = home.match(
+      /export const metadata: Metadata = \{([\s\S]*?)\n\};/,
+    )?.[1];
+    expect(metadata?.replace(/\s+/g, " ").trim()).toBe(
+      'alternates: { canonical: "/" },',
+    );
     expect(home).not.toMatch(/noindex|index:\s*false/);
   });
 
@@ -58,5 +65,55 @@ describe("rute beranda", () => {
     expect(layout).not.toMatch(/from "next\/script"/);
     // Sebagai JSX (komentar boleh menyebut namanya).
     expect(layout).not.toMatch(/<Script\s+(id|strategy)=/);
+  });
+});
+
+describe("canonical", () => {
+  /** Semua `page.tsx` di bawah src/app, sebagai path relatif. */
+  function pages(dir = "src/app"): string[] {
+    return readdirSync(join(process.cwd(), dir), {
+      withFileTypes: true,
+    }).flatMap((entry) =>
+      entry.isDirectory()
+        ? pages(`${dir}/${entry.name}`)
+        : entry.name === "page.tsx"
+          ? [`${dir}/${entry.name}`]
+          : [],
+    );
+  }
+  /** Area yang dikecualikan robots.txt: tidak butuh canonical. */
+  const isPrivate = (path: string) => /^src\/app\/(admin|auth)\//.test(path);
+
+  it("root layout tidak punya canonical bawaan: halaman yang lupa menyetelnya tidak boleh mengaku duplikat beranda", () => {
+    const layout = read("src/app/layout.tsx");
+    const metadata = layout.slice(
+      layout.indexOf("export const metadata"),
+      layout.indexOf("export default function RootLayout"),
+    );
+    // Sebagai properti (komentar boleh menyebut namanya).
+    expect(metadata).not.toMatch(/^\s*(alternates|canonical)\s*:/m);
+  });
+
+  it("tiap halaman publik menyetel canonical-nya sendiri, di halaman itu atau di layout sefoldernya", () => {
+    const publicPages = pages().filter((path) => !isPrivate(path));
+    // Penjaga terhadap daftar kosong (mis. struktur folder berubah).
+    expect(publicPages.length).toBeGreaterThanOrEqual(5);
+    const missing = publicPages.filter((path) => {
+      const layoutPath = path.replace(/page\.tsx$/, "layout.tsx");
+      const own = read(path);
+      const sibling =
+        layoutPath !== "src/app/layout.tsx" &&
+        existsSync(join(process.cwd(), layoutPath))
+          ? read(layoutPath)
+          : "";
+      return !/alternates:\s*\{\s*canonical/.test(own + sibling);
+    });
+    expect(missing).toEqual([]);
+  });
+
+  it("canonical beranda adalah `/`", () => {
+    expect(read("src/app/page.tsx")).toMatch(
+      /alternates:\s*\{\s*canonical:\s*"\/"\s*\}/,
+    );
   });
 });

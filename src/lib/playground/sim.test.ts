@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { distanceToRect, isCircleFree, penetrationDepth } from "./collision";
 import { findRoute, isWalkableAt, routeLength } from "./grid";
 import { buildLayout, type FixtureKind, PLAYER_RADIUS, RACK } from "./layout";
@@ -15,6 +15,15 @@ import {
   teleport,
   type SimEvent,
 } from "./sim";
+
+/**
+ * Berkas ini berisi test sapuan: ribuan pose atau rute per test. Biasanya
+ * masing-masing selesai dalam 1–3 detik, tetapi di mesin yang sedang sibuk
+ * pernah melewati batas bawaan 5 detik (terukur 8 detik saat beban rata-rata
+ * 26) — gagal tanpa ada yang salah. Batasnya dilonggarkan untuk seluruh
+ * berkas: yang dijaga di sini kebenaran, bukan kecepatan.
+ */
+vi.setConfig({ testTimeout: 30_000 });
 
 const IDLE = { moveX: 0, moveZ: 0 };
 /** Ruangan seperti di produksi: lobi berisi terminal, dinding, kotak surat. */
