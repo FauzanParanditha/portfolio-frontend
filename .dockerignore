@@ -1,0 +1,27 @@
+# Konteks build = akar repo. Yang tidak dibutuhkan build tidak boleh ikut,
+# terutama rahasia dan hasil build lokal: `COPY . .` membawa semua yang tidak
+# tertulis di sini.
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+
+.git
+.github
+.claude
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+next-env.d.ts
+AGENTS.md
+docs
+deploy
+tools
+install.sh
+update.sh
+status.sh

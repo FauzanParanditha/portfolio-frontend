@@ -1,0 +1,67 @@
+# Stack PRODUKSI frontend. Jangan dijalankan langsung dengan `docker compose up`:
+# pakai ./install.sh, ./update.sh, ./status.sh — mereka memilih versi image
+# yang benar dan memeriksa prasyaratnya. Lihat docs/PEMELIHARAAN.md.
+#
+# Nilai ${...} dibaca dari deploy/.env (dibuat install.sh dari env.example).
+name: portfolio-frontend
+
+services:
+  web:
+    image: portfolio-frontend/web:${VERSI:-dev}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        VERSI: ${VERSI:-dev}
+        # NEXT_PUBLIC_* disisipkan ke bundel saat BUILD: mengubahnya di .env
+        # baru berlaku setelah image dibangun ulang (sudo ./update.sh --no-pull).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL belum diisi di deploy/.env}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL belum diisi di deploy/.env}
+        NEXT_PUBLIC_CV_URL: ${NEXT_PUBLIC_CV_URL:-}
+        NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+        NEXT_PUBLIC_CONTACT_PHONE: ${NEXT_PUBLIC_CONTACT_PHONE:-}
+        NEXT_PUBLIC_CONTACT_LOCATION: ${NEXT_PUBLIC_CONTACT_LOCATION:-}
+        ADMIN_PROXY_GATE: ${ADMIN_PROXY_GATE:-}
+        API_INTERNAL_URL: ${API_INTERNAL_URL:-}
+      # Sama dengan layanan di bawah: host.docker.internal juga dikenal saat build.
+      extra_hosts: ["host.docker.internal:host-gateway"]
+    environment:
+      # Dibaca saat RUNTIME (boleh diubah tanpa build ulang).
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-}
+      ADMIN_PROXY_GATE: ${ADMIN_PROXY_GATE:-}
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    read_only: true
+    # Dua tempat yang ditulisi Next.js saat berjalan: cache fetch, dan halaman
+    # hasil regenerasi (ISR). Tanpa yang kedua, tiap regenerasi mencatat
+    # "Failed to update prerender cache" — halaman tetap benar (tersaji dari
+    # memori), tetapi log jadi penuh galat. Isinya hilang saat kontainer dibuat
+    # ulang, dan itu tidak apa-apa: diisi lagi dari backend.
+    tmpfs:
+      - /tmp:size=64m
+      - /app/.next/cache:size=128m,uid=1000,gid=1000,mode=0700
+      - /app/.next/server/route-cache:size=64m,uid=1000,gid=1000,mode=0700
+    pids_limit: 256
+    mem_limit: ${WEB_MEM_LIMIT:-512m}
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+    # Satu-satunya port yang dipublikasikan, selalu dengan alamat eksplisit:
+    # port yang dipublikasikan Docker MELEWATI UFW/CSF. Bawaan 127.0.0.1 =
+    # hanya dari server ini (reverse proxy di host yang sama).
+    ports:
+      - "${ALAMAT_IKAT:-127.0.0.1}:${PORT_WEB:-3000}:3000"
+    # Supaya API_INTERNAL_URL boleh menunjuk backend di host yang sama
+    # (http://host.docker.internal:<port>/api/v1) juga di Linux.
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    networks: [depan]
+    stop_grace_period: 20s
+
+# Subnet dipilih SEKALI oleh install.sh (atur_jaringan) dan disimpan di .env:
+# subnet tetap di berkas ini bisa bentrok dengan jaringan kantor/VPN.
+networks:
+  depan:
+    ipam:
+      config:
+        - subnet: ${DOCKER_SUBNET:?DOCKER_SUBNET belum diisi - jalankan ./install.sh}

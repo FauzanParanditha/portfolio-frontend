@@ -81,7 +81,7 @@ skrip yang sama, ditambah `pnpm test`.
 | 5 | Penjaga route | test `src/proxy.ts`: matcher menangkap seluruh `/admin`, dan tanpa cookie dilempar ke login (otorisasi sebenarnya di backend) |
 | 6 | Audit dependensi | `pnpm audit --prod --audit-level moderate` |
 | 7 | Uji asap | belum ada |
-| 8 | Aturan kontainer | dilewati selama belum ada Dockerfile |
+| 8 | Aturan kontainer | `deploy/Dockerfile` dan `deploy/docker-compose.yml`: tag image persis, non-root, `HEALTHCHECK`, `.dockerignore`, port dengan alamat ikat eksplisit |
 
 ## Struktur Project
 
@@ -124,6 +124,16 @@ src/
 
 Untuk panduan teknis lebih lengkap (termasuk catatan keamanan & jebakan umum), lihat [CLAUDE.md](CLAUDE.md).
 
-## Deploy
+## Deploy & operasional
 
-Project ini dapat di-deploy ke [Vercel](https://vercel.com/) atau platform lain yang mendukung Next.js. Pastikan environment variable `NEXT_PUBLIC_API_URL` dikonfigurasi di environment production.
+Produksi berjalan sebagai image Docker di bawah Docker Compose, dikendalikan
+tiga skrip di akar repo:
+
+| Skrip | Kegunaan |
+|---|---|
+| `sudo ./install.sh` | pasang pertama kali / terapkan perubahan konfigurasi runtime (aman diulang) |
+| `sudo ./update.sh` | pasang versi baru; `--no-pull` membangun ulang setelah `NEXT_PUBLIC_*` berubah; `--rollback` kembali ke versi sebelumnya |
+| `sudo ./status.sh` | keadaan tiap komponen beserta sebab dan saran (`--ringkas`, `--json`) |
+
+Rinciannya, termasuk jebakan `NEXT_PUBLIC_*` dan cara server menjangkau API
+(`API_INTERNAL_URL`), ada di [docs/PEMELIHARAAN.md](docs/PEMELIHARAAN.md).
