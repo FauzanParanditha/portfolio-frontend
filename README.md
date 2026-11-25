@@ -61,7 +61,27 @@ npm install -g pnpm
 | `pnpm build` | Build untuk production |
 | `pnpm start` | Menjalankan hasil build production |
 | `pnpm lint` | Menjalankan ESLint |
+| `pnpm test` | Menjalankan semua test (Vitest) |
+| `pnpm cek` | Pemeriksaan statis: `tsc --noEmit` + ESLint |
+| `pnpm periksa` | Gerbang rilis — jalankan sebelum mengirim perubahan |
 | `pnpm audit` | Mengecek vulnerability dependensi |
+
+### Gerbang rilis
+
+`pnpm periksa` (= `bash tools/periksa.sh`) menjalankan semua pemeriksaan
+sekaligus dan melaporkan seluruh kegagalan dalam satu putaran; CI menjalankan
+skrip yang sama, ditambah `pnpm test`.
+
+| # | Pemeriksaan | Di repo ini |
+|---|---|---|
+| 1 | Statis | `tsc --noEmit`, ESLint |
+| 2 | Build | `pnpm build` |
+| 3 | Pola berbahaya | `dangerouslySetInnerHTML`, `innerHTML =`, `insertAdjacentHTML`, `eval`, `new Function`, env `NEXT_PUBLIC_*` bernama rahasia (`SECRET`, `TOKEN`, `KEY`, …) di luar berkas test; pengecualian tertulis di `KECUALI` |
+| 4 | Rahasia di yang dikirim | nama env rahasia backend dan kunci privat yang tertulis di `.next/static`, `.next/server/app`, dan `public` |
+| 5 | Penjaga route | test `src/proxy.ts`: matcher menangkap seluruh `/admin`, dan tanpa cookie dilempar ke login (otorisasi sebenarnya di backend) |
+| 6 | Audit dependensi | `pnpm audit --prod --audit-level moderate` |
+| 7 | Uji asap | belum ada |
+| 8 | Aturan kontainer | dilewati selama belum ada Dockerfile |
 
 ## Struktur Project
 

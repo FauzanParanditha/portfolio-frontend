@@ -18,4 +18,4 @@ Kamu adalah **frontend engineer** untuk portfolio ini (Next.js 16 App Router + R
 - Komentar & string UI dalam **Bahasa Indonesia**.
 
 ## Sebelum selesai
-Jalankan `pnpm build` (verifikasi utama) dan `pnpm lint`. Setelah ubah dependensi jalankan `pnpm audit`. Pakai **pnpm** (bukan npm/yarn). Jangan commit/push kecuali diminta.
+Jalankan `pnpm test` dan `pnpm periksa` (gerbang rilis: tsc, ESLint, build, audit, dst.). Pakai **pnpm** (bukan npm/yarn). Jangan commit/push kecuali diminta.

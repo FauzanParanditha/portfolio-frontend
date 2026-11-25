@@ -17,9 +17,12 @@ Backend terpisah (REST API), diakses lewat `NEXT_PUBLIC_API_URL`.
 | Perintah | Kegunaan |
 |----------|----------|
 | `pnpm dev` | Dev server (Turbopack) di http://localhost:3000 |
-| `pnpm build` | Production build — **pakai ini untuk verifikasi perubahan** |
+| `pnpm build` | Production build |
 | `pnpm start` | Jalankan hasil build |
 | `pnpm lint` | ESLint |
+| `pnpm test` | Semua test (Vitest); satu berkas: `pnpm exec vitest run <path>` |
+| `pnpm cek` | Pemeriksaan statis: `tsc --noEmit` + ESLint |
+| `pnpm periksa` | Gerbang rilis (`tools/periksa.sh`): statis, build, pola berbahaya, rahasia di bundel, test proxy, audit. CI menjalankan skrip yang sama |
 | `pnpm audit` | Cek vulnerability dependensi |
 
 Package manager: **pnpm** (ada `pnpm-lock.yaml` dan `pnpm-workspace.yaml`). Jangan pakai npm/yarn.
@@ -127,7 +130,7 @@ sesi utama.
 Ringkasan stack untuk konteks delegasi:
 - **Frontend (repo ini):** Next.js 16 App Router + React 19 + TypeScript + Tailwind, package manager **pnpm**.
 - **Backend (repo terpisah `../go-portfolio-backend`):** Go + Fiber v2 + GORM (PostgreSQL) + Atlas, auth JWT HS256.
-- **Testing/verifikasi:** `pnpm build` (verifikasi utama) + `pnpm lint`; `pnpm audit` setelah ubah dependensi.
+- **Testing/verifikasi:** `pnpm test` + `pnpm periksa` (gerbang rilis: tsc, lint, build, audit, dst.).
 - **Konvensi:** komentar & string UI Bahasa Indonesia; pakai pnpm (bukan npm/yarn); commit konvensional.
 
 Panduan delegasi:
@@ -147,9 +150,8 @@ Panduan delegasi:
 6. Sesi utama merangkum, pastikan Definition of Done terpenuhi, lalu siapkan untuk merge.
 
 ### Definition of Done (global)
-- [ ] `pnpm build` sukses & `pnpm lint` tanpa error baru.
-- [ ] `pnpm audit` bersih bila dependensi berubah.
-- [ ] Test relevan (bila ada) hijau.
+- [ ] `pnpm test` hijau; test relevan ada untuk perubahan perilaku.
+- [ ] `pnpm periksa` hijau (tsc, lint, build, pola berbahaya, rahasia di bundel, audit).
 - [ ] Tidak ada rahasia ter-hardcode; access token tetap cookie HttpOnly (tidak di JS); `.env.local` untracked.
 - [ ] Sudah di-review (code-reviewer) dan, bila sensitif, di-audit (security-auditor).
 - [ ] Dokumentasi/README diperbarui bila perlu.

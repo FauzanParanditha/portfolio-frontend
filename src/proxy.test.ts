@@ -1,7 +1,8 @@
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import type { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
-import { isGateEnabled, proxy } from "@/proxy";
+import { config, isGateEnabled, proxy } from "@/proxy";
 import { jwtConfig } from "@/utils/var";
 
 const ACCESS_TOKEN_COOKIE = jwtConfig.admin.accessTokenName;
@@ -104,5 +105,42 @@ describe("proxy (gate presence-check admin)", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("location")).toBeNull();
+  });
+
+  // Test di atas memanggil proxy() langsung, jadi tetap hijau walau Next.js
+  // tidak pernah menjalankannya. Yang menentukan itu adalah matcher: bila
+  // "/admin/:path*" hilang dari sana, seluruh gate diam-diam tidak aktif.
+  // Dicocokkan dengan pencocok milik Next.js sendiri, bukan salinan literal.
+  describe("matcher", () => {
+    const cocok = (url: string) =>
+      unstable_doesMiddlewareMatch({ config, url });
+
+    it("menangkap /admin dan semua halaman di bawahnya", () => {
+      for (const url of [
+        "/admin",
+        "/admin/projects",
+        "/admin/projects/123/edit",
+        "/admin?tab=1",
+      ]) {
+        expect(cocok(url), url).toBe(true);
+      }
+    });
+
+    it("menangkap halaman login", () => {
+      expect(cocok("/auth/login")).toBe(true);
+    });
+
+    it("tidak menangkap halaman publik, lupa/reset password, atau aset", () => {
+      for (const url of [
+        "/",
+        "/projects",
+        "/administrasi",
+        "/auth/forgot-password",
+        "/auth/reset-password",
+        "/_next/static/chunks/a.js",
+      ]) {
+        expect(cocok(url), url).toBe(false);
+      }
+    });
   });
 });
