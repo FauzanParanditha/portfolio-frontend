@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Gerbang rilis — dijalankan sebelum mengirim perubahan (`task periksa` /
-# `npm run periksa`). Tidak bergantung pada runner: CI dan server polos bisa
+# Gerbang rilis — dijalankan sebelum mengirim perubahan (`pnpm periksa`).
+# Tidak bergantung pada runner: CI dan server polos bisa
 # menjalankannya langsung (bash tools/periksa.sh).
 #
 # Delapan pemeriksaan, masing-masing menolak satu kelas kesalahan. Tidak berhenti
@@ -30,16 +30,22 @@ cd "$AKAR" || exit 1
 STACK="node"             # node | go | go+node | rust | python
 SUMBER=(src)             # folder yang dipindai pola berbahaya
 # Repo ini memakai pnpm (versi dikunci di "packageManager"), bukan npm.
-# .next/types dibuang dulu: sisa build lama membuat tsc melaporkan galat palsu
-# setelah route berubah atau berpindah branch.
-PERINTAH_CEK=(bash -c 'rm -rf -- .next/types && pnpm exec tsc --noEmit && pnpm lint')
+# Tipe hasil generate dibuang dulu (.next/types dari build, .next/dev/types dari
+# `pnpm dev` — keduanya ada di tsconfig): sisa lama membuat tsc melaporkan
+# galat palsu setelah route berubah atau berpindah branch. Pemeriksaannya
+# sendiri satu definisi dengan `pnpm cek` (tsc --noEmit + ESLint).
+PERINTAH_CEK=(bash -c 'rm -rf -- .next/types .next/dev/types && pnpm cek')
 PERINTAH_BUILD=(pnpm build)
 # Hanya dependensi produksi. Bila sebuah advisory belum bisa ditambal, catat
 # pengecualiannya di pnpm-workspace.yaml (overrides / auditConfig) beserta
 # alasannya — jangan menurunkan tingkat audit.
 PERINTAH_AUDIT=(pnpm audit --prod --audit-level moderate)
 PERINTAH_UJI=()          # uji asap; kosong = belum ada
-POLA=""                  # pola berbahaya (regex grep -E)
+# Pola bawaan stack node, ditambah: outerHTML/insertAdjacentHTML, dan nama env
+# NEXT_PUBLIC_* yang berbau rahasia. Next menyisipkan NILAI NEXT_PUBLIC_* ke
+# bundel dan namanya hilang, jadi pemeriksaan 4 tidak akan melihatnya — yang
+# bisa ditolak adalah pemakaiannya di sumber.
+POLA='dangerouslySetInnerHTML|\.(inner|outer)HTML\s*=|insertAdjacentHTML|\beval\s*\(|new Function\s*\(|document\.write|child_process|NEXT_PUBLIC_[A-Z0-9_]*(SECRET|PASSWORD|TOKEN|DSN|PRIVATE|KEY)'
 # Berkas test tidak dikirim ke siapa pun dan sengaja memakai innerHTML /
 # new Function untuk menyiapkan DOM dan menjalankan skrip <head>.
 EKSTENSI=(--include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --include='*.mjs'
@@ -57,8 +63,9 @@ KECUALI=(
 # Yang DIKIRIM: folder bundel peramban dan/atau binary/folder hasil build
 # layanan — SEMUANYA (monorepo: bin DAN apps/web/dist). Inilah yang dipindai
 # rahasia. Kosong = tebakan per stack; tidak ada yang ditemukan = dilewati.
-# .next/static = bundel peramban; public = berkas statis yang disajikan apa adanya.
-KIRIM=(.next/static public)
+# .next/static = bundel peramban; .next/server/app = HTML/RSC hasil prerender
+# yang dikirim apa adanya; public = berkas statis.
+KIRIM=(.next/static .next/server/app public)
 
 # Nama rahasia dan alamat internal yang TIDAK BOLEH ada di yang dikirim.
 # Tambahkan nama env rahasia proyek ini, dan alamat backend internal yang
@@ -67,9 +74,10 @@ KIRIM=(.next/static public)
 # pertama memang akan ramai, dan menyetelnya justru bagian yang berguna.
 # Header PEM ditulis lengkap: "PRIVATE KEY" saja cocok dengan pesan galat
 # crypto/tls di pustaka standar Go (alarm palsu di setiap binary Go).
-# Ditambah nama env rahasia BACKEND: frontend ini tidak punya rahasia sendiri
-# (semua env-nya NEXT_PUBLIC_*), jadi kemunculan nama-nama ini di bundel berarti
-# ada isi .env backend yang ikut tersalin.
+# Ditambah nama env rahasia BACKEND: frontend ini tidak punya rahasia sendiri.
+# Batasnya: yang tertangkap adalah nama/kunci yang TERTULIS (di sumber, public,
+# atau berkas yang tersalin), bukan nilai env yang disisipkan saat build —
+# untuk itu lihat pola NEXT_PUBLIC_* di POLA.
 RAHASIA='SESSION_SECRET|DB_PASSWORD|-----BEGIN [A-Z ]*PRIVATE KEY-----|createCipheriv|JWT_SECRET|DB_DSN|SMTP_PASSWORD|SEED_ADMIN_PASSWORD'
 # Contoh menambah host internal yang persis:
 #   RAHASIA="$RAHASIA|10\.10\.13\.175|PANDI-SECURITY-0\.1"
@@ -199,9 +207,15 @@ else
   if [ -n "$temu" ] && [ ${#KECUALI[@]} -gt 0 ]; then
     sisa=""
     while IFS= read -r baris; do
-      kunci=$(printf '%s' "$baris" | sed -E 's/^([^:]+):[0-9]+:[[:space:]]*/\1:/')
+      # "./" di depan dibuang (muncul bila SUMBER=(.)), supaya regex ditulis
+      # terhadap path relatif repo. Entri kosong dilewati: regex kosong
+      # cocok dengan semua baris dan akan membungkam seluruh pemeriksaan.
+      kunci=$(printf '%s' "$baris" | sed -E 's/^(\.\/)?([^:]+):[0-9]+:[[:space:]]*/\2:/')
       sah=0
-      for k in "${KECUALI[@]}"; do printf '%s' "$kunci" | grep -qE -- "$k" && sah=1; done
+      for k in "${KECUALI[@]}"; do
+        [ -n "$k" ] || continue
+        printf '%s' "$kunci" | grep -qE -- "$k" && sah=1
+      done
       [ $sah -eq 1 ] || sisa+="$baris"$'\n'
     done <<< "$temu"
     temu="${sisa%$'\n'}"

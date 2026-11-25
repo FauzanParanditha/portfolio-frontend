@@ -76,9 +76,9 @@ skrip yang sama, ditambah `pnpm test`.
 |---|---|---|
 | 1 | Statis | `tsc --noEmit`, ESLint |
 | 2 | Build | `pnpm build` |
-| 3 | Pola berbahaya | `dangerouslySetInnerHTML`, `innerHTML =`, `eval`, `new Function`, … di luar berkas test; pengecualian tertulis di `KECUALI` |
-| 4 | Rahasia di yang dikirim | nama env rahasia backend dan kunci privat di `.next/static` dan `public` |
-| 5 | Penjaga route | test `src/proxy.ts`: `/admin` tanpa cookie dilempar ke login (otorisasi sebenarnya di backend) |
+| 3 | Pola berbahaya | `dangerouslySetInnerHTML`, `innerHTML =`, `insertAdjacentHTML`, `eval`, `new Function`, env `NEXT_PUBLIC_*` bernama rahasia (`SECRET`, `TOKEN`, `KEY`, …) di luar berkas test; pengecualian tertulis di `KECUALI` |
+| 4 | Rahasia di yang dikirim | nama env rahasia backend dan kunci privat yang tertulis di `.next/static`, `.next/server/app`, dan `public` |
+| 5 | Penjaga route | test `src/proxy.ts`: matcher menangkap seluruh `/admin`, dan tanpa cookie dilempar ke login (otorisasi sebenarnya di backend) |
 | 6 | Audit dependensi | `pnpm audit --prod --audit-level moderate` |
 | 7 | Uji asap | belum ada |
 | 8 | Aturan kontainer | dilewati selama belum ada Dockerfile |

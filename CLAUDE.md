@@ -17,7 +17,7 @@ Backend terpisah (REST API), diakses lewat `NEXT_PUBLIC_API_URL`.
 | Perintah | Kegunaan |
 |----------|----------|
 | `pnpm dev` | Dev server (Turbopack) di http://localhost:3000 |
-| `pnpm build` | Production build — **pakai ini untuk verifikasi perubahan** |
+| `pnpm build` | Production build |
 | `pnpm start` | Jalankan hasil build |
 | `pnpm lint` | ESLint |
 | `pnpm test` | Semua test (Vitest); satu berkas: `pnpm exec vitest run <path>` |
@@ -152,7 +152,6 @@ Panduan delegasi:
 ### Definition of Done (global)
 - [ ] `pnpm test` hijau; test relevan ada untuk perubahan perilaku.
 - [ ] `pnpm periksa` hijau (tsc, lint, build, pola berbahaya, rahasia di bundel, audit).
-- [ ] Test relevan (bila ada) hijau.
 - [ ] Tidak ada rahasia ter-hardcode; access token tetap cookie HttpOnly (tidak di JS); `.env.local` untracked.
 - [ ] Sudah di-review (code-reviewer) dan, bila sensitif, di-audit (security-auditor).
 - [ ] Dokumentasi/README diperbarui bila perlu.
