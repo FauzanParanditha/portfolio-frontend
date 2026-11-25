@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { serverApiBase } from "@/lib/server/apiBase";
 import { getSiteUrl } from "@/lib/siteUrl";
 
 // Regenerasi sitemap tiap 1 jam (ISR) supaya project baru ikut terdaftar.
@@ -13,7 +14,7 @@ type ProjectListResponse = { data?: ProjectListItem[] };
  * sehingga build tetap sukses dengan hanya route statis.
  */
 async function fetchProjectSlugs(): Promise<string[]> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = serverApiBase();
   if (!apiUrl) return [];
 
   try {

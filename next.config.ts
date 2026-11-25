@@ -20,6 +20,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Hanya image Docker yang memakai keluaran standalone (deploy/Dockerfile
+  // menyetel NEXT_OUTPUT). `pnpm build` + `pnpm start` biasa tidak berubah:
+  // `next start` tidak mendukung keluaran standalone.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   images: {
     // Daftar host dipusatkan di src/lib/imageHosts.ts supaya izin di sini dan
     // keputusan `unoptimized` di komponen tidak pernah melenceng — kalau

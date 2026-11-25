@@ -1,3 +1,4 @@
+import { serverApiBase } from "@/lib/server/apiBase";
 import type {
   Experience,
   ExperienceTag,
@@ -26,12 +27,14 @@ import type {
 const REVALIDATE_SECONDS = 300;
 
 function apiBase(): string | null {
-  const base = process.env.NEXT_PUBLIC_API_URL;
+  const base = serverApiBase();
   if (!base) {
-    console.warn("[portfolio] NEXT_PUBLIC_API_URL belum di-set; data dilewati");
+    console.warn(
+      "[portfolio] alamat API untuk server belum ada (API_INTERNAL_URL / NEXT_PUBLIC_API_URL berupa URL penuh); data dilewati",
+    );
     return null;
   }
-  return base.replace(/\/+$/, "");
+  return base;
 }
 
 async function getJson<T>(path: string): Promise<T | null> {
