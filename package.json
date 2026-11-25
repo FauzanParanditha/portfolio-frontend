@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "cek": "tsc --noEmit && eslint",
+    "periksa": "bash tools/periksa.sh"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.6",

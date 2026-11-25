@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 
-import { isGateEnabled, proxy } from "@/proxy";
+import { config, isGateEnabled, proxy } from "@/proxy";
 import { jwtConfig } from "@/utils/var";
 
 const ACCESS_TOKEN_COOKIE = jwtConfig.admin.accessTokenName;
@@ -104,5 +104,12 @@ describe("proxy (gate presence-check admin)", () => {
 
     expect(res.status).toBe(200);
     expect(res.headers.get("location")).toBeNull();
+  });
+
+  // Test di atas memanggil proxy() langsung, jadi tetap hijau walau Next.js
+  // tidak pernah menjalankannya. Yang menentukan itu adalah matcher: bila
+  // "/admin/:path*" hilang dari sini, seluruh gate diam-diam tidak aktif.
+  it("matcher mencakup seluruh /admin dan halaman login", () => {
+    expect(config.matcher).toEqual(["/admin/:path*", "/auth/login"]);
   });
 });
