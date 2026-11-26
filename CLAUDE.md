@@ -40,7 +40,8 @@ Package manager: **pnpm** (ada `pnpm-lock.yaml` dan `pnpm-workspace.yaml`). Jang
 Produksi berjalan sebagai image Docker di bawah Docker Compose (`deploy/Dockerfile`, `deploy/docker-compose.yml`, `deploy/env.example`), dikendalikan `install.sh`, `update.sh`, `status.sh` di akar repo. Lihat `docs/PEMELIHARAAN.md`.
 
 - `deploy/lib-dasar.sh` adalah **salinan apa adanya** dari skill project-standard — jangan disunting di sini; fungsi khusus proyek di `deploy/lib.sh`.
-- `NEXT_PUBLIC_*` disisipkan saat build: env baru harus ditambahkan sebagai `ARG`/`ENV` di `deploy/Dockerfile`, `build.args` di `deploy/docker-compose.yml`, `deploy/env.example`, **dan** daftar di `sidik_build` (`deploy/lib.sh`).
+- Image dibangun GitHub Actions (`.github/workflows/image.yml`) tiap push ke `master`, dipindai `tools/periksa-image.sh` (semua lapisan — repo dan package-nya publik), diuji nyala, lalu diterbitkan ke `ghcr.io` bertanda SHA commit. `update.sh` menarik image commit yang ter-checkout. Frontend TIDAK dibangun di server (1–2 GB memori); `--bangun-lokal` ditolak di bawah 2 GB memori tersedia.
+- `NEXT_PUBLIC_*` disisipkan saat build dan berasal dari **variabel repo GitHub**. Env baru harus ditambahkan di: `ARG`/`ENV` di `deploy/Dockerfile`, `build.args` di `deploy/docker-compose.yml`, `env` + `build-args` di `.github/workflows/image.yml`, `deploy/env.example`, **dan** `KUNCI_BUILD` di `deploy/lib.sh`. Jangan pernah menaruh rahasia di `NEXT_PUBLIC_*`.
 - `output: "standalone"` hanya aktif saat `NEXT_OUTPUT=standalone` (di Dockerfile); `pnpm build` + `pnpm start` biasa tidak berubah.
 - Kontainer berjalan dengan akar hanya-baca; yang boleh ditulisi hanya tmpfs di compose (`.next/cache`, `.next/server/route-cache`).
 - Skrip diuji di VM Linux lokal (pasang, pasang ulang, update, versi rusak, rollback, stop/start). Ulangi pengujian semacam itu setelah mengubahnya; mereka berjalan sebagai root di server.

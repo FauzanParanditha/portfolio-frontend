@@ -14,8 +14,8 @@ Semua dijalankan dari akar repo di server.
 |---|---|
 | Pasang pertama kali, atau terapkan perubahan konfigurasi runtime | `sudo ./install.sh` |
 | Apakah berjalan? Kalau tidak, salahnya di mana? | `sudo ./status.sh` |
-| Pasang versi terbaru | `sudo ./update.sh` |
-| Bangun ulang setelah mengubah `NEXT_PUBLIC_*` | `sudo ./update.sh --no-pull` |
+| Pasang versi terbaru (image ditarik dari GitHub) | `sudo ./update.sh` |
+| Menerapkan `NEXT_PUBLIC_*` baru | ubah variabel repo di GitHub → jalankan ulang workflow `Image` → `sudo ./update.sh` |
 | Pasang tag/cabang/commit tertentu | `sudo ./update.sh --ref=<ref>` |
 | Kembali ke versi sebelumnya | `sudo ./update.sh --rollback` |
 | Versi aktif dan sebelumnya | `sudo ./update.sh --status` |
@@ -47,9 +47,16 @@ pemiliknya bukan root.
 
 ### Jebakan yang perlu diketahui sebelum memasang
 
-- **`NEXT_PUBLIC_*` disisipkan saat build.** Mengubahnya di `deploy/.env` tidak
-  berpengaruh sampai image dibangun ulang (`sudo ./update.sh --no-pull`).
-  `status.sh` melaporkan "Konfigurasi build" bila keduanya berbeda.
+- **Image dibangun di GitHub, bukan di server.** Build Next.js memakai 1–2 GB
+  memori; di server kecil yang juga menjalankan layanan lain itu membuat
+  seluruh server macet. Jangan membangun frontend di server: `--bangun-lokal`
+  DITOLAK bila memori tersedia di bawah 2 GB. Bila GitHub tidak terjangkau,
+  biarkan versi yang sekarang berjalan.
+- **`NEXT_PUBLIC_*` disisipkan saat build**, jadi nilainya berasal dari
+  **variabel repo di GitHub**, bukan dari `deploy/.env` server. Yang ditulis di
+  `deploy/.env` adalah nilai yang *diharapkan* server ini; `status.sh`
+  melaporkan "Konfigurasi build" bila image yang berjalan dibangun dengan nilai
+  lain.
 - **Server Next.js harus bisa menjangkau API.** Isi halaman (proyek,
   pengalaman) dan sitemap diambil oleh server, dari DALAM kontainer. Alamat
   publik API belum tentu terjangkau dari sana — untuk itu ada
@@ -67,9 +74,6 @@ pemiliknya bukan root.
   lain di server ini.
 - **Port yang dipublikasikan Docker melewati UFW/CSF.** `ALAMAT_IKAT=0.0.0.0`
   membuka port web ke internet apa pun aturan firewall-nya. Bawaan `127.0.0.1`.
-- **Build butuh ±1,5 GB memori** di atas yang sedang berjalan. Di server ber-RAM
-  kecil, pastikan ada swap; `install.sh` memperingatkan bila RAM + swap di
-  bawah 3,5 GB.
 - Saat berganti versi, situs tidak terjangkau beberapa detik.
 
 ## 2. Log
@@ -79,22 +83,55 @@ pemiliknya bukan root.
 
 ## 3. Pembaruan dan jalan mundur
 
-`sudo ./update.sh`: tarik kode → lengkapi `deploy/.env` dengan kunci baru →
-bangun image versi baru → ganti kontainer → tunggu healthy.
+Tiap commit di `master` dibangun workflow `Image`
+(`.github/workflows/image.yml`): bangun → pindai isi image → uji nyala →
+terbitkan ke `ghcr.io/fauzanparanditha/portfolio-frontend` bertanda SHA commit.
 
-- Build gagal: update dibatalkan, versi lama tidak pernah berhenti.
+Alurnya: gabungkan PR ke `master` → tunggu workflow `Image` hijau → di server
+`sudo ./update.sh` (tarik kode → lengkapi `deploy/.env` → tarik image commit itu
+→ ganti kontainer → tunggu healthy).
+
+- Image belum ada di registry (build belum selesai atau gagal): update
+  dibatalkan, versi lama tidak pernah berhenti. Ulangi sesudah workflow hijau.
+- Hanya **ujung tiap push ke `master`** yang dibangun.
 - Versi baru tidak healthy: versi lama dinyalakan lagi secara otomatis.
 - `--rollback` kembali ke versi sebelumnya. Image lama membawa `NEXT_PUBLIC_*`
   yang berlaku saat ia dibangun, bukan isi `deploy/.env` sekarang.
 
 Update menolak berjalan bila pohon kerja git di server tidak bersih.
 
+### Variabel repo di GitHub (wajib sebelum image pertama)
+
+Settings → **Secrets and variables** → **Actions** → tab **Variables**. Namanya
+sama dengan di `deploy/env.example`:
+
+| Variabel | Wajib | Contoh |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | ya | `https://api.contoh.id/api/v1` |
+| `NEXT_PUBLIC_SITE_URL` | ya | `https://contoh.id` |
+| `NEXT_PUBLIC_CV_URL`, `NEXT_PUBLIC_CONTACT_EMAIL`, `NEXT_PUBLIC_CONTACT_PHONE`, `NEXT_PUBLIC_CONTACT_LOCATION`, `ADMIN_PROXY_GATE` | tidak | — |
+
+Tanpa dua yang wajib, workflow `Image` di `master` sengaja GAGAL: image dengan
+alamat kosong tidak boleh terbit. Semua nilai ini publik (terbaca dari bundel
+peramban) — jangan menaruh rahasia di variabel `NEXT_PUBLIC_*`.
+
+### Satu kali, sesudah image pertama terbit
+
+Package baru di `ghcr.io` bisa terbuat **privat** walaupun repo-nya publik, dan
+server lalu gagal menariknya (`unauthorized`). Sesudah workflow `Image` pertama
+selesai: profil GitHub → **Packages** → `portfolio-frontend` → **Package
+settings** → **Change visibility** → **Public**. Cukup sekali.
+
+Image publik bisa dibongkar siapa saja, lapis demi lapis, dan tidak bisa
+ditarik kembali. Karena itu workflow menjalankan `tools/periksa-image.sh`
+sebelum menerbitkan.
+
 ## 4. Mengubah konfigurasi
 
 | Yang diubah di `deploy/.env` | Terapkan dengan |
 |---|---|
 | `API_INTERNAL_URL`, `ALAMAT_IKAT`, `PORT_WEB`, `WEB_MEM_LIMIT` | `sudo ./install.sh --non-interactive` |
-| `NEXT_PUBLIC_*`, `ADMIN_PROXY_GATE` | `sudo ./update.sh --no-pull` |
+| `NEXT_PUBLIC_*`, `ADMIN_PROXY_GATE` | ubah variabel repo di GitHub **dan** `deploy/.env`, jalankan ulang workflow `Image` (tombol *Run workflow*), lalu `sudo ./update.sh` |
 
 Kunci dan artinya ada di `deploy/env.example`.
 
@@ -106,9 +143,10 @@ Mulai selalu dari `sudo ./status.sh` — tiap baris yang tidak hijau membawa sar
 |---|---|---|
 | Situs tampil tetapi daftar proyek kosong | server tidak menjangkau API, atau backend mati | **jangan restart web**; `status.sh` di repo backend; periksa `API_INTERNAL_URL` |
 | Data muncul sesudah beberapa detik, tetapi tidak ada di HTML awal | sama: hanya browser yang menjangkau API | isi `API_INTERNAL_URL` |
-| Perubahan `NEXT_PUBLIC_*` tidak terlihat | image belum dibangun ulang | `sudo ./update.sh --no-pull` |
+| Perubahan `NEXT_PUBLIC_*` tidak terlihat | variabel repo di GitHub belum diubah, atau image belum dibangun ulang | ubah variabelnya, jalankan ulang workflow `Image`, `sudo ./update.sh` |
+| Update berhenti: image tidak bisa ditarik | build GitHub belum selesai/gagal (mis. variabel wajib kosong), package masih privat, atau GitHub tidak terjangkau | tab **Actions** → workflow `Image`; periksa visibilitas package |
 | Semua kunjungan ke `/admin` dilempar ke login | cookie backend tidak sampai ke domain ini | `docs/DEPLOYMENT.md` di repo backend; `ADMIN_PROXY_GATE` |
-| Build berhenti dengan `Killed` | kehabisan memori | tambah swap, ulangi `update.sh` |
+| `--bangun-lokal` ditolak | memori tersedia di bawah 2 GB | jangan dipaksa: tunggu image dari GitHub, atau hentikan dulu layanan lain yang berat |
 | Kontainer `restarting` | image rusak | `sudo ./update.sh --rollback` |
 
 ## 6. Daftar periksa insiden

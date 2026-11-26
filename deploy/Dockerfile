@@ -46,6 +46,10 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
     NEXT_OUTPUT=standalone \
     NEXT_TELEMETRY_DISABLED=1
 RUN --mount=type=cache,target=/app/.next/cache pnpm build
+# Nilai yang DISISIPKAN ke bundel, dicatat di dalam image supaya status.sh
+# bisa membandingkannya dengan deploy/.env di server. Semuanya memang publik
+# (terbaca dari bundel peramban).
+RUN env | grep -E '^(NEXT_PUBLIC_[A-Z0-9_]+|ADMIN_PROXY_GATE)=' | sort > /app/BUILD_ENV
 
 # ---------------------------------------------------------------- runtime
 FROM ${NODE_IMAGE} AS runtime
@@ -62,6 +66,7 @@ ENV NODE_ENV=production \
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
+COPY --from=build /app/BUILD_ENV ./BUILD_ENV
 
 ARG VERSI=dev
 LABEL org.opencontainers.image.title="portfolio-frontend" \

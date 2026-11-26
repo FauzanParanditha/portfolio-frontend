@@ -1,0 +1,134 @@
+name: Image
+
+# Membangun image produksi di GitHub supaya server tidak perlu membangunnya
+# sendiri (build Next.js memakai 1–2 GB memori). Server lalu menariknya dengan
+# `sudo ./update.sh` (lihat docs/PEMELIHARAAN.md).
+#
+# - push ke master : bangun → pindai isi image → uji nyala → terbitkan ke
+#                    ghcr.io, bertanda SHA commit (itu yang dicari update.sh).
+# - pull request   : bangun + pindai + uji nyala saja, TIDAK diterbitkan.
+#
+# NEXT_PUBLIC_* DISISIPKAN ke bundel saat build. Nilainya diambil dari VARIABEL
+# REPO (Settings → Secrets and variables → Actions → Variables), dengan nama
+# yang sama seperti di deploy/env.example. Mengubah nilainya = jalankan ulang
+# workflow ini (tombol "Run workflow") lalu `sudo ./update.sh` di server.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    name: bangun · pindai · terbitkan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+      NEXT_PUBLIC_CV_URL: ${{ vars.NEXT_PUBLIC_CV_URL }}
+      NEXT_PUBLIC_CONTACT_EMAIL: ${{ vars.NEXT_PUBLIC_CONTACT_EMAIL }}
+      NEXT_PUBLIC_CONTACT_PHONE: ${{ vars.NEXT_PUBLIC_CONTACT_PHONE }}
+      NEXT_PUBLIC_CONTACT_LOCATION: ${{ vars.NEXT_PUBLIC_CONTACT_LOCATION }}
+      ADMIN_PROXY_GATE: ${{ vars.ADMIN_PROXY_GATE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Nama image = ghcr.io/<pemilik>/<repo>, huruf kecil (syarat registry).
+      - name: Nama image
+        id: nama
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      # Image yang DITERBITKAN tidak boleh dibangun dengan alamat kosong: situs
+      # akan terbit tanpa data dan dengan canonical yang salah. Pull request
+      # (dan PR dari fork, yang tidak menerima variabel repo) memakai alamat
+      # contoh, karena hasilnya tidak diterbitkan.
+      - name: Periksa variabel build
+        run: |
+          kosong=""
+          for k in NEXT_PUBLIC_API_URL NEXT_PUBLIC_SITE_URL; do
+            [ -n "${!k}" ] || kosong="$kosong $k"
+          done
+          if [ -n "$kosong" ]; then
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "Variabel repo belum diisi:$kosong — memakai alamat contoh (image tidak diterbitkan)."
+              echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.contoh.invalid/api/v1}" >> "$GITHUB_ENV"
+              echo "NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-https://contoh.invalid}" >> "$GITHUB_ENV"
+            else
+              echo "::error::Variabel repo belum diisi:$kosong. Isi di Settings → Secrets and variables → Actions → Variables, lalu jalankan ulang workflow ini."
+              exit 1
+            fi
+          fi
+
+      # `load: true`: image dimuat ke Docker lokal dulu supaya bisa dipindai.
+      # Belum ada yang diterbitkan pada langkah ini.
+      - name: Bangun
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile
+          load: true
+          tags: ${{ steps.nama.outputs.image }}
+          build-args: |
+            VERSI=${{ github.sha }}
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_SITE_URL=${{ env.NEXT_PUBLIC_SITE_URL }}
+            NEXT_PUBLIC_CV_URL=${{ env.NEXT_PUBLIC_CV_URL }}
+            NEXT_PUBLIC_CONTACT_EMAIL=${{ env.NEXT_PUBLIC_CONTACT_EMAIL }}
+            NEXT_PUBLIC_CONTACT_PHONE=${{ env.NEXT_PUBLIC_CONTACT_PHONE }}
+            NEXT_PUBLIC_CONTACT_LOCATION=${{ env.NEXT_PUBLIC_CONTACT_LOCATION }}
+            ADMIN_PROXY_GATE=${{ env.ADMIN_PROXY_GATE }}
+          # revision dibandingkan update.sh dengan commit yang ter-checkout di
+          # server; source menautkan package ke repo ini.
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Image publik bisa dibongkar siapa saja, lapis demi lapis, dan tidak bisa
+      # ditarik kembali: isinya diperiksa SEBELUM diterbitkan.
+      - name: Pindai isi image
+        run: bash tools/periksa-image.sh "${{ steps.nama.outputs.image }}"
+
+      # Image yang tidak bisa menyala tidak perlu sampai ke server: jalankan
+      # dengan pengerasan yang sama (akar hanya-baca, non-root) dan tunggu
+      # HEALTHCHECK-nya.
+      - name: Uji nyala
+        run: |
+          docker run -d --name uji --read-only --cap-drop ALL \
+            --tmpfs /tmp --tmpfs /app/.next/cache:uid=1000,gid=1000 \
+            --tmpfs /app/.next/server/route-cache:uid=1000,gid=1000 \
+            "${{ steps.nama.outputs.image }}"
+          for i in $(seq 1 30); do
+            s="$(docker inspect -f '{{.State.Health.Status}}' uji)"
+            [ "$s" = healthy ] && { echo "healthy setelah ±$((i * 2)) detik"; exit 0; }
+            [ "$s" = unhealthy ] && break
+            sleep 2
+          done
+          docker logs --tail 40 uji
+          echo "::error::kontainer tidak healthy (status: $s)"
+          exit 1
+
+      - name: Masuk ke ghcr.io
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Terbitkan
+        if: github.event_name != 'pull_request'
+        run: docker push "${{ steps.nama.outputs.image }}"
