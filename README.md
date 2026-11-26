@@ -132,8 +132,13 @@ tiga skrip di akar repo:
 | Skrip | Kegunaan |
 |---|---|
 | `sudo ./install.sh` | pasang pertama kali / terapkan perubahan konfigurasi runtime (aman diulang) |
-| `sudo ./update.sh` | pasang versi baru; `--no-pull` membangun ulang setelah `NEXT_PUBLIC_*` berubah; `--rollback` kembali ke versi sebelumnya |
+| `sudo ./update.sh` | pasang versi baru (image ditarik dari GitHub); `--rollback` kembali ke versi sebelumnya |
 | `sudo ./status.sh` | keadaan tiap komponen beserta sebab dan saran (`--ringkas`, `--json`) |
+
+Image dibangun GitHub Actions (workflow `Image`) tiap ada commit di `master`,
+dengan `NEXT_PUBLIC_*` dari variabel repo, lalu dipindai
+(`tools/periksa-image.sh`) dan diterbitkan ke `ghcr.io`. Frontend tidak
+dibangun di server: build Next.js memakai 1–2 GB memori.
 
 Rinciannya, termasuk jebakan `NEXT_PUBLIC_*` dan cara server menjangkau API
 (`API_INTERNAL_URL`), ada di [docs/PEMELIHARAAN.md](docs/PEMELIHARAAN.md).
