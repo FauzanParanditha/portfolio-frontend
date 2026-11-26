@@ -4,15 +4,20 @@
 #
 #     sudo ./update.sh                 tarik kode terbaru cabang ini lalu pasang
 #     sudo ./update.sh --ref=<tag|cabang|commit>
-#     sudo ./update.sh --no-pull       bangun ulang dari kode yang sudah ada di
-#                                      folder ini (mis. setelah mengubah
-#                                      NEXT_PUBLIC_* di deploy/.env)
+#     sudo ./update.sh --no-pull       pasang kode yang sudah ada di folder ini
+#     sudo ./update.sh --bangun-lokal  bangun image di server ini, alih-alih
+#                                      menarik yang dibangun GitHub (ditolak
+#                                      bila memori tersedia di bawah 2 GB)
 #     sudo ./update.sh --rollback      kembali ke versi sebelumnya
 #     sudo ./update.sh --status        versi aktif dan versi sebelumnya
 #
 #  Urutan: kunci → tolak pohon kerja kotor → tarik kode → lengkapi .env →
-#  bangun image versi baru → ganti web → tunggu healthy (tidak healthy = versi
-#  lama dinyalakan lagi). Selama build gagal, versi lama tetap berjalan.
+#  tarik image versi baru (dibangun GitHub) → ganti web → tunggu healthy (tidak
+#  healthy = versi lama dinyalakan lagi). Selama image belum tersedia, versi
+#  lama tetap berjalan.
+#
+#  NEXT_PUBLIC_* disisipkan saat build: untuk image dari GitHub, nilainya diatur
+#  di variabel repo GitHub, lalu workflow "Image" dijalankan ulang.
 #
 #  Saat berganti versi situs tidak terjangkau beberapa detik.
 # ==========================================================================
@@ -21,14 +26,15 @@ AKAR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=deploy/lib.sh
 . "$AKAR/deploy/lib.sh"
 
-REF=""; TARIK=1; AKSI=update; ARG_ASLI=("$@")
+REF=""; TARIK=1; AKSI=update; PAKSA_LOKAL=0; ARG_ASLI=("$@")
 for a in "$@"; do
   case "$a" in
     --ref=*) REF="${a#*=}" ;;
     --no-pull) TARIK=0 ;;
+    --bangun-lokal) PAKSA_LOKAL=1 ;;
     --rollback) AKSI=rollback ;;
     --status) AKSI=status ;;
-    -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,2\}//'; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,2\}//'; exit 0 ;;
     *) gagal "argumen tidak dikenal: $a (lihat --help)" ;;
   esac
 done
@@ -60,7 +66,6 @@ if [[ "$AKSI" == rollback ]]; then
   kuning "Image lama membawa NEXT_PUBLIC_* yang berlaku saat ia dibangun, bukan isi deploy/.env sekarang."
   if nyalakan "$LAMA"; then
     catat_versi web "$LAMA" "$AKTIF"; tulis_override $LAYANAN
-    rm -f "$SIDIK_FILE"
     hijau "Versi aktif sekarang: $LAMA"
     kirim_alarm "[$PROYEK] rollback ke $LAMA di $(hostname)"
     exec "$AKAR/status.sh" --ringkas
@@ -120,19 +125,17 @@ env_rapikan_ganda
 env_periksa_ganda
 for k in NEXT_PUBLIC_API_URL NEXT_PUBLIC_SITE_URL; do wajib "$k"; done
 
-# ---------------------------------------------------------------- bangun
+# ---------------------------------------------------------------- image
 BARU="$(versi_baru)"
 # Tag beresolusi menit: dua update dalam semenit dari commit yang sama akan
 # menimpa image versi aktif dan membuat "versi sebelumnya" = dirinya sendiri.
 [[ "$BARU" != "$AKTIF" ]] || BARU="$BARU$(date +%S)"
-SIDIK="$(sidik_build)"
-bangun "$BARU"
+siapkan_image "$BARU" || gagal "image versi baru tidak tersedia — update dibatalkan, versi $AKTIF tetap berjalan"
 
 # ---------------------------------------------------------------- ganti versi
 langkah "Mengganti web: $AKTIF → $BARU"
 if nyalakan "$BARU"; then
   catat_versi web "$BARU" "$AKTIF"; tulis_override $LAYANAN
-  printf '%s\n' "$SIDIK" >"$SIDIK_FILE"
   pangkas_image web 3
   docker builder prune -f --filter until=168h >/dev/null 2>&1 || true
   hijau "Versi aktif sekarang: $BARU (sebelumnya $AKTIF)"

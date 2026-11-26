@@ -4,6 +4,8 @@
 #
 #     sudo ./install.sh                    bertanya untuk nilai yang belum diisi
 #     sudo ./install.sh --non-interactive  memakai deploy/.env yang sudah diisi
+#     sudo ./install.sh --bangun-lokal     bangun image di server ini (ditolak bila
+#                                          memori tersedia di bawah 2 GB)
 #
 #  Aman diulang: tiap langkah melewati dirinya bila sudah selesai, jadi
 #  menjalankannya lagi adalah cara menerapkan perubahan konfigurasi RUNTIME.
@@ -19,11 +21,12 @@ AKAR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=deploy/lib.sh
 . "$AKAR/deploy/lib.sh"
 
-INTERAKTIF=1
+INTERAKTIF=1; PAKSA_LOKAL=0
 for a in "$@"; do
   case "$a" in
     --non-interactive) INTERAKTIF=0 ;;
-    -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,2\}//'; exit 0 ;;
+    --bangun-lokal) PAKSA_LOKAL=1 ;;
+    -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,2\}//'; exit 0 ;;
     *) gagal "argumen tidak dikenal: $a (lihat --help)" ;;
   esac
 done
@@ -55,7 +58,6 @@ ram="$(awk '/MemTotal/{printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 
 tukar="$(awk '/SwapTotal/{printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo 0)"
 bebas="$(df -Pm "$AKAR" | awk 'NR==2{print $4}')"
 echo "RAM ${ram} MB · swap ${tukar} MB · disk bebas ${bebas} MB"
-(( ram + tukar >= 3500 )) || kuning "RAM + swap di bawah 3,5 GB: build Next.js bisa dihentikan kernel karena kehabisan memori. Tambah swap sebelum memasang."
 (( bebas >= 4000 )) || kuning "Disk bebas di bawah 4 GB: image dan cache build butuh ruang."
 
 if ! command -v docker >/dev/null; then
@@ -84,7 +86,6 @@ if ! command -v docker >/dev/null; then
 fi
 butuh_perintah docker git curl flock sha256sum
 butuh_compose
-docker buildx version >/dev/null 2>&1 || gagal "docker buildx tidak ada — pasang docker-buildx-plugin"
 hijau "Docker $(docker version --format '{{.Server.Version}}'), compose $(docker compose version --short)"
 
 # ---------------------------------------------------------------- 2. .env
@@ -128,14 +129,9 @@ VERSI_PAKAI="$(versi_aktif web)"
 if [[ -n "$VERSI_PAKAI" ]] && docker image inspect "$PROYEK/web:$VERSI_PAKAI" >/dev/null 2>&1; then
   echo "versi $VERSI_PAKAI sudah terpasang — tidak dibangun ulang (pakai ./update.sh untuk versi baru)"
   SUDAH_ADA=1
-  if [[ -r "$SIDIK_FILE" ]] && [[ "$(cat "$SIDIK_FILE")" != "$(sidik_build)" ]]; then
-    kuning "NEXT_PUBLIC_*/ADMIN_PROXY_GATE di deploy/.env berbeda dari image yang terpasang."
-    kuning "Nilai itu disisipkan saat build — terapkan dengan: sudo ./update.sh --no-pull"
-  fi
 else
   VERSI_PAKAI="$(versi_baru)"
-  SIDIK="$(sidik_build)"
-  bangun "$VERSI_PAKAI"
+  siapkan_image "$VERSI_PAKAI" || gagal "image tidak tersedia — lihat pesan di atas"
   SUDAH_ADA=0
 fi
 
@@ -147,10 +143,7 @@ langkah "5/6 Web"
 periksa_port "$(env_atau ALAMAT_IKAT 127.0.0.1)" "$(env_atau PORT_WEB 3000)" PORT_WEB || gagal "port web tidak bisa dipakai"
 dcv "$VERSI_PAKAI" up -d web
 tunggu_sehat web 90 || { dc logs --tail 40 web || true; gagal "web tidak healthy — lihat log di atas"; }
-if (( ! SUDAH_ADA )); then
-  catat_versi web "$VERSI_PAKAI" ""
-  printf '%s\n' "$SIDIK" >"$SIDIK_FILE"
-fi
+if (( ! SUDAH_ADA )); then catat_versi web "$VERSI_PAKAI" ""; fi
 tulis_override $LAYANAN
 hijau "web healthy, versi $(versi_aktif web)"
 

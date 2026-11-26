@@ -105,10 +105,17 @@ if [[ "$st" == healthy ]]; then
   esac
 fi
 
-# ---- deploy/.env sudah berubah tetapi image belum dibangun ulang?
-if [[ -r "$SIDIK_FILE" ]] && [[ "$(cat "$SIDIK_FILE")" != "$(sidik_build)" ]]; then
-  catat build_basi "Konfigurasi build" terganggu 0 "NEXT_PUBLIC_*/ADMIN_PROXY_GATE di deploy/.env berbeda dari image yang berjalan" \
-    "bangun ulang: sudo ./update.sh --no-pull"
+# ---- nilai yang disisipkan ke image yang berjalan vs deploy/.env
+if [[ "$st" == healthy ]]; then
+  beda="$(beda_build)"
+  if [[ -n "$beda" ]]; then
+    if [[ "$(env_atau SUMBER_IMAGE github)" == lokal ]]; then
+      saran="bangun ulang: sudo ./update.sh --no-pull --bangun-lokal"
+    else
+      saran="samakan variabel repo di GitHub (Settings → Secrets and variables → Actions → Variables) dengan deploy/.env, jalankan ulang workflow Image, lalu sudo ./update.sh — atau betulkan deploy/.env bila nilai di sana yang salah"
+    fi
+    catat build_basi "Konfigurasi build" terganggu 0 "image dibangun dengan nilai berbeda dari deploy/.env: $beda" "$saran"
+  fi
 fi
 
 # ---- disk
